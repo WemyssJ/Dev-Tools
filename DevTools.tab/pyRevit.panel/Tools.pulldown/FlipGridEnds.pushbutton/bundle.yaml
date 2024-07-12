@@ -1,0 +1,8 @@
+engine: 
+  clean: true
+title:
+  en_us: Flip Grid Ends
+tooltip: 
+  en_us: Flip visibility of bubbles at the ends of selected grids. If both bubbles are visible only one will remain.
+author: >-
+  pyApex 
