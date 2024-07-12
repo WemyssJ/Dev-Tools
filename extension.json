@@ -1,0 +1,14 @@
+{
+    "builtin": "False",
+    "default_enabled": "True",
+    "type": "extension",
+    "rocket_mode_compatible": "True",
+    "name": "Dev Tools",
+    "description": "Collection of Tools for Autodesk Revit - Test + Dev Edition",
+    "author": "Joe Wemyss",
+    "author_profile": "https://github.com/WemyssJ",
+    "url": "n/a",
+    "website": "n/a",
+    "image": "",
+    "dependencies": []
+}
