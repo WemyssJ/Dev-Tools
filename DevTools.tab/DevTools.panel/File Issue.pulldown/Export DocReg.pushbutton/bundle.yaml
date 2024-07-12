@@ -1,0 +1,8 @@
+engine: 
+  clean: true
+title:
+  en_us: Export DocReg
+tooltip: 
+  en_us: Copies Document Register to clipboard. Paste into Cell B9 on "Structures Input Page" within CPD Doc Reg. ALL REVISION DATES MUST BE IN REV SEQUENTIAL ORDER!!!
+author: >-
+  Joe Wemyss
