@@ -3,12 +3,12 @@
     "default_enabled": "True",
     "type": "extension",
     "rocket_mode_compatible": "True",
-    "name": "Dev Tools",
+    "name": "DevTools",
     "description": "Collection of Tools for Autodesk Revit - Test + Dev Edition",
     "author": "Joe Wemyss",
     "author_profile": "https://github.com/WemyssJ",
-    "url": "n/a",
-    "website": "n/a",
+    "url": "https://github.com/WemyssJ/Dev-Tools.git",
+    "website": "https://github.com/WemyssJ/Dev-Tools",
     "image": "",
     "dependencies": []
 }
