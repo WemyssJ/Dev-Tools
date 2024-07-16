@@ -1,8 +1,0 @@
-engine: 
-  clean: true
-title:
-  en_us: Strip Model WIP WIP WIP
-tooltip: 
-  en_us: Strips Revit model and saves a SAVE AS on desktop. Strip = remove links, delete all views, purge.
-author: >-
-  Joe Wemyss
