@@ -3288,6 +3288,116 @@
       ],
       "Replication": "Disabled",
       "Description": "Selection between a true and false."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.Filename, CoreNodeModels",
+      "HintPath": "D:\\DevTools.extension\\DevTools.tab\\DevTools.panel\\File Issue.pulldown\\Export DocReg.pushbutton\\icon.png",
+      "InputValue": ".\\icon.png",
+      "NodeType": "ExtensionNode",
+      "Id": "b605da1eacfe421792f784fad24f4bc7",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "db2de6f8e0ef4b089e839d0fd8a95567",
+          "Name": "",
+          "Description": "Filename",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Allows you to select a file on the system to get its filename"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Function, DynamoCore",
+      "FunctionSignature": "c1c01465-8e50-416b-909a-d9902aa0780b",
+      "FunctionType": "Graph",
+      "NodeType": "FunctionNode",
+      "Id": "beb2f35e2cbc451d8da84eac12c26942",
+      "Inputs": [
+        {
+          "Id": "8d8d0fdea0c749d197320e140654ca3b",
+          "Name": "title",
+          "Description": "Title of the UI.\n\nstring",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "9f5d456a62a84b5a902d541f383262e8",
+          "Name": "body",
+          "Description": "Body text of the UI.\n\nstring",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "7d22fc780bff447182707b3edff552e9",
+          "Name": "pass",
+          "Description": "Data to pass through\n\nvar[]..[]\nDefault value : null",
+          "UsingDefaultValue": true,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "625fccd71e88451ea61bf5ded81e5be3",
+          "Name": "result",
+          "Description": "Passed through data. If canceled, will be null.",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Auto",
+      "Description": "Displays a message box with a title/body and OK/cancel button. If OK is selected, the third input's data will be passed through."
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CodeBlockNodeModel, DynamoCore",
+      "NodeType": "CodeBlockNode",
+      "Code": "\"Success!\";",
+      "Id": "1b1d294120494429a74a8a4984964282",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "8cf24f42f7984b9f86e3191c3e941d41",
+          "Name": "",
+          "Description": "Value of expression at line 1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Allows for DesignScript code to be authored directly"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.CodeBlockNodeModel, DynamoCore",
+      "NodeType": "CodeBlockNode",
+      "Code": "\"DocReg Copied to Clipboard.\";",
+      "Id": "5ef26514d8724f76b7d729d1b22212c9",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "89b50662df93437aa7b0367d806047d6",
+          "Name": "",
+          "Description": "Value of expression at line 1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Allows for DesignScript code to be authored directly"
     }
   ],
   "Connectors": [
@@ -3325,6 +3435,11 @@
       "Start": "e28e3e00a40049af9e63b13b01a4921b",
       "End": "8a35ad1f3c864020a571f6c66b319bbd",
       "Id": "d8ff510f31944f72a480aa00f5f39d53"
+    },
+    {
+      "Start": "7781218371f942ac9004403e6a038156",
+      "End": "7d22fc780bff447182707b3edff552e9",
+      "Id": "cbb16da3980c4ecfa93f9857afa30eb5"
     },
     {
       "Start": "4f65aa8466e545429e8707322939b824",
@@ -3875,13 +3990,29 @@
       "Start": "072b34e810384442860cdaad4a63684f",
       "End": "1149bc6b81fc44519497c95877d5b82c",
       "Id": "74ff1cbdae694c8ea2254930da3cb5cd"
+    },
+    {
+      "Start": "db2de6f8e0ef4b089e839d0fd8a95567",
+      "End": "daf965a7f01046cca096e76cd4ece6ea",
+      "Id": "0e67a88e4e4b402ea881a0257c789f4b"
+    },
+    {
+      "Start": "8cf24f42f7984b9f86e3191c3e941d41",
+      "End": "8d8d0fdea0c749d197320e140654ca3b",
+      "Id": "12ccfe5a7cd046edb3cb4774b5ebec39"
+    },
+    {
+      "Start": "89b50662df93437aa7b0367d806047d6",
+      "End": "9f5d456a62a84b5a902d541f383262e8",
+      "Id": "327aecbd3d6e486f875850ae9fb9cfd9"
     }
   ],
   "Dependencies": [
     "bea35a0d-a8ee-4084-9e6f-402d4ef108e0",
     "2e28abd1-5659-43b5-8182-4570980e8289",
     "b409775c-5d88-4d47-96a3-5135c775d26a",
-    "9fbd05c0-ec1f-4bd3-bf37-969a1552eab8"
+    "9fbd05c0-ec1f-4bd3-bf37-969a1552eab8",
+    "c1c01465-8e50-416b-909a-d9902aa0780b"
   ],
   "NodeLibraryDependencies": [
     {
@@ -3900,6 +4031,14 @@
       "Nodes": [
         "d08d4cb9e49a4b2b9ac4c2ccf5eb2674",
         "52eab0934c574bebba2f3bd0c6409509"
+      ]
+    },
+    {
+      "Name": "Crumple",
+      "Version": "2024.4.3",
+      "ReferenceType": "Package",
+      "Nodes": [
+        "beb2f35e2cbc451d8da84eac12c26942"
       ]
     }
   ],
@@ -4945,6 +5084,46 @@
         "Excluded": false,
         "X": 167.95096634673894,
         "Y": 2413.715944587776
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "File Path",
+        "Id": "b605da1eacfe421792f784fad24f4bc7",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 641.7781646573178,
+        "Y": 2069.129621293042
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "© UI.Messenger",
+        "Id": "beb2f35e2cbc451d8da84eac12c26942",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 4088.463912202918,
+        "Y": 61.263372592905483
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Code Block",
+        "Id": "1b1d294120494429a74a8a4984964282",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 3668.1873390666451,
+        "Y": -74.978350941878347
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "Code Block",
+        "Id": "5ef26514d8724f76b7d729d1b22212c9",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": 3658.4854242427141,
+        "Y": 59.635717240157163
       }
     ],
     "Annotations": [
@@ -5209,8 +5388,8 @@
         "Background": "#FFFFAA45"
       }
     ],
-    "X": -571.768909765044,
-    "Y": -662.22288851699068,
-    "Zoom": 0.61674184032796819
+    "X": -826.20622316406434,
+    "Y": 128.65921737854174,
+    "Zoom": 0.38290841786931717
   }
 }
