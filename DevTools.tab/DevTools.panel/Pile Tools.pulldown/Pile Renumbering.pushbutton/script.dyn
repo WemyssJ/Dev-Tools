@@ -3214,134 +3214,6 @@
       ],
       "Replication": "Auto",
       "Description": "Adds x to y.\n\n+ (x: var[]..[], y: var[]..[]): var[]..[]"
-    },
-    {
-      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
-      "NodeType": "ExtensionNode",
-      "Id": "0eff65392f3a4f59bd374a75dc99d563",
-      "Inputs": [
-        {
-          "Id": "e181977dd3fe4bc8a3e33583e1dd94d8",
-          "Name": "",
-          "Description": "Node to evaluate.",
-          "UsingDefaultValue": false,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
-        }
-      ],
-      "Outputs": [
-        {
-          "Id": "bc6e8f75166c4e948e15a4f3d6a8e18a",
-          "Name": "",
-          "Description": "Watch contents.",
-          "UsingDefaultValue": false,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
-        }
-      ],
-      "Replication": "Disabled",
-      "Description": "Visualize the output of node."
-    },
-    {
-      "ConcreteType": "Dynamo.Graph.Nodes.ZeroTouch.DSFunction, DynamoCore",
-      "NodeType": "FunctionNode",
-      "FunctionSignature": "DSCore.List.DropItems@var[]..[],int",
-      "Id": "abbf6b4822cf49e8a10ad48c52dd115b",
-      "Inputs": [
-        {
-          "Id": "bb0c0cff54ba44e1b649e69e0294b576",
-          "Name": "list",
-          "Description": "List to remove items from.\n\nvar[]..[]",
-          "UsingDefaultValue": false,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
-        },
-        {
-          "Id": "b5198c6f8207444f8fabfaa0580bdcc5",
-          "Name": "amount",
-          "Description": "Amount of items to remove. If negative, items are removed from the end of the list.\n\nint",
-          "UsingDefaultValue": false,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
-        }
-      ],
-      "Outputs": [
-        {
-          "Id": "8e579911f43045749f68cf3dedf07d76",
-          "Name": "list",
-          "Description": "List of remaining items.",
-          "UsingDefaultValue": false,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
-        }
-      ],
-      "Replication": "Auto",
-      "Description": "Removes an amount of items from the start of the list. If the amount is a negative value, items are removed from the end of the list.\n\nList.DropItems (list: var[]..[], amount: int): var[]..[]"
-    },
-    {
-      "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
-      "NodeType": "NumberInputNode",
-      "NumberType": "Double",
-      "InputValue": 1.0,
-      "Id": "533de9c564e746db9db20be9e5fbb9a7",
-      "Inputs": [],
-      "Outputs": [
-        {
-          "Id": "fa40a0ae02e243c68b49145d0c38e1d3",
-          "Name": "",
-          "Description": "Double",
-          "UsingDefaultValue": false,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
-        }
-      ],
-      "Replication": "Disabled",
-      "Description": "Creates a number."
-    },
-    {
-      "ConcreteType": "Dynamo.Graph.Nodes.CodeBlockNodeModel, DynamoCore",
-      "NodeType": "CodeBlockNode",
-      "Code": "",
-      "Id": "e345c0d95e48469a96206d46043256a5",
-      "Inputs": [],
-      "Outputs": [],
-      "Replication": "Disabled",
-      "Description": "Allows for DesignScript code to be authored directly"
-    },
-    {
-      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
-      "NodeType": "ExtensionNode",
-      "Id": "f85e10283df74a189df4d4e3160531cf",
-      "Inputs": [
-        {
-          "Id": "bd4edfeb7a7645d6b0ddffa75b002af3",
-          "Name": "",
-          "Description": "Node to evaluate.",
-          "UsingDefaultValue": false,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
-        }
-      ],
-      "Outputs": [
-        {
-          "Id": "7151bbc9fbfd43c9b9687d08dc62cd90",
-          "Name": "",
-          "Description": "Watch contents.",
-          "UsingDefaultValue": false,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
-        }
-      ],
-      "Replication": "Disabled",
-      "Description": "Visualize the output of node."
     }
   ],
   "Connectors": [
@@ -3807,13 +3679,18 @@
     },
     {
       "Start": "bf785827b39443a2b2ac36dc95206f65",
-      "End": "bb0c0cff54ba44e1b649e69e0294b576",
-      "Id": "64e7af0dc3784787afba64b9734be0f5"
+      "End": "c77a63fb21d14b2bbd91ba21e5405c3d",
+      "Id": "8015eaa5fba84fc2aaea2b45139570b4"
     },
     {
       "Start": "bf785827b39443a2b2ac36dc95206f65",
-      "End": "bd4edfeb7a7645d6b0ddffa75b002af3",
-      "Id": "113e9e1d5c7f4056ad339603c87cac21"
+      "End": "38bfdc44170a4b15b38778373f86d6d6",
+      "Id": "a9a08bcd22c246f5b3812bc32a4a7b14"
+    },
+    {
+      "Start": "bf785827b39443a2b2ac36dc95206f65",
+      "End": "489f78dbd3f440e995efb7b52e905d00",
+      "Id": "5aadc9b0286440febb8525d02a990ed2"
     },
     {
       "Start": "d5469661f0ab4d47873688f741af943f",
@@ -3894,31 +3771,6 @@
       "Start": "7a7518fc85474a52a9fe3cab774e0316",
       "End": "d38ba392735e41f3ae14b54908e37833",
       "Id": "63765842c5524eb580d392a7237cb1f0"
-    },
-    {
-      "Start": "8e579911f43045749f68cf3dedf07d76",
-      "End": "e181977dd3fe4bc8a3e33583e1dd94d8",
-      "Id": "5c3313c1a74b41edaca704d12f721ba1"
-    },
-    {
-      "Start": "8e579911f43045749f68cf3dedf07d76",
-      "End": "c77a63fb21d14b2bbd91ba21e5405c3d",
-      "Id": "2bc7156c24164bf3af62adcfe2c00b31"
-    },
-    {
-      "Start": "8e579911f43045749f68cf3dedf07d76",
-      "End": "38bfdc44170a4b15b38778373f86d6d6",
-      "Id": "2480f65467594dd3a302c5c50843f56d"
-    },
-    {
-      "Start": "8e579911f43045749f68cf3dedf07d76",
-      "End": "489f78dbd3f440e995efb7b52e905d00",
-      "Id": "409fb32039ec42d69fe35df1c8eec166"
-    },
-    {
-      "Start": "fa40a0ae02e243c68b49145d0c38e1d3",
-      "End": "b5198c6f8207444f8fabfaa0580bdcc5",
-      "Id": "b6211073a6bc4a8a8ffa5ea7bd769800"
     }
   ],
   "Dependencies": [
@@ -4924,56 +4776,6 @@
         "Excluded": false,
         "X": 2921.2135056111711,
         "Y": 2305.0436636023232
-      },
-      {
-        "ShowGeometry": true,
-        "Name": "Watch",
-        "Id": "0eff65392f3a4f59bd374a75dc99d563",
-        "IsSetAsInput": false,
-        "IsSetAsOutput": false,
-        "Excluded": false,
-        "X": -819.28222024903152,
-        "Y": 1171.0721773425009
-      },
-      {
-        "ShowGeometry": true,
-        "Name": "List.DropItems",
-        "Id": "abbf6b4822cf49e8a10ad48c52dd115b",
-        "IsSetAsInput": false,
-        "IsSetAsOutput": false,
-        "Excluded": false,
-        "X": -992.79081328614984,
-        "Y": 978.60115663580166
-      },
-      {
-        "ShowGeometry": true,
-        "Name": "Number",
-        "Id": "533de9c564e746db9db20be9e5fbb9a7",
-        "IsSetAsInput": false,
-        "IsSetAsOutput": false,
-        "Excluded": false,
-        "X": -1125.5415376568524,
-        "Y": 1073.5970878368555
-      },
-      {
-        "ShowGeometry": true,
-        "Name": "Code Block",
-        "Id": "e345c0d95e48469a96206d46043256a5",
-        "IsSetAsInput": false,
-        "IsSetAsOutput": false,
-        "Excluded": false,
-        "X": -1327.0,
-        "Y": 1197.0
-      },
-      {
-        "ShowGeometry": true,
-        "Name": "Watch",
-        "Id": "f85e10283df74a189df4d4e3160531cf",
-        "IsSetAsInput": false,
-        "IsSetAsOutput": false,
-        "Excluded": false,
-        "X": -1039.0708823328173,
-        "Y": 1278.2037088852776
       }
     ],
     "Annotations": [
@@ -5176,8 +4978,8 @@
         "Background": "#FFB9F9E1"
       }
     ],
-    "X": 1073.4210668605028,
-    "Y": -413.88751490455,
-    "Zoom": 0.6295805881013502
+    "X": 913.37543772720585,
+    "Y": -187.26544303318073,
+    "Zoom": 0.50113006221922
   }
 }
