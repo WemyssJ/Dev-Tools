@@ -9,6 +9,7 @@ To Install:
 3. Open Revit
 
 4. Find pyRevit in ribbon. On the left hand side click the pyRevit drop down > Extensions and install extension "BIM Tools" by Joe Wemyss. Save to default location on C:\ Drive
-	4b. if download doesn't work, it may be set to private. Ask Joe Wemyss to make public and try again
+
+4b. if download doesn't work, Repository may be set to private. Ask Joe Wemyss to make public and try again
 
 5. Enjoy
