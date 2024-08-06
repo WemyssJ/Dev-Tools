@@ -4,9 +4,9 @@ To Install:
 
 2. Ensure you are using the latest version of Revit (2022.1.7, 2023.1.5)
 
-3. Save "extensions.json" provided by Joe Wemyss to: C:\Users\wemyssj\AppData\Roaming\pyRevit-Master\extensions
+3. Save "extensions.json" provided by Joe Wemyss to: C:\Users\YOURUSERNAME\AppData\Roaming\pyRevit-Master\extensions
 
-4. Save "Dynamo Revit" Folder provided by Joe Wemyss to C:\Users\wemyssj\AppData\Roaming\Dynamo
+4. Save "Dynamo Revit" Folder provided by Joe Wemyss to C:\Users\YOURUSERNAME\AppData\Roaming\Dynamo
 
 5. Open Revit
 
