@@ -1,5 +1,3 @@
-Toolbar created to: Automatically export Doc Reg using Revit Revisions, automatic Pile Numbering and E+N and more.
-
 To Install:
 
 1. Install pyRevit_4.8.16.24121_signed.exe (https://github.com/pyrevitlabs/pyRevit/releases/download/v4.8.16.24121%2B2117/pyRevit_4.8.16.24121_signed.exe)
@@ -17,3 +15,6 @@ To Install:
 6b. if download doesn't work, Repository may be set to private. Ask Joe Wemyss to make public and try again
 
 7. Enjoy
+
+
+Version 1.0.0: Useful pyRevit tools + Doc Reg Exporter, Model Stripper, Pile E+N, Pile Renumbering, Disable Analytical, Quick Links
