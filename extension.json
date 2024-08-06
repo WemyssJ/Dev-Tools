@@ -11,19 +11,4 @@
     "website": "https://github.com/WemyssJ/Dev-Tools",
     "image": "",
     "dependencies": []
-,
-
-    "builtin": "False",
-    "default_enabled": "True",
-    "type": "extension",
-    "rocket_mode_compatible": "True",
-    "name": "BIMTools",
-    "description": "Collection of Tools for Autodesk Revit",
-    "author": "Joe Wemyss",
-    "author_profile": "https://github.com/WemyssJ",
-    "url": "https://github.com/WemyssJ/BIM-Tools.git",
-    "website": "https://github.com/WemyssJ/BIM-Tools",
-    "image": "",
-    "dependencies": []
 }
-
