@@ -410,54 +410,6 @@
       "Description": "Get the name of this Family Type\n\nFamilyType.Name: string"
     },
     {
-      "ConcreteType": "Dynamo.Graph.Nodes.ZeroTouch.DSFunction, DynamoCore",
-      "NodeType": "FunctionNode",
-      "FunctionSignature": "DSCore.String.Contains@string,string,bool",
-      "Id": "c8424769c68c46dd8685465cf801d41c",
-      "Inputs": [
-        {
-          "Id": "e7064ad8f67e46d1b89989360e104c00",
-          "Name": "string",
-          "Description": "String to search in\n\nstring",
-          "UsingDefaultValue": false,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
-        },
-        {
-          "Id": "19ee40fb454e49bdbc4dde5b9bfb6857",
-          "Name": "searchFor",
-          "Description": "Substring to search for\n\nstring",
-          "UsingDefaultValue": false,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
-        },
-        {
-          "Id": "467087ceb5134ae996c2d64101308cca",
-          "Name": "ignoreCase",
-          "Description": "Whether or not comparison takes case into account\n\nbool\nDefault value : false",
-          "UsingDefaultValue": true,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
-        }
-      ],
-      "Outputs": [
-        {
-          "Id": "83bff4cfde564b7889c8a84ba44803e0",
-          "Name": "bool",
-          "Description": "Whether the string contains the substring",
-          "UsingDefaultValue": false,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
-        }
-      ],
-      "Replication": "Auto",
-      "Description": "Determines if the given string contains the given substring.\n\nString.Contains (string: string, searchFor: string, ignoreCase: bool = false): bool"
-    },
-    {
       "ConcreteType": "Dynamo.Graph.Nodes.CodeBlockNodeModel, DynamoCore",
       "NodeType": "CodeBlockNode",
       "Code": "\"Pile\";",
@@ -847,6 +799,45 @@
       ],
       "Replication": "Disabled",
       "Description": "Visualize the node's output"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.ZeroTouch.DSFunction, DynamoCore",
+      "NodeType": "FunctionNode",
+      "FunctionSignature": "==@var[]..[],var[]..[]",
+      "Id": "07275562869b4242acf38cf0c1fb5073",
+      "Inputs": [
+        {
+          "Id": "7947fa0350184f2493d0a8f62fc1dc70",
+          "Name": "x",
+          "Description": "Basic type object to compare (e.g. bool, int, double, string, etc.)\n\nvar[]..[]",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "ed03aad5699d450cbe167c5eed9816bb",
+          "Name": "y",
+          "Description": "Basic type object to compare (e.g. bool, int, double, string, etc.)\n\nvar[]..[]",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "24f0e28fd90841449088326bb6380981",
+          "Name": "bool",
+          "Description": "Result of equality check",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Auto",
+      "Description": "Compares if x and y are equal\n\n== (x: var[]..[], y: var[]..[]): var[]..[]"
     }
   ],
   "Connectors": [
@@ -922,18 +913,13 @@
     },
     {
       "Start": "5dd717de518547a1978dc314f1c98bc0",
-      "End": "e7064ad8f67e46d1b89989360e104c00",
-      "Id": "b9fa98e0a3ab428fb47f47e9c1745807"
-    },
-    {
-      "Start": "83bff4cfde564b7889c8a84ba44803e0",
-      "End": "a0d3e47c0c9941138fed8cc8791bff06",
-      "Id": "029affc4b20e4bf18f16b46d8363c369"
+      "End": "7947fa0350184f2493d0a8f62fc1dc70",
+      "Id": "d1a0cff3805f4f22b4e0f65e5b021208"
     },
     {
       "Start": "7b7b9b8e12d54af89ac97a4276aca245",
-      "End": "19ee40fb454e49bdbc4dde5b9bfb6857",
-      "Id": "2a90fd77222b4e4bb9be35749591c2d1"
+      "End": "ed03aad5699d450cbe167c5eed9816bb",
+      "Id": "3969e93677f944cb8589a4a22ed2c5ec"
     },
     {
       "Start": "698904d479b2465ab398137ca3dc8e15",
@@ -989,6 +975,11 @@
       "Start": "0b0af4173f964f1aadc2d78b289f692b",
       "End": "f439567f70aa46b4ab4d827013909d11",
       "Id": "c3d37ec899034ee3afe159a6f168f5bc"
+    },
+    {
+      "Start": "24f0e28fd90841449088326bb6380981",
+      "End": "a0d3e47c0c9941138fed8cc8791bff06",
+      "Id": "0d0d09eb2aaa4edd84deeb46cd6acc1f"
     }
   ],
   "Dependencies": [
@@ -1060,7 +1051,7 @@
     },
     "NodeViews": [
       {
-        "ShowGeometry": false,
+        "ShowGeometry": true,
         "Name": "Element.GetLocation",
         "Id": "2240b401898e4a24b70cb86c66c97fc6",
         "IsSetAsInput": false,
@@ -1070,7 +1061,7 @@
         "Y": 684.82149392014378
       },
       {
-        "ShowGeometry": false,
+        "ShowGeometry": true,
         "Name": "Convert from InternalOrigin CoordinateSystem",
         "Id": "d45d2453cb9f4379a6f079d4e002877b",
         "IsSetAsInput": false,
@@ -1178,16 +1169,6 @@
         "Excluded": false,
         "X": -934.85237856152844,
         "Y": 575.72285003501509
-      },
-      {
-        "ShowGeometry": true,
-        "Name": "String.Contains",
-        "Id": "c8424769c68c46dd8685465cf801d41c",
-        "IsSetAsInput": false,
-        "IsSetAsOutput": false,
-        "Excluded": false,
-        "X": -675.01701929240164,
-        "Y": 623.46690649141033
       },
       {
         "ShowGeometry": true,
@@ -1318,6 +1299,16 @@
         "Excluded": false,
         "X": 3132.4281069801473,
         "Y": 752.62596873256609
+      },
+      {
+        "ShowGeometry": true,
+        "Name": "==",
+        "Id": "07275562869b4242acf38cf0c1fb5073",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "X": -759.26705713384126,
+        "Y": 883.93935074610886
       }
     ],
     "Annotations": [
@@ -1362,7 +1353,6 @@
           "66269f3083b04762baea373e13dd3f36",
           "e2b4239424244531b13810f4d5989a6f",
           "b837caa48d33412d8c77258125e5d8f8",
-          "c8424769c68c46dd8685465cf801d41c",
           "dc45db3bfd9447ffb23b7cebb08ef37c",
           "ad87b132eaa447c7978e4e14aaf3b30f",
           "46a3e8d813d6403a9012bdfb5502fa41",
@@ -1371,7 +1361,7 @@
         "Left": -1454.5350714094909,
         "Top": 371.76126668568287,
         "Width": 1927.0124048668874,
-        "Height": 395.50563980572741,
+        "Height": 296.56158334933224,
         "FontSize": 36.0,
         "InitialTop": 424.96126668568286,
         "InitialHeight": 343.50563980572747,
@@ -1419,8 +1409,8 @@
         "Background": "#FF48B9FF"
       }
     ],
-    "X": -993.71648711580474,
-    "Y": 31.526742982657026,
-    "Zoom": 0.556350911377254
+    "X": 42.13178612349293,
+    "Y": -123.00729938078194,
+    "Zoom": 0.5197788932790639
   }
 }
