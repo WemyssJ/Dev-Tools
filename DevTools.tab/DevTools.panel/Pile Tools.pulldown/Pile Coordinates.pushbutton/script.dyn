@@ -952,7 +952,7 @@
       "ConcreteType": "CoreNodeModels.Input.DoubleInput, CoreNodeModels",
       "NodeType": "NumberInputNode",
       "NumberType": "Double",
-      "InputValue": 3.0,
+      "InputValue": 6.0,
       "Id": "f8d4245ecab04eca99d3611a40abb3a7",
       "Inputs": [],
       "Outputs": [
@@ -1159,7 +1159,7 @@
       ]
     }
   ],
-  "Thumbnail": null,
+  "Thumbnail": "",
   "GraphDocumentationURL": null,
   "ExtensionWorkspaceData": [
     {
@@ -1537,7 +1537,7 @@
         "Height": 310.46238199386318,
         "FontSize": 36.0,
         "InitialTop": 431.0576187813358,
-        "InitialHeight": 297.40926340996663,
+        "InitialHeight": 300.06238199386314,
         "TextblockHeight": 43.2,
         "Background": "#FFC1D676"
       },
@@ -1605,8 +1605,8 @@
         "Background": "#FF48B9FF"
       }
     ],
-    "X": 495.67782773892446,
-    "Y": 254.69093877512077,
-    "Zoom": 0.11715832347156974
+    "X": -1696.0547757951936,
+    "Y": -3.026571956458497,
+    "Zoom": 0.66434124501730674
   }
 }
