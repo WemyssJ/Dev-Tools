@@ -12,5 +12,5 @@ To Install:
 
 
 
-Version 1.0.00: Useful pyRevit tools + Doc Reg Exporter, Model Stripper, Pile E+N, Pile Renumbering, Disable Analytical, Quick Links  
+Version 1.0.00: Useful pyRevit tools + Doc Reg Exporter, Model Stripper, Pile E+N, Pile Renumbering, Disable Analytical, Quick Links \
 Version 1.0.01: Tag Align Tool and pile E+N+Z UpToDate added
