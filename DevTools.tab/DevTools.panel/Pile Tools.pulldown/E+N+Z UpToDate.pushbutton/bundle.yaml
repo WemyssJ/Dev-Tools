@@ -3,6 +3,6 @@ engine:
 title:
   en_us: E+N+Z UpToDate
 tooltip: 
-  en_us: Checks if Co-ord X,Y and Z matches survey point.
+  en_us: Checks if Co-ord X (E/W), Co-ord Y (N/S) and Co-ord Z (Elev) matches survey point.
 author: >-
   Joe Wemyss
