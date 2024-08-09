@@ -1,0 +1,7 @@
+title:
+  en_us: Update
+tooltip:
+  en_us: >-
+    Downloads updates from the remote git repositories (e.g github, bitbucket).
+    Current Version 1.0.02
+context: zero-doc

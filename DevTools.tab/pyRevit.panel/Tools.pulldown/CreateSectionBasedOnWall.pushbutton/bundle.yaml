@@ -1,0 +1,12 @@
+title:
+  en_us: |-
+    Wall Section(s)
+tooltip: 
+  en_us: >-
+    Creates a secition along all selected walls
+    _________________________________________________________________
+    Creates a section in which selected wall is encircled \
+    If there are couple of walls selected, then creates same number of sections
+author: Roman Golev
+engine:
+  persistent: true
