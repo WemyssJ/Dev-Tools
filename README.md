@@ -14,4 +14,7 @@ To Install:
 
 Version 1.0.00: Useful pyRevit tools + 'Export DocReg'', 'Strip Model', 'Pile E+N', 'Pile Renumbering', 'Disable Analytical', 'Quick Links' \
 Version 1.0.01: 'Tag Align' and 'E+N+ZUpToDate' added \
-Version 1.0.02: 'Pile Renumbering' reliance on GeniusLoci Removed, 'Disable Analytical' and 'Print Sheets'. moved to bin, PackagesUsed.txt added to all custom tools
+Version 1.0.02: 'Pile Renumbering' reliance on GeniusLoci Removed, 'Disable Analytical' and 'Print Sheets'. moved to bin, PackagesUsed.txt added to all custom tools \
+Version 1.0.03: 'Pile Renumbering' Now allows starting number and outputs number of piles renamed. 'Pile E+N' also outputs number of piles coordinated \
+
+
