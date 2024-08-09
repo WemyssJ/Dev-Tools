@@ -1,0 +1,8 @@
+Script Name: script.dyn
+
+Packages used in this script: 
+Crumple 2022.5.27
+Data-Shapes 2024.2.114
+Crumple 2024.4.3
+
+TimeStamp : 2024/8/9 10:48
