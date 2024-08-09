@@ -1,8 +1,0 @@
-engine: 
-  clean: true
-title:
-  en_us: Red Pen WIP WIP WIP
-tooltip: 
-  en_us: Toggles visbility of all red pen markup within project
-author: >-
-  James Scrivens
