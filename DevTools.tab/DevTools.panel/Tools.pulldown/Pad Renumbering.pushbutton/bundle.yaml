@@ -3,6 +3,6 @@ engine:
 title:
   en_us: Pad Renumbering
 tooltip: 
-  en_us: Renumber the MARK parameter of all STRUCTURAL FOUNDATIONS with the type name containing PAD. Users can customise Prefix. Marks are Ordered top to bottom (left to right).
+  en_us: Renumber the MARK parameter of all STRUCTURAL FOUNDATIONS following the type naming protcol of xxxW x xxxL x xxxD Pad. Filtered by looking for 'D Pad'. Users can customise Prefix. Marks are Ordered top to bottom (left to right).
 author: >-
   Joe Wemyss
