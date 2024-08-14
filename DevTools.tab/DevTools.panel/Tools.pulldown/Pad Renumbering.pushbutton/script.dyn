@@ -2479,6 +2479,45 @@
       ],
       "Replication": "Disabled",
       "Description": "Allows for DesignScript code to be authored directly"
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.ZeroTouch.DSFunction, DynamoCore",
+      "NodeType": "FunctionNode",
+      "FunctionSignature": "DSCore.List.Flatten@var[]..[],int",
+      "Id": "b4c66b7d58b54c2ea3d6a64db11cd088",
+      "Inputs": [
+        {
+          "Id": "e5d6fcf3d00f4afcbaacf9b999c4a258",
+          "Name": "list",
+          "Description": "List to flatten.\n\nvar[]..[]",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "974354786f264f379c4650ef1d4e88a7",
+          "Name": "amount",
+          "Description": "Layers of list nesting to remove (-1 will remove all list nestings)\n\nint\nDefault value : -1",
+          "UsingDefaultValue": true,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "72fe27c5e19048f182c2288fc33ab550",
+          "Name": "list",
+          "Description": "Flattened list by amount",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Auto",
+      "Description": "Flattens a nested list of lists by a certain amount.\n\nList.Flatten (list: var[]..[], amount: int = -1): var[]..[]"
     }
   ],
   "Connectors": [
@@ -2589,13 +2628,8 @@
     },
     {
       "Start": "619a99bb2d094bbb8892c700e564d23c",
-      "End": "d75809e98bf04cbd89cdf0af4455bcb8",
-      "Id": "853169b270c844c79d9103c4f7053f31"
-    },
-    {
-      "Start": "619a99bb2d094bbb8892c700e564d23c",
-      "End": "88f4e1b473e246c99148e54a7dd65878",
-      "Id": "fde8323918c84f01826b3d3f44c335ed"
+      "End": "e5d6fcf3d00f4afcbaacf9b999c4a258",
+      "Id": "ca1cd32c37f848219d8af372a9e0f71b"
     },
     {
       "Start": "971aa9a015594c02aac01055cda455d8",
@@ -2906,6 +2940,16 @@
       "Start": "8cfa6ade85ef47e0bfa892325abf8390",
       "End": "3d6b2576f12f48c8a64394d85f2c145e",
       "Id": "c0483fb9dafe4c2cb4e3148fd26143fa"
+    },
+    {
+      "Start": "72fe27c5e19048f182c2288fc33ab550",
+      "End": "d75809e98bf04cbd89cdf0af4455bcb8",
+      "Id": "c418d3a1f8a647219f8a3d136692f36b"
+    },
+    {
+      "Start": "72fe27c5e19048f182c2288fc33ab550",
+      "End": "88f4e1b473e246c99148e54a7dd65878",
+      "Id": "d13a5fd5dbc245ab94f1dba66e46a9db"
     }
   ],
   "Dependencies": [
@@ -3636,8 +3680,8 @@
         "Name": "Watch",
         "ShowGeometry": true,
         "Excluded": false,
-        "X": -1562.8210944407579,
-        "Y": -821.96837205341217
+        "X": -1532.7875134425531,
+        "Y": -1086.8099499466739
       },
       {
         "Id": "04f4a1bdc9be432991dab8ec359078f9",
@@ -3728,6 +3772,16 @@
         "Excluded": false,
         "X": 3867.0,
         "Y": 1727.0
+      },
+      {
+        "Id": "b4c66b7d58b54c2ea3d6a64db11cd088",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Name": "List.Flatten",
+        "ShowGeometry": true,
+        "Excluded": false,
+        "X": 4324.95899077186,
+        "Y": -1075.6284578592622
       }
     ],
     "Annotations": [
@@ -3795,7 +3849,7 @@
         "Height": 1023.4202713005944,
         "FontSize": 36.0,
         "InitialTop": 643.028808299507,
-        "InitialHeight": 1006.2023096080831,
+        "InitialHeight": 971.42027130059444,
         "TextblockHeight": 43.2,
         "Background": "#FFA4E1FF"
       },
@@ -3846,8 +3900,8 @@
         "Background": "#FFC1D676"
       }
     ],
-    "X": -5832.6351407970778,
-    "Y": -1503.1746405486574,
-    "Zoom": 1.0224827917954524
+    "X": -1400.6724405079378,
+    "Y": 506.48563173930393,
+    "Zoom": 0.41535100102104694
   }
 }
