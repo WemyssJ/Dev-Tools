@@ -1,0 +1,7 @@
+Script Name: script.dyn
+
+Packages used in this script: 
+Crumple 2024.4.3
+Genius Loci 2024.2.26
+
+TimeStamp : 2024/8/9 10:42
