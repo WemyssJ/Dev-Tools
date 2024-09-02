@@ -21,5 +21,5 @@ Version 1.0.03: 'Pile Renumbering' Now allows starting number and outputs number
 Version 1.0.04: 'Pad Renumbering' added \
 Version 1.0.05: 'Pile Renumbering' Now only renames STRUCTURAL FOUNDATIONS with a type name "Pile" rather than containing "Pile"  \
 Version 1.0.06: Hooks removed (moved to BIMTools) \
-Version 1.0.07: 'E+N+Z UpToDate' fixed  
+Version 1.0.07: 'E+N+Z UpToDate' fixed \
 
