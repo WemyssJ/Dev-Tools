@@ -4,5 +4,5 @@ title:
   en_us: Strip Model
 tooltip: 
   en_us: Strips Revit model and saves a copy to desktop, acompanied by a PDF of the cover sheet. 
-author: >-
-  Joe Wemyss
+authors: >-
+  Joe Wemyss, James Scrivens
