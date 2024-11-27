@@ -23,4 +23,4 @@ Version 1.0.05: 'Pile Renumbering' Now only renames STRUCTURAL FOUNDATIONS with 
 Version 1.0.06: Hooks removed (moved to BIMTools) \
 Version 1.0.07: 'E+N+Z UpToDate' fixed \
 Version 1.0.08: BIM Guidance and Revit 2024 quick links added \
-Version 1.0.09: Strip Model now maintaints '3D Coversheet', DocReg updated to suit new file naming protocol \
+Version 1.0.09: Strip Model now maintains '3D Coversheet', DocReg updated to suit new file naming protocol \
