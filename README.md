@@ -25,3 +25,4 @@ Version 1.0.07: 'E+N+Z UpToDate' fixed \
 Version 1.0.08: BIM Guidance and Revit 2024 quick links added \
 Version 1.0.09: Strip Model now maintains '3D Coversheet', DocReg updated to suit new file naming protocol \
 Version 1.0.10: Sync Views added \
+Version 1.0.11: Strip Model improved. UI overhaul \
