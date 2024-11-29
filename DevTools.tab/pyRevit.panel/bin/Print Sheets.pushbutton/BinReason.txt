@@ -1,0 +1,1 @@
+Needs further testing. Able to consistently crash Revit by removing all	Naming formats - BIG NONO
