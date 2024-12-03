@@ -28,3 +28,4 @@ Version 1.0.10: Sync Views added \
 Version 1.0.11: Strip Model improved. UI overhaul \
 Version 1.0.12: Autodesk ID removed from strip model naming \
 Version 1.0.13: Strip model naming reoganised\
+Version 1.0.14: View/Sheet renaming added, Warnings checker added\
