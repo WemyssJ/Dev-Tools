@@ -3,7 +3,9 @@ title:
 tooltip:
   en_us: >-
     Downloads updates from the remote github repository
-    Current Version 1.0.14
+      - Current Version 1.0.14
+
+      Version History:
       - Version 1.0.10 Sync Views added
       - Version 1.0.11 Strip Model improved. UI overhaul
       - Version 1.0.12 Autodesk ID removed from strip model naming
