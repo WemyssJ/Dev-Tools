@@ -15,10 +15,10 @@ tooltip:
       - 1.0.08: BIM Guidance and Revit 2024 quick links added.
       - 1.0.09: Strip Model and DocReg improved.
       - 1.0.10: Sync Views added.
-      - 1.0.11: Strip Model improved. UI overhaul.
-      - 1.0.12: Autodesk ID removed from strip model naming.
-      - 1.0.13: Strip model naming reoganised.
+      - 1.0.11: 'Sync & Strip' improved. UI overhaul.
+      - 1.0.12: Autodesk ID removed from 'Sync & Strip'.
+      - 1.0.13: 'Sync & Strip' naming protocol improved.
 
-      Current Version 1.0.14
-      - 1.0.14: View/Sheet renaming added, Warnings added.
+      Current Version:
+      - 1.0.14: 'Naming' added, 'Warnings' added.
 context: zero-doc
