@@ -18,7 +18,8 @@ tooltip:
       - 1.0.11: 'Sync & Strip' improved. UI overhaul.
       - 1.0.12: Autodesk ID removed from 'Sync & Strip'.
       - 1.0.13: 'Sync & Strip' naming protocol improved.
+      - 1.0.14: 'Naming' added, 'Warnings' added.
 
       Current Version:
-      - 1.0.14: 'Naming' added, 'Warnings' added.
+      - 1.0.15: 'Orient Section Box' added.
 context: zero-doc
