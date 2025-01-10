@@ -1,8 +1,0 @@
-engine: 
-  clean: true
-title:
-  en_us: Sync & Strip
-tooltip: 
-  en_us: Sync and Strips Revit model and saves a copy to desktop, acompanied by a PDF of the cover sheet. 
-authors: >-
-  Joe Wemyss, James Scrivens

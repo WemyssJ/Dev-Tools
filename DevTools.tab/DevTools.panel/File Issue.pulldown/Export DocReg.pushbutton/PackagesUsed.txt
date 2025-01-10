@@ -1,8 +1,0 @@
-Script Name: script.dyn
-
-Packages used in this script: 
-Data-Shapes 2024.2.114
-Crumple 2024.4.3
-Clockwork for Dynamo 2.x 2.6.0
-
-TimeStamp : 2024/11/22 9:49
