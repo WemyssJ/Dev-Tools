@@ -1,3 +1,5 @@
 layout:
-  - DevTools
-  - pyRevit
+  - System
+  - Model Management
+  - Drawing Tools
+  - Other
