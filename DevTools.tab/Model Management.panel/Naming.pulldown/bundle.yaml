@@ -1,0 +1,7 @@
+layout:
+  - FindReplace - Views
+  - FindReplace_Sheets
+  - Decrement Selected Sheet Numbers
+  - Increment Selected Sheet Numbers
+  - Batch Sheet Maker
+  - EF_SheetGenerator
