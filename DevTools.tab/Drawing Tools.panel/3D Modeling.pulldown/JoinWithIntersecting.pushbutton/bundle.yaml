@@ -1,0 +1,10 @@
+title:
+  es_es: |-
+    Batch Join By Selection
+tooltip: 
+
+  en_us: >-
+    First you need to select all elements you wish to join. Then run this tool to join all selected elements 
+
+engine:
+  persistent: true
