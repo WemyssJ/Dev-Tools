@@ -21,8 +21,9 @@ tooltip:
       - 1.0.14: 'Naming' added, 'Warnings' added.
       - 1.0.15: Toolbar Reorganised.
       - 1.0.16: 'Pile Renumbering' improved.
+      - 1.0.17: WIP Tools + Experimental R2025.
 
       Current Version:
-      - 1.0.17: WIP Tools + Experimental R2025.
+      - 1.0.18: 'Pile Renumbering' reinstated.
       
 context: zero-doc
