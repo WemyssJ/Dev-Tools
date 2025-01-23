@@ -353,12 +353,12 @@ class EditNamingFormatsWindow(forms.WPFWindow):
         return [
             NamingFormat(
                 name='Craddys (Revit 2023+)',
-                template='{proj_number}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Sheet Number} {rev_number} {sheet_param:Sheet Name}.pdf',
+                template='{proj_number}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Sheet Number} {rev_number} {sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf',
                 builtin=True
             ),
             NamingFormat(
                 name='Morgan Sindall (Revit 2023+)',
-                template='{proj_number}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Sheet Number}_{sheet_param:Sheet Name}_{rev_number}.pdf',
+                template='{proj_number}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Sheet Number}_{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}_{rev_number}.pdf',
                 builtin=True
             ),
         ]
