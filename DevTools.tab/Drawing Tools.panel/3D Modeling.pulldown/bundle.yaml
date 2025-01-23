@@ -1,4 +1,4 @@
 layout:
   - DisableConstraints
-  - JoinWithIntersecting
   - ManyJoin1
+  - ManyJoin2
