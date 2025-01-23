@@ -5,6 +5,7 @@ tooltip:
 
   en_us: >-
     First you need to select all elements you wish to join. Then run this tool to join all selected elements 
+    REQUIRES REVITRON
 
 engine:
   persistent: true
