@@ -455,11 +455,13 @@ class EditNamingFormatsWindow(forms.WPFWindow):
         self.selected_naming_format = new_naming_format
 
     def delete_namingformat(self, sender, args):
-        naming_format = self.selected_naming_format
-        item_index = self.naming_formats.IndexOf(naming_format)
-        self.naming_formats.Remove(naming_format)
-        next_index = min([item_index, self.naming_formats.Count-1])
-        self.selected_naming_format = self.naming_formats[next_index]
+        return
+        #naming_format = self.selected_naming_format
+        #item_index = self.naming_formats.IndexOf(naming_format)
+        #self.naming_formats.Remove(naming_format)
+        #next_index = min([item_index, self.naming_formats.Count-1])
+        #self.selected_naming_format = self.naming_formats[next_index]
+
 
     def save_formats(self, sender, args):
         EditNamingFormatsWindow.set_naming_formats(self.naming_formats)
