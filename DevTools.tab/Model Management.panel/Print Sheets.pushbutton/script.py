@@ -352,25 +352,20 @@ class EditNamingFormatsWindow(forms.WPFWindow):
     def get_default_naming_formats():
         return [
             NamingFormat(
-                name='0001 A1.00 1ST FLOOR PLAN.pdf',
-                template='{index} {number} {name}.pdf',
+                name='Craddys (Revit 2023+)',
+                template='{proj_number}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Sheet Number} {rev_number} {sheet_param:Sheet Name}.pdf',
                 builtin=True
             ),
             NamingFormat(
-                name='0001_A1.00_1ST FLOOR PLAN.pdf',
-                template='{index}_{number}_{name}.pdf',
-                builtin=True
-            ),
-            NamingFormat(
-                name='0001-A1.00-1ST FLOOR PLAN.pdf',
-                template='{index}-{number}-{name}.pdf',
+                name='Morgan Sindall (Revit 2023+)',
+                template='{proj_number}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Sheet Number}_{sheet_param:Sheet Name}_{rev_number}.pdf',
                 builtin=True
             ),
         ]
 
     @staticmethod
     def get_naming_formats():
-        naming_formats = EditNamingFormatsWindow.get_default_naming_formats()
+        naming_formats =  EditNamingFormatsWindow.get_default_naming_formats()
         naming_formats_dict = config.get_option('namingformats', {})
         for name, template in naming_formats_dict.items():
             naming_formats.append(NamingFormat(name=name, template=template))
