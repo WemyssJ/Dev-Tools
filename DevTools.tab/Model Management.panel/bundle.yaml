@@ -1,5 +1,7 @@
 layout:
   - Warnings
+  - ViewRange
+  - -----
   - Naming
   - Revision
   - File Issue
