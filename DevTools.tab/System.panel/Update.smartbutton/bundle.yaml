@@ -26,8 +26,9 @@ tooltip:
       - 1.0.19: 'Highlight 2D' added.
       - 1.0.20: 'Print Sheets' added + naming protocol.
       - 1.0.21: Delete naming protocol removed to prevent crash.
+      - 1.0.22: Show View Range Added.
 
       Current Version:
-      - 1.0.22: Show View Range Added.
+      - 1.0.23: Red Pen Prototype Added.
       
 context: zero-doc
