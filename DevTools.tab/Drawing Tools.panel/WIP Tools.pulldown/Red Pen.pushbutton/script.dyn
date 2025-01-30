@@ -601,46 +601,6 @@
       "Description": "Filters a sequence by looking up corresponding indices in a separate list of booleans.\n\nList.FilterByBoolMask (list: var[]..[], mask: var[]..[]): var[]..[]"
     },
     {
-      "ConcreteType": "Dynamo.Graph.Nodes.CustomNodes.Function, DynamoCore",
-      "FunctionSignature": "8a176012-6eba-46df-8f41-6a40b2bb13a5",
-      "FunctionType": "Graph",
-      "Id": "ff7c95ccfda54dc69390d6800aabc5bb",
-      "NodeType": "FunctionNode",
-      "Inputs": [
-        {
-          "Id": "b7502faa80214aa2a1fe49f30ee931a8",
-          "Name": "data",
-          "Description": "Data to pass through\n\nvar[]..[]",
-          "UsingDefaultValue": false,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
-        },
-        {
-          "Id": "f824bb0943ff4022ae951b41aaadeabb",
-          "Name": "waitFor",
-          "Description": "Data to wait for until\nthe upper stream can be\npassed.\n\nvar[]..[]",
-          "UsingDefaultValue": false,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
-        }
-      ],
-      "Outputs": [
-        {
-          "Id": "ed8fde9e21a6456d8495c7755b2b71bb",
-          "Name": "data",
-          "Description": "Passed through data",
-          "UsingDefaultValue": false,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
-        }
-      ],
-      "Replication": "Auto",
-      "Description": "Tells the first input to wait for the second input to arrive, then passes on the first input. Really useful for scripts which have branching paths that rely on their outputs to carry each other forward.\r\n\r\nQuite a few custom packages have a 'passthrough' or 'waitfor' node. I use these all the time, so find it useful to have them contained in this package also."
-    },
-    {
       "ConcreteType": "CoreNodeModels.Logic.RefactoredIf, CoreNodeModels",
       "Id": "58d6d694600a4236bbeeee044408a1f7",
       "NodeType": "ExtensionNode",
@@ -850,21 +810,9 @@
       "IsHidden": "False"
     },
     {
-      "Start": "ed8fde9e21a6456d8495c7755b2b71bb",
+      "Start": "a1535bb9ea0f4ef0884fcb212509a6c4",
       "End": "65e15305459d4ad2ab77e7fb471d85d5",
-      "Id": "574bef7909ff4e69b611d5c429897a45",
-      "IsHidden": "False"
-    },
-    {
-      "Start": "a1535bb9ea0f4ef0884fcb212509a6c4",
-      "End": "b7502faa80214aa2a1fe49f30ee931a8",
-      "Id": "e220b334a6554dc5a369cd301ff6a346",
-      "IsHidden": "False"
-    },
-    {
-      "Start": "a1535bb9ea0f4ef0884fcb212509a6c4",
-      "End": "f824bb0943ff4022ae951b41aaadeabb",
-      "Id": "d2b9409ace084addab5233e16e80837f",
+      "Id": "9b07d06a5e1847518e1fed9a08ce52d6",
       "IsHidden": "False"
     },
     {
@@ -881,8 +829,7 @@
     }
   ],
   "Dependencies": [
-    "cda4150e-bb89-46c8-83b2-1d23f3fdfe53",
-    "8a176012-6eba-46df-8f41-6a40b2bb13a5"
+    "cda4150e-bb89-46c8-83b2-1d23f3fdfe53"
   ],
   "NodeLibraryDependencies": [
     {
@@ -891,14 +838,6 @@
       "ReferenceType": "Package",
       "Nodes": [
         "b96e86da993642ba9803a61e4cde6750"
-      ]
-    },
-    {
-      "Name": "Crumple",
-      "Version": "2024.4.3",
-      "ReferenceType": "Package",
-      "Nodes": [
-        "ff7c95ccfda54dc69390d6800aabc5bb"
       ]
     }
   ],
@@ -956,8 +895,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -6543.8255799872968,
-        "Y": 1195.5327990190788
+        "X": -6752.1411366981574,
+        "Y": 847.25583143249628
       },
       {
         "Id": "f9e4e6086623428d8d3da48f3791fbef",
@@ -966,8 +905,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -6204.4218351488489,
-        "Y": 1196.188609886937
+        "X": -6412.7373918597095,
+        "Y": 847.91164230035452
       },
       {
         "Id": "304627d94360458f8cb97718de02d9df",
@@ -976,8 +915,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -5894.7498232796061,
-        "Y": 1394.2329172108593
+        "X": -6103.0653799904667,
+        "Y": 1045.9559496242769
       },
       {
         "Id": "bc0d91adac7d499cb3073203c269451e",
@@ -986,8 +925,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -5326.62548262354,
-        "Y": 1192.5249055073396
+        "X": -5534.9410393344006,
+        "Y": 844.24793792075707
       },
       {
         "Id": "e6a594912e254be6bd1204483c47872e",
@@ -996,8 +935,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -5571.3008814355017,
-        "Y": 1390.6523016184888
+        "X": -5779.6164381463623,
+        "Y": 1042.3753340319063
       },
       {
         "Id": "821ebc89da2c49c9b9c782150b5a1b28",
@@ -1006,8 +945,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -5900.28591197533,
-        "Y": 1557.1311981354945
+        "X": -6108.6014686861909,
+        "Y": 1208.854230548912
       },
       {
         "Id": "c93ea5e533124e70ab76e81b29a5cc3b",
@@ -1016,8 +955,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -6524.9083838221159,
-        "Y": 2019.38758813994
+        "X": -6731.9031853122542,
+        "Y": 1654.6824617049342
       },
       {
         "Id": "d2b739e1df4943ffb628bf8379c4b190",
@@ -1026,8 +965,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -6194.2391465611527,
-        "Y": 2019.1557225458141
+        "X": -6401.233948051291,
+        "Y": 1654.4505961108084
       },
       {
         "Id": "b96e86da993642ba9803a61e4cde6750",
@@ -1036,8 +975,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -4318.59919078975,
-        "Y": -98.567987175245435
+        "X": -3164.6710679205166,
+        "Y": 1129.7395572296489
       },
       {
         "Id": "a7bdd13b273d49c088e62062b70999ca",
@@ -1046,8 +985,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -6197.5038681052883,
-        "Y": 1860.816727655387
+        "X": -6404.4986695954267,
+        "Y": 1496.1116012203813
       },
       {
         "Id": "e3f3e7f1e88847f58521a04dbe45a808",
@@ -1056,8 +995,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -6528.1731053662479,
-        "Y": 1861.048593249513
+        "X": -6735.1679068563863,
+        "Y": 1496.3434668145073
       },
       {
         "Id": "81ab1f019c0142c0ad2f4ac3ec43668b",
@@ -1066,8 +1005,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -5662.7515746173158,
-        "Y": 1927.015602756931
+        "X": -5869.7463761074541,
+        "Y": 1562.3104763219253
       },
       {
         "Id": "f6a75a43e92f4f31a07ce9cafe1e65cd",
@@ -1076,8 +1015,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -4917.0973943987419,
-        "Y": 1544.6430123891625
+        "X": -5091.23587819203,
+        "Y": 1804.20792219426
       },
       {
         "Id": "d5f01b0eef404661b1ebbd127a145dc3",
@@ -1086,8 +1025,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -4615.13143032759,
-        "Y": 1545.1558020010827
+        "X": -4789.26991412088,
+        "Y": 1804.72071180618
       },
       {
         "Id": "e08327901c7a4bea9aa15a2f71975538",
@@ -1096,8 +1035,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -4375.74716322432,
-        "Y": 1547.27943750258
+        "X": -4549.88564701761,
+        "Y": 1806.84434730767
       },
       {
         "Id": "6bf4f62c0b6f4ef2a3138b9a749af3c8",
@@ -1106,8 +1045,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -4089.9170098590594,
-        "Y": 1722.2097431428444
+        "X": -4264.05549365235,
+        "Y": 1981.77465294794
       },
       {
         "Id": "034d0b6ea1874c118bef6cab3b52b98c",
@@ -1116,18 +1055,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -3860.6859857701506,
-        "Y": 1544.5521085629484
-      },
-      {
-        "Id": "ff7c95ccfda54dc69390d6800aabc5bb",
-        "Name": "© Flow.WaitFor",
-        "IsSetAsInput": false,
-        "IsSetAsOutput": false,
-        "Excluded": false,
-        "ShowGeometry": true,
-        "X": -2584.3118793475442,
-        "Y": 1922.1054815815273
+        "X": -4034.82446956344,
+        "Y": 1804.11701836804
       },
       {
         "Id": "58d6d694600a4236bbeeee044408a1f7",
@@ -1136,8 +1065,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -3459.7279102867728,
-        "Y": 1574.2605398357975
+        "X": -3633.86639408006,
+        "Y": 1833.82544964089
       },
       {
         "Id": "8d0642af7be1497fad3edbc5ee366b1e",
@@ -1146,8 +1075,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -3815.338961609511,
-        "Y": 1868.4054209461344
+        "X": -3989.4774454028,
+        "Y": 2127.97033075123
       },
       {
         "Id": "e1c248e82b664487940baae9d90417c3",
@@ -1156,8 +1085,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -3815.8765997582409,
-        "Y": 1739.6485327064488
+        "X": -3990.01508355153,
+        "Y": 1999.21344251154
       }
     ],
     "Annotations": [
@@ -1176,13 +1105,13 @@
           "81ab1f019c0142c0ad2f4ac3ec43668b"
         ],
         "HasNestedGroups": false,
-        "Left": -6538.1731053662479,
-        "Top": 1787.816727655387,
+        "Left": -6745.1679068563863,
+        "Top": 1423.1116012203813,
         "Width": 1045.4215307489321,
         "Height": 363.5708604845529,
         "FontSize": 36.0,
         "GroupStyleId": "00000000-0000-0000-0000-000000000000",
-        "InitialTop": 1860.816727655387,
+        "InitialTop": 1496.1116012203813,
         "InitialHeight": 303.5708604845529,
         "TextblockHeight": 63.0,
         "Background": "#FFC1D676"
@@ -1203,13 +1132,13 @@
           "821ebc89da2c49c9b9c782150b5a1b28"
         ],
         "HasNestedGroups": false,
-        "Left": -6553.8255799872968,
-        "Top": 1119.5249055073396,
+        "Left": -6762.1411366981574,
+        "Top": 771.24793792075707,
         "Width": 1472.2000973637569,
         "Height": 569.606292628155,
         "FontSize": 36.0,
         "GroupStyleId": "00000000-0000-0000-0000-000000000000",
-        "InitialTop": 1192.5249055073396,
+        "InitialTop": 844.24793792075707,
         "InitialHeight": 509.60629262815496,
         "TextblockHeight": 63.0,
         "Background": "#FFA4E1FF"
@@ -1225,14 +1154,14 @@
           "b96e86da993642ba9803a61e4cde6750"
         ],
         "HasNestedGroups": false,
-        "Left": -4328.59919078975,
-        "Top": -310.56798717524543,
+        "Left": -3174.6710679205166,
+        "Top": 917.73955722964888,
         "Width": 292.0,
         "Height": 444.0,
         "FontSize": 36.0,
         "GroupStyleId": "00000000-0000-0000-0000-000000000000",
-        "InitialTop": -98.567987175245435,
-        "InitialHeight": 431.564881838721,
+        "InitialTop": 1129.7395572296489,
+        "InitialHeight": 145.0,
         "TextblockHeight": 202.0,
         "Background": "#FFE8F7AD"
       },
@@ -1254,20 +1183,20 @@
           "8d0642af7be1497fad3edbc5ee366b1e"
         ],
         "HasNestedGroups": false,
-        "Left": -4927.0973943987419,
-        "Top": 1428.5521085629484,
-        "Width": 1670.3694841119691,
-        "Height": 571.853312383186,
+        "Left": -5101.23587819203,
+        "Top": 1688.11701836804,
+        "Width": 1670.36948411197,
+        "Height": 571.85331238319009,
         "FontSize": 36.0,
         "GroupStyleId": "00000000-0000-0000-0000-000000000000",
-        "InitialTop": 1544.5521085629484,
-        "InitialHeight": 425.307956562582,
+        "InitialTop": 1804.11701836804,
+        "InitialHeight": 468.853312383186,
         "TextblockHeight": 106.0,
         "Background": "#FFFFB8D8"
       }
     ],
-    "X": 2748.9055451820959,
-    "Y": 151.87681919175094,
-    "Zoom": 0.44427615110379448
+    "X": 3870.9315006460074,
+    "Y": -169.72774691776289,
+    "Zoom": 0.57053842278576461
   }
 }
