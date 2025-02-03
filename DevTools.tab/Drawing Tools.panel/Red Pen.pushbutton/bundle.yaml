@@ -1,7 +1,7 @@
 engine: 
   clean: true
 title:
-  en_us: Hide unhide Comments
+  en_us: Hide/Unhide Comments
 tooltip: 
   en_us: Toggles visibility of all "S_CDY_2.5_Arial Narrow_Internal Comment" within project
 media: 
