@@ -1,7 +1,7 @@
 engine: 
   clean: true
 title:
-  en_us: Red Pen WIP WIP WIP
+  en_us: Red Pen
 tooltip: 
   en_us: Toggles visbility of all red pen markup within project
 authors: >-
