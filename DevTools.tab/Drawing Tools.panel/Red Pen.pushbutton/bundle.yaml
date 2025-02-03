@@ -1,8 +1,10 @@
 engine: 
   clean: true
 title:
-  en_us:     Red Pen
-    Hide/Unhide
+  en_us: |-
+    Internal Comments
+    Hide/UnHide
+
 tooltip: 
   en_us: Toggles visibility of all "S_CDY_2.5_Arial Narrow_Internal Comment" within project
 media: 
