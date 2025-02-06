@@ -28,8 +28,9 @@ tooltip:
       - 1.0.21: Delete naming protocol removed to prevent crash.
       - 1.0.22: Show View Range Added.
       - 1.0.23: Red Pen Prototype Added.
+      - 1.0.24: Internal Comments added + Tool tip.
 
       Current Version:
-      - 1.0.24: Internal Comments added + Tool tip.
+      - 1.0.25: Flip Grids Fixed.
       
 context: zero-doc
