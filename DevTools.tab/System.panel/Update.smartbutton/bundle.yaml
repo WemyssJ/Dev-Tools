@@ -29,8 +29,9 @@ tooltip:
       - 1.0.22: Show View Range Added.
       - 1.0.23: Red Pen Prototype Added.
       - 1.0.24: Internal Comments added + Tool tip.
+        1.0.25: Flip Grids Fixed.
 
       Current Version:
-      - 1.0.25: Flip Grids Fixed.
+      - 1.0.26: Additional Naming Formats Added
       
 context: zero-doc
