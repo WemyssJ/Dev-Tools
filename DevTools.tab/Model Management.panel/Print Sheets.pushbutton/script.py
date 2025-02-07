@@ -352,8 +352,18 @@ class EditNamingFormatsWindow(forms.WPFWindow):
     def get_default_naming_formats():
         return [
             NamingFormat(
+                name='Craddys (Revit 2023-)',
+                template='{proj_number}-{sheet_param:Originator}-{sheet_param:Volume or System}-{sheet_param:Levels and Location}-{sheet_param:Type}-{sheet_param:Role}-{sheet_param:Sheet Number} {rev_number} {sheet_param:Sheet Name}.pdf',
+                builtin=True
+            ),
+            NamingFormat(
                 name='Craddys (Revit 2023+)',
                 template='{proj_number}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Sheet Number} {rev_number} {sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf',
+                builtin=True
+            ),
+            NamingFormat(
+                name='Aldi',
+                template='{proj_number}-{sheet_param:PM.Sheet.Title.Creator.Originator}-{sheet_param:PM.Sheet.Title.View.Zone}-{sheet_param:PM.Sheet.Title.View.Level}-{sheet_param:PM.Sheet.Title.View.Type}-{sheet_param:PM.Sheet.Title.Creator.Role}-{sheet_param:Classification}{sheet_param:Sheet Number}-{sheet_param:PM.Sheet.Title.Sheet.Suitability}-{rev_number} {sheet_param:Sheet Name}.pdf',
                 builtin=True
             ),
             NamingFormat(
