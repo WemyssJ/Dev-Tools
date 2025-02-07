@@ -4,5 +4,8 @@ layout:
   - Extensions
   - -----
   - Toggles
-
+background:
+  panel: 'FEF9FE'
+  title: 'FEEAFE'
+  slideout: 
 
