@@ -6,4 +6,8 @@ layout:
   - Revision
   - File Issue
   - Print Sheets
+background:
+  panel: 'F8FEFA'
+  title: 'E7FEEE'
+  slideout: 
 
