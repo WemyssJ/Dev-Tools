@@ -7,3 +7,9 @@ layout:
   - -----
   - 2D Drafting
   - 3D Modeling
+
+background:
+  panel: 'FEF8F8'
+  title: 'FEEBEB'
+  slideout: 
+
