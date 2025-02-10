@@ -1,8 +1,11 @@
+clean: false
 title: 
   en_us: Foundation Tools
 layout:
   - Pile (Re)numbering
   - Pile E+N+Z
+  - -----
   - Pile E+N+Z UpToDate
+  - Piles Visible In View
   - -----
   - Pad (Re)numbering
