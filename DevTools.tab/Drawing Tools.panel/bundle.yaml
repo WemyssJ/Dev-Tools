@@ -1,12 +1,14 @@
 layout:
   - Orient
   - Red Pen
-  - Foundation Tools
   - -----
-  - WIP Tools
+  - Foundation Tools
   - -----
   - 2D Drafting
   - 3D Modeling
+  - -----
+  - WIP Tools
+
 
 background:
   panel: 'FEF8F8'
