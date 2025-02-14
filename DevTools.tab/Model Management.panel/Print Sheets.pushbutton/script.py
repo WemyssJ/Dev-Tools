@@ -351,8 +351,8 @@ class EditNamingFormatsWindow(forms.WPFWindow):
     @staticmethod
     def get_default_naming_formats():
         return [
-             NamingFormat(
-                name='New Template: BS EN ISO 19650-2-2018 (+A1 2021),
+            NamingFormat(
+                name='New Template: BS EN ISO 19650-2-2018 (+A1 2021)',
                 template='{proj_number}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Sheet Number}-{rev_number} {sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf',
                 builtin=True
             ),
