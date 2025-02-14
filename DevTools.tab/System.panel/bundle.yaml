@@ -5,7 +5,7 @@ layout:
   - -----
   - Toggles
 background:
-  panel: 'fff0f0'
-  title: 'ffc2c2'
+  panel: 'fff1f1'
+  title: 'ffdede'
   slideout: 
 
