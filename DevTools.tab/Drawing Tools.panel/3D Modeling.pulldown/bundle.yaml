@@ -1,4 +1,5 @@
 layout:
+  - ViewRange
   - DisableConstraints
   - ManyJoin1
   - ManyJoin2

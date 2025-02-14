@@ -1,9 +1,8 @@
 layout:
-  - Naming
-  - Revision
-  - File Issue
-  - Print Sheets
-
+  - Warnings
+  - -----
+  - Red Pen
+  
 background:
   panel: 'F8FEFA'
   title: 'E7FEEE'
