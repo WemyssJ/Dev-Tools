@@ -352,12 +352,12 @@ class EditNamingFormatsWindow(forms.WPFWindow):
     def get_default_naming_formats():
         return [
             NamingFormat(
-                name='New Template: BS EN ISO 19650-2-2018 (+A1 2021)',
+                name='Craddys: BS EN ISO 19650-2-2018 (+A1 2021)',
                 template='{proj_number}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Sheet Number}-{rev_number} {sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf',
                 builtin=True
             ),
             NamingFormat(
-                name='Old Template: BS EN ISO 19650-2-2018',
+                name='Craddys: BS EN ISO 19650-2-2018',
                 template='{proj_number}-{sheet_param:Originator}-{sheet_param:Volume or System}-{sheet_param:Levels and Location}-{sheet_param:Type}-{sheet_param:Role}-{sheet_param:Sheet Number} {rev_number} {sheet_param:Sheet Name}.pdf',
                 builtin=True
             ),
@@ -367,7 +367,7 @@ class EditNamingFormatsWindow(forms.WPFWindow):
                 builtin=True
             ),
             NamingFormat(
-                name='Morgan Sindall (Revit 2023+)',
+                name='Morgan Sindall: BS EN ISO 19650-2-2018 (+A1 2021)',
                 template='{proj_number}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Sheet Number}_{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}_{rev_number}.pdf',
                 builtin=True
             ),
