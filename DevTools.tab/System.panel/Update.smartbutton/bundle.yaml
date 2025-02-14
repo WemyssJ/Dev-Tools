@@ -32,8 +32,9 @@ tooltip:
       - 1.0.25: Flip Grids Fixed.
       - 1.0.26: Additional Naming Formats Added
       - 1.0.27: Colours trialed, Clean: false (potential speed boost)
+      - 1.0.28: 'PilesVisibleInView' Added.
 
       Current Version:
-      - 1.0.28: "PilesVisibleInView" Added.
+      - 1.0.29: Added QA Tab, Layout Tweaked.
       
 context: zero-doc
