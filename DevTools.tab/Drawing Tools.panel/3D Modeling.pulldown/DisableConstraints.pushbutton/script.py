@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-__title__ = 'Disable Constraints'
+__title__ = 'Disable Constraints [NFD]'
 
 __doc__ = """Disable all Constraints in the project (all locked dimensions). 
 Shift+Click - recover from previous run"""
