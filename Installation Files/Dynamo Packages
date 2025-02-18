@@ -1,8 +1,0 @@
-Crumple
-Data-Shapes
-DynamoIronPython2.7
-GeniusLoci
-
-Latest version should work...However, safer to install version that was used in original script via Dyanmo.
-
-Revit should auto install these to the correct location: %appdata%\Dynamo\DynamoRevit &&& %appdata%\Dynamo\DynamoCore
