@@ -20,7 +20,7 @@ def get_local_version():
 
 # Get version inside the github repository
 def get_git_version():
-   data = urllib2.urlopen('https://raw.githubusercontent.com/wemyssj/Dev-tools/main/lib/core/version')
+   data = urllib2.urlopen('https://raw.githubusercontent.com/WemyssJ/Dev-Tools/refs/heads/Master/lib/core/version')
    for line in data: 
       gitversion = line
    return gitversion
