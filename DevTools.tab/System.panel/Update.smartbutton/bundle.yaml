@@ -35,9 +35,11 @@ tooltip:
       - 1.0.28: 'PilesVisibleInView' Added.
       - 1.0.29: Added QA Tab, Layout Tweaked.
       - 1.0.30: Added Update Notifier.
-      - 1.0.31: Added version checker.
+      - 1.0.31: Added Version Checker.
+      - 1.0.32: Added Version Testing.
+      - 1.0.33: Ensure pyRevit set to auto-check for updates.
 
       Current Version:
-      - 1.1.00 Version checker functional. Ensure pyRevit set to auto-check for updates.
+      - 1.1.00: v1.1.00 Release.
       
 context: zero-doc
