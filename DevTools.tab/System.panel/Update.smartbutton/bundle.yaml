@@ -4,42 +4,42 @@ tooltip:
   en_us: >-
     Downloads updates from the remote github repository
       Version History:
-      - 1.0.00: Initial release
-      - 1.0.01: 'Tag Align' and 'E+N+ZUpToDate' added.
-      - 1.0.02: Package reliance removed where possible.
-      - 1.0.03: 'Pile Renumbering' and 'Pile E+N' improved.
-      - 1.0.04: 'Pad Renumbering' added.
-      - 1.0.05: 'Pile Renumbering' improved.
-      - 1.0.06: Hooks removed (moved to BIMTools).
-      - 1.0.07: 'E+N+Z UpToDate' fixed.
-      - 1.0.08: BIM Guidance and Revit 2024 quick links added.
-      - 1.0.09: Strip Model and DocReg improved.
-      - 1.0.10: Sync Views added.
-      - 1.0.11: 'Sync & Strip' improved. UI overhaul.
-      - 1.0.12: Autodesk ID removed from 'Sync & Strip'.
-      - 1.0.13: 'Sync & Strip' naming protocol improved.
-      - 1.0.14: 'Naming' added, 'Warnings' added.
-      - 1.0.15: Toolbar Reorganised.
-      - 1.0.16: 'Pile Renumbering' improved.
-      - 1.0.17: WIP Tools + Experimental R2025.
-      - 1.0.18: 'Pile Renumbering' reinstated.
-      - 1.0.19: 'Highlight 2D' added.
-      - 1.0.20: 'Print Sheets' added + naming protocol.
-      - 1.0.21: Delete naming protocol removed to prevent crash.
-      - 1.0.22: Show View Range Added.
-      - 1.0.23: Red Pen Prototype Added.
-      - 1.0.24: Internal Comments added + Tool tip.
-      - 1.0.25: Flip Grids Fixed.
-      - 1.0.26: Additional Naming Formats Added
-      - 1.0.27: Colours trialed, Clean: false (potential speed boost)
-      - 1.0.28: 'PilesVisibleInView' Added.
-      - 1.0.29: Added QA Tab, Layout Tweaked.
-      - 1.0.30: Added Update Notifier.
-      - 1.0.31: Added Version Checker.
-      - 1.0.32: Added Version Testing.
-      - 1.0.33: Ensure pyRevit set to auto-check for updates.
+      - v1.0.00: Initial release
+      - v1.0.01: 'Tag Align' and 'E+N+ZUpToDate' added.
+      - v1.0.02: Package reliance removed where possible.
+      - v1.0.03: 'Pile Renumbering' and 'Pile E+N' improved.
+      - v1.0.04: 'Pad Renumbering' added.
+      - v1.0.05: 'Pile Renumbering' improved.
+      - v1.0.06: Hooks removed (moved to BIMTools).
+      - v1.0.07: 'E+N+Z UpToDate' fixed.
+      - v1.0.08: BIM Guidance and Revit 2024 quick links added.
+      - v1.0.09: Strip Model and DocReg improved.
+      - v1.0.10: Sync Views added.
+      - v1.0.11: 'Sync & Strip' improved. UI overhaul.
+      - v1.0.12: Autodesk ID removed from 'Sync & Strip'.
+      - v1.0.13: 'Sync & Strip' naming protocol improved.
+      - v1.0.14: 'Naming' added, 'Warnings' added.
+      - v1.0.15: Toolbar Reorganised.
+      - v1.0.16: 'Pile Renumbering' improved.
+      - v1.0.17: WIP Tools + Experimental R2025.
+      - v1.0.18: 'Pile Renumbering' reinstated.
+      - v1.0.19: 'Highlight 2D' added.
+      - v1.0.20: 'Print Sheets' added + naming protocol.
+      - v1.0.21: Delete naming protocol removed to prevent crash.
+      - v1.0.22: Show View Range Added.
+      - v1.0.23: Red Pen Prototype Added.
+      - v1.0.24: Internal Comments added + Tool tip.
+      - v1.0.25: Flip Grids Fixed.
+      - v1.0.26: Additional Naming Formats Added
+      - v1.0.27: Colours trialed, Clean: false (potential speed boost)
+      - v1.0.28: 'PilesVisibleInView' Added.
+      - v1.0.29: Added QA Tab, Layout Tweaked.
+      - v1.0.30: Added Update Notifier.
+      - v1.0.31: Added Version Checker.
+      - v1.0.32: Added Version Testing.
+      - v1.0.33: Ensure pyRevit set to auto-check for updates.
 
       Current Version:
-      - 1.1.00: New Chapter...
+      - v1.1.00: New Chapter...
       
 context: zero-doc
