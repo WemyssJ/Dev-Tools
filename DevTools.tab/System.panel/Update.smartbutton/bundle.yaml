@@ -33,8 +33,9 @@ tooltip:
       - 1.0.26: Additional Naming Formats Added
       - 1.0.27: Colours trialed, Clean: false (potential speed boost)
       - 1.0.28: 'PilesVisibleInView' Added.
+      - 1.0.29: Added QA Tab, Layout Tweaked.
 
       Current Version:
-      - 1.0.29: Added QA Tab, Layout Tweaked.
+      - 1.0.30: Update Notifier Testing.
       
 context: zero-doc
