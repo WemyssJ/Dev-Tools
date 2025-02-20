@@ -1,12 +1,10 @@
+highlight: new
+
 layout:
-  - Sheets
-  - Views
-  - Selection
-  - Walls
-  - UI
-  - Elements
-  - Naming
-  - Maintenance
-  - DWG
-  - Support
-  - test
+  - Flip Grid Ends
+  - ----
+  - Pick Detail Elements
+  - Pick Model Elements
+  - -----
+  - Reset Overrides
+  - Unhide All Elements in Active View
