@@ -39,8 +39,9 @@ tooltip:
       - v1.0.32: Added Version Testing.
       - v1.0.33: Ensure pyRevit set to auto-check for updates.
       - v1.1.00: New Chapter...
+      - v1.1.01: 'Align Viewports', 'Reveal All' Added.
 
       Current Version:
-      - v1.1.01: 'Align Viewports', 'Reveal All' Added.
+      - v1.1.02: 'Reveal All' fixed.
       
 context: zero-doc
