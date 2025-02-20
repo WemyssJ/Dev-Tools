@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-__title__ = 'Unhide Elements in View'
+__title__ = "Unhide All Elements in Active View"
 __version__ = 'Version = 1.0'
 __doc__ = """Version = 1.0
 Date    = 15.09.2022
