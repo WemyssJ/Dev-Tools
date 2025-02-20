@@ -5,7 +5,7 @@ layout:
   - Decrement Selected Sheet Numbers
   - Increment Selected Sheet Numbers
   - -----
-  - align_viewports
+  - Align Viewports
   - -----
   - Batch Sheet Maker
   - EF_SheetGenerator
