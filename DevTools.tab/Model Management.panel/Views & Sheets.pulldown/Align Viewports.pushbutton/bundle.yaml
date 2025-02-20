@@ -1,5 +1,3 @@
-highlight: new
-
 tooltip:
   en_us:>-
    Description:
@@ -19,3 +17,5 @@ tooltip:
   -> Run the script
   -> Select settings if necessary
   -> Click on Align Viewports
+
+highlight: new
