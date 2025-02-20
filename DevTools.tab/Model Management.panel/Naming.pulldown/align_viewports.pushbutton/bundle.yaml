@@ -1,11 +1,1 @@
-layout:
-  - Naming
-  - Revision
-  - File Issue
-  - Print Sheets
-
-background:
-  panel: 'fefbff'
-  title: 'fef3ff'
-  slideout: 
-
+highlight: new
