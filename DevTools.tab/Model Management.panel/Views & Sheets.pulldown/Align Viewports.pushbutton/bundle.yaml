@@ -4,21 +4,21 @@ title:
   en_us: Align Viewports
 
 tooltip:
-  en_us:>-
+  en_us:  >-
    Description:
 
-  This tool will align ViewPlans on selected sheets. 
-  It will hide everything from views, align them and then unhide.
+    This tool will align ViewPlans on selected sheets. 
+    It will hide everything from views, align them and then unhide.
 
-  Optional Settings:
-  - apply same CropBox/ScopeBox 
-  - Overlap multiple ViewPlans(same scale)
-  - align Legends(if same)
-  - apply same TitleBlock Type
-  _____________________________________________________________________
-  How-to:
+    Optional Settings:
+    - apply same CropBox/ScopeBox 
+    - Overlap multiple ViewPlans(same scale)
+    - align Legends(if same)
+    - apply same TitleBlock Type
+    _____________________________________________________________________
+    How-to:
 
-  -> Select Sheets in your ProjectBrowser
-  -> Run the script
-  -> Select settings if necessary
-  -> Click on Align Viewports
+    -> Select Sheets in your ProjectBrowser
+    -> Run the script
+    -> Select settings if necessary
+    -> Click on Align Viewports
