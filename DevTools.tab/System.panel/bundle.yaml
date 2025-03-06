@@ -1,11 +1,11 @@
 layout:
-  - Settings
-  - -----
-  - Reload
   - Update
-  - Extensions
   - -----
   - Toggles
+  - ">>>>>"
+  - Settings
+  - Extensions
+  - Reload
 background:
   panel: 'fffbfb'
   title: 'fff3f3'
