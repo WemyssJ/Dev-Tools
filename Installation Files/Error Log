@@ -1,0 +1,8 @@
+ISSUE: Failed to initialize the add-in "PyRevitLoader" because the assembly "C:\Users\wemyssj\AppData\Roaming\pyRevit-Master\bin\netfx\engines\..." does not exist.
+CAUSE: Revit pathing to addin was incorrect
+FIX: Correct <Assembly></Assembly? within "pyRevit.addin", location: "C:\Users\wemyssj\AppData\Roaming\Autodesk\Revit\Addins\...". Must be done for every Revit version. Ideally copy location from colleagues works.
+
+ISSUE: Toolbar button does nothing
+CAUSE: Dynamo package isn't installed (Error 1)  / is pathed incorrectly (Error 2).
+FIX (Error 1): Load Dynamo, run tool to see required packages. Install packages. May need to be done for every Revit version.
+FIX (Error 2): Delete existing Dynamo packages, then perform FIX (Error 1). {{{{{{{SEARCHING FOR SIMPLER FIX}}}}}}}
