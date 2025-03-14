@@ -1,3 +1,9 @@
+Collection of homemade Revit producitvity tools + helpful tools from other pyRevit addins, all combined into one toolbar (with Structural Engineering bias). 
+
+Testing grounds for tools prior to roling out to the entire company.
+
+/////////////
+
 To Install:
 
 1.	If you have previously installed pyRevit, please uninstall and **ENSURE** you have the latest version of Revit (2022.1.7, 2023.1.5, 2024.3, 2025.4  – Tried and Tested).
