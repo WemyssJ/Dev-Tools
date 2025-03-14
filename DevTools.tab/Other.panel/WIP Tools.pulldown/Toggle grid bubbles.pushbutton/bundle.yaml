@@ -1,0 +1,9 @@
+highlight: new
+
+title: "Toggle\nGrids"
+tooltip: |
+  Toggle grid bubbles in View.
+
+  Press "Esc" to finalize the process
+
+  Author: Deyan Nenov
