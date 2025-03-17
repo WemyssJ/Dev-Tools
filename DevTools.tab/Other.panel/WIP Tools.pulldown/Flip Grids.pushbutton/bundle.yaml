@@ -1,8 +1,8 @@
 highlight: new
 
-title: "Toggle\nGrids"
+title: "Flip\nGrids"
 tooltip: |
-  Toggle grid bubbles in View.
+  Flip grid bubbles in View.
 
   Press "Esc" to finalize the process
 
