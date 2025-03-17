@@ -1,1 +1,5 @@
 highlight: new
+
+title: Dim Grids Automatic
+tooltip: |
+  Automatically dimensions all grids in view
