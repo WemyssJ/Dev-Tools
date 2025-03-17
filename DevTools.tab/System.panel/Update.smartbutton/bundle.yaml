@@ -44,8 +44,9 @@ tooltip:
       - v1.1.03: 'Turn Off Overrides' [NFD] temp.
       - v1.1.04: 'References' proof of concept, 'Text' tools added
       - v1.1.05: 'VolumeQuery' added. [NFD] moved to WIP.
+      - v1.1.06: 'Toggle Grid', 'Toggle Level', 'Dim Grids' and 'Dim Levels' added to WIP.
 
       Current Version:
-      - v1.1.06: 'Toggle Grid', 'Toggle Level', 'Dim Grids' and 'Dim Levels' added to WIP.
+      - v1.1.07: Alternative tools added to WIP.
       
 context: zero-doc
