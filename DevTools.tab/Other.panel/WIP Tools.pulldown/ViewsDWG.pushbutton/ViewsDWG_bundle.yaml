@@ -1,7 +1,0 @@
-context: doc-project
-
-title: Views > DWG
-
-tooltip: Exports selected views to DWG.
-
-author: Gavin Crump
