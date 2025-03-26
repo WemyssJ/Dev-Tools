@@ -15,6 +15,10 @@ uidoc = revit.uidoc
 # ask user for sheets
 sheets = forms.select_sheets(title='Select Sheets', include_placeholder = False, use_selection = True)
 
+# ask user for Naming Protocol
+namingProtocols = ['Craddys: BS EN ISO 19650-2-2018 (+A1 2021)','Craddys: BS EN ISO 19650-2-2018','Aldi BEP & Parameters', 'Morgan Sindall: BS EN ISO 19650-2-2018 (+A1 2021)']
+namingProtocol = forms.SelectFromList.show(namingProtocols, button_name='Select Naming Protocol')
+
 # display primary UI if sheets found
 if sheets:
 	# open the directory
