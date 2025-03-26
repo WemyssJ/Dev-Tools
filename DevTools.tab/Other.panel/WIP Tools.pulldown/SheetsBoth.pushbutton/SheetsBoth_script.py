@@ -36,7 +36,7 @@ if sheets:
 				break
 			else:
 				# Export sheet to DWG and PDF
-				expUtils_exportSheetPdfDwg(dirPath,s,optsPdf,optsDwg,doc,uidoc)
+				expUtils_exportSheetPdfDwg(dirPath,s,optsPdf,optsDwg,doc,uidoc, namingProtocol)
 				# Update progress bar
 				pb1.update_progress(pbCount1, pbTotal1)
 				pbCount1 += 1
