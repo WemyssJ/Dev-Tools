@@ -35,7 +35,7 @@ if sheets:
 				break
 			else:
 				# Export sheet to PDF
-				expUtils_exportSheetPdf(dirPath,s,opts,doc,uidoc)
+				expUtils_exportSheetPdf(dirPath,s,opts,doc,uidoc,namingProtocol )
 				# Update progress bar
 				pb1.update_progress(pbCount1, pbTotal1)
 				pbCount1 += 1
