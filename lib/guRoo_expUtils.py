@@ -44,39 +44,51 @@ def expUtils_canPrint():
 		return True
 
 # make sheet name for print
-def expUtils_nameSheet(s):
+def expUtils_nameSheet(s, namingProtocol):
 	# Get revision number
-
+	#region 2021 Naming Standard
 	##PROJECT NUMBER##
 	try:
 		ProjNum = doc.get_Parameter(BuiltInParameter.PROJECT_NUMBER).AsString()
+		if ProjNum is None:
+			ProjNum = "ParameterNotFound"
 	except:
-		ProjNum = "Error"
+		ProjNum = "ParameterNotFound"
 	##ORIGINATOR##
 	try:
 		Originator = s.LookupParameter("Originator").AsString()
+		if Originator is None:
+			Originator = "ParameterNotFound"
 	except:
-		Originator = "Error"
+		Originator = "ParameterNotFound"
 	##FUNCTIONAL BREAKDOWN##
 	try:
 		FunctionalBreakdown = s.LookupParameter("Functional Breakdown").AsString()
+		if FunctionalBreakdown is None:
+			FunctionalBreakdown = "ParameterNotFound"
 	except:
-		FunctionalBreakdown = "Error"
+		FunctionalBreakdown = "ParameterNotFound"
 	##SPATIAL BREAKDOWN##
 	try:
 		SpatialBreakdown = s.LookupParameter("Spatial Breakdown").AsString()
+		if SpatialBreakdown is None:
+			SpatialBreakdown = "ParameterNotFound"
 	except:
-		SpatialBreakdown = "Error"
+		SpatialBreakdown = "ParameterNotFound"
 	##FORM##
 	try:
 		Form = s.LookupParameter("Form").AsString()
+		if Form is None:
+			Form = "ParameterNotFound"
 	except:
-		Form = "Error"
+		Form = "ParameterNotFound"
 	##DISCIPLINE##
 	try:
 		Discipline = s.LookupParameter("Discipline").AsString()
+		if Discipline is None:
+			Discipline = "ParameterNotFound"
 	except:
-		Discipline = "Error"
+		Discipline = "ParameterNotFound"
 	##DRAWING NUMBER##
 	#N/A
 	##CURRENT REVISION##
@@ -99,11 +111,105 @@ def expUtils_nameSheet(s):
 		DrawingTitle3 = " " + DrawingTitle3
 	except:
 		DrawingTitle3 = ""
+	#endregion
+	#region 2018 Naming Standard
+	##VOLUME OR SYSTEM##
+	try:
+		VolumeOrSystem = s.LookupParameter("Volume or System").AsString()
+		if VolumeOrSystem is None:
+			VolumeOrSystem = "ParameterNotFound"
+	except:
+		VolumeOrSystem = "ParameterNotFound"
+	##LEVELS AND LOCATION##
+	try:
+		LevelsAndLocation = s.LookupParameter("Levels and Location").AsString()
+		if LevelsAndLocation is None:
+			LevelsAndLocation = "ParameterNotFound"
+	except:
+		LevelsAndLocation = "ParameterNotFound"
+	##Type##
+	try:
+		Type = s.LookupParameter("Type").AsString()
+		if Type is None:
+			Type = "ParameterNotFound"
+	except:
+		Type = "ParameterNotFound"
+	##ROLE##
+	try:
+		Role = s.LookupParameter("Role").AsString()
+		if Role is None:
+			Role = "ParameterNotFound"
+	except:
+		Role = "ParameterNotFound"
+	#endregion
+	#region Aldi Template
+	##PM.Sheet.Title.Creator.Originator##
+	try:
+		AldiOriginator = s.LookupParameter("PM.Sheet.Title.Creator.Originator").AsString()
+		if AldiOriginator is None:
+			AldiOriginator = "ParameterNotFound"
+	except:
+		AldiOriginator = "ParameterNotFound"
+	##PM.Sheet.Title.Creator.Originator##
+	try:
+		AldiZone = s.LookupParameter("PM.Sheet.Title.View.Zone").AsString()
+		if AldiZone is None:
+			AldiZone = "ParameterNotFound"
+	except:
+		AldiZone = "ParameterNotFound"
+	##PM.Sheet.Title.View.Level##
+	try:
+		AldiLevel = s.LookupParameter("PM.Sheet.Title.View.Level").AsString()
+		if AldiLevel is None:
+			AldiLevel = "ParameterNotFound"
+	except:
+		AldiLevel = "ParameterNotFound"
+	##PM.Sheet.Title.View.Type##
+	try:
+		AldiType = s.LookupParameter("PM.Sheet.Title.View.Type").AsString()
+		if AldiType is None:
+			AldiType = "ParameterNotFound"
+	except:
+		AldiType = "ParameterNotFound"
+	##PM.Sheet.Title.Creator.Role##
+	try:
+		AldiRole = s.LookupParameter("PM.Sheet.Title.Creator.Role").AsString()
+		if AldiRole is None:
+			AldiRole = "ParameterNotFound"
+	except:
+		AldiRole = "ParameterNotFound"
+	##Classification##
+	try:
+		Classification = s.LookupParameter("Classification").AsString()
+		if Classification is None:
+			Classification = "ParameterNotFound"
+	except:
+		Classification = "ParameterNotFound"
+	##PM.Sheet.Title.Sheet.Suitability##
+	try:
+		AldiSuitability = s.LookupParameter("PM.Sheet.Title.Sheet.Suitability").AsString()
+		if AldiSuitability is None:
+			AldiSuitability = "ParameterNotFound"
+	except:
+		AldiSuitability = "ParameterNotFound"
+
+	#endregion
 
 	# get string utility
 	from guRoo_strUtils import *
 	# make sheet name
-	preName =  ProjNum + "-" + Originator + "-" + FunctionalBreakdown + "-" + SpatialBreakdown + "-" + Form + "-" + Discipline + "-" + s.SheetNumber + "-" + curNum + " " + s.Name + DrawingTitle2 + DrawingTitle3
+
+	if namingProtocol == ('Craddys: BS EN ISO 19650-2-2018 (+A1 2021)'):
+		preName =  ProjNum + "-" + Originator + "-" + FunctionalBreakdown + "-" + SpatialBreakdown + "-" + Form + "-" + Discipline + "-" + s.SheetNumber + "-" + curNum + " " + s.Name
+	elif namingProtocol == ('Craddys: BS EN ISO 19650-2-2018'):
+		preName =  ProjNum + "-" + Originator + "-" + VolumeOrSystem + "-" + LevelsAndLocation + "-" + Type + "-" + Role + "-" + s.SheetNumber + "-" + curNum + " " + s.Name
+	elif namingProtocol == ('Aldi BEP & Parameters'):
+		preName =  ProjNum + "-" + AldiOriginator + "-" + AldiZone + "-" + AldiLevel + "-" + AldiType + "-" + AldiRole + "-" + Classification + "-" + s.SheetNumber + "-" + AldiSuitability + "-" + curNum + " " + s.Name + DrawingTitle2 + DrawingTitle3
+	elif namingProtocol == ('Morgan Sindall: BS EN ISO 19650-2-2018 (+A1 2021)'):
+		preName =  ProjNum + "-" + Originator + "-" + FunctionalBreakdown + "-" + SpatialBreakdown + "-" + Form + "-" + Discipline + "-" + s.SheetNumber + "-" + curNum + " " + s.Name + DrawingTitle2 + DrawingTitle3
+	else:
+		##default to latset ISO Standards
+		preName =  ProjNum + "-" + Originator + "-" + FunctionalBreakdown + "-" + SpatialBreakdown + "-" + Form + "-" + Discipline + "-" + s.SheetNumber + "_" + s.Name + DrawingTitle2 + DrawingTitle3 + "_" + curNum
 	shtName = strUtils_legalize(preName)
 	return shtName
 
@@ -150,8 +256,8 @@ def expUtils_dwgOpts(sc=False,mv=True):
 	return opts
 
 # export a single sheet to pdf
-def expUtils_exportSheetPdf(d,s,opt,myDoc,myUidoc):
-	docName = expUtils_nameSheet(s)
+def expUtils_exportSheetPdf(d,s,opt,myDoc,myUidoc,namingProtocol):
+	docName = expUtils_nameSheet(s,namingProtocol)
 	expUtils_viewFocus(s,myDoc,myUidoc)
 	opt.FileName = docName
 	# Prepare an Id list
@@ -162,8 +268,8 @@ def expUtils_exportSheetPdf(d,s,opt,myDoc,myUidoc):
 	return 1
 
 # export a single sheet to dwg
-def expUtils_exportSheetDwg(d,s,opt,myDoc,myUidoc):
-	docName = expUtils_nameSheet(s)
+def expUtils_exportSheetDwg(d,s,opt,myDoc,myUidoc,namingProtocol):
+	docName = expUtils_nameSheet(s,namingProtocol)
 	expUtils_viewFocus(s,myDoc,myUidoc)
 	# Prepare an Id list
 	exportSheet = List[DB.ElementId]()
@@ -184,8 +290,8 @@ def expUtils_exportViewDwg(d,v,opt,myDoc,myUidoc):
 	return 1
 
 # export a single sheet to pdf and dwg
-def expUtils_exportSheetPdfDwg(d,s,optPdf,optDwg,myDoc,myUidoc):
-	docName = expUtils_nameSheet(s)
+def expUtils_exportSheetPdfDwg(d,s,optPdf,optDwg,myDoc,myUidoc,namingProtocol):
+	docName = expUtils_nameSheet(s, namingProtocol)
 	expUtils_viewFocus(s,myDoc,myUidoc)
 	optPdf.FileName = docName
 	# Prepare an Id list
