@@ -2,11 +2,11 @@ layout:
   - Flip Grid Ends
   - Toggle Cycle\nGrids
   - Toggle Cycle\nLevels
-  - ----
+  - -----
   - Dim Grids Automatic
   - Dim Grids SemiAutomatic
   - Dim Levels SemiAutomatic
-  - ----
+  - -----
   - Pick Detail Elements
   - Pick Model Elements
   - -----
