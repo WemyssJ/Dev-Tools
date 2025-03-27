@@ -1,7 +1,7 @@
 layout:
   - Flip Grid Ends
-  - Toggle Cycle\nGrids
-  - Toggle Cycle\nLevels
+  - Toggle Grids
+  - Toggle Levels
   - -----
   - Dim Grids Automatic
   - Dim Grids SemiAutomatic
