@@ -1,15 +1,6 @@
 highlight: new
 
-title:
-  es_es: |-
-    Volume
-    Query
-  en_us: |-
-    Volume
-    Query
-  ru: |-
-    Volume
-    Query
+title: Volume Query
 tooltip: 
   es_es: >-
     Devuelve el volumen del elemento para los elementos seleccionados. Calcula totales en metros cuadrados
