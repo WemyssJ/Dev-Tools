@@ -49,7 +49,7 @@ def expUtils_nameSheet(s, namingProtocol):
 	#region 2021 Naming Standard
 	##PROJECT NUMBER##
 	try:
-		ProjNum = doc.get_Parameter(BuiltInParameter.PROJECT_NUMBER).AsString()
+		ProjNum = doc.ProjectInformation.LookupParameter("Project Number").AsString()
 		if ProjNum is None:
 			ProjNum = "ParameterNotFound"
 	except:
