@@ -1,7 +1,5 @@
 layout:
   - ViewRange
   - -----
-  - Volume Query
-  - -----
   - ManyJoin1
   - ManyJoin2
