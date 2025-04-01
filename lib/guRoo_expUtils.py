@@ -9,7 +9,7 @@ uidoc = revit.uidoc
 
 # get print directory
 def expUtils_getDir():
-	dp = os.path.expanduser("\\guRoo Exports")
+	dp = os.path.expanduser("~/Desktop\\03 - Print Folder")
 	return dp
 
 # make subfolder extension
