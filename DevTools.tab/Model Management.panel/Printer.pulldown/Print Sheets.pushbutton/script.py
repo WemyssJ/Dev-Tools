@@ -19,6 +19,8 @@ Shift-Clicking the tool will remove all
 non-printable characters from the sheet numbers,
 in case an error in the tool causes these characters
 to remain.
+
+02.04.2025 - DWG now exports also. Location of export needs tidying.
 """
 #pylint: disable=import-error,invalid-name,broad-except,superfluous-parens
 import re
