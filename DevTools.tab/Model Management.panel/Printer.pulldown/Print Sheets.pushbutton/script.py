@@ -3,6 +3,8 @@
 #pylint: disable=missing-function-docstring,missing-class-docstring
 """Print sheets in order from a sheet index.
 
+02.04.2025 - DWG now exports also. Location of export needs tidying.
+
 Note:
 When using the `Combine into one file` option
 in Revit 2022 and earlier,
@@ -19,8 +21,6 @@ Shift-Clicking the tool will remove all
 non-printable characters from the sheet numbers,
 in case an error in the tool causes these characters
 to remain.
-
-02.04.2025 - DWG now exports also. Location of export needs tidying.
 """
 #pylint: disable=import-error,invalid-name,broad-except,superfluous-parens
 import re
