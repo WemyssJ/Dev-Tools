@@ -270,13 +270,28 @@ def expUtils_exportSheetPdf(d,s,opt,myDoc,myUidoc,namingProtocol):
 # export a single sheet to dwg
 def expUtils_exportSheetDwg(d,s,opt,myDoc,myUidoc,namingProtocol):
 	docName = expUtils_nameSheet(s,namingProtocol)
-	expUtils_viewFocus(s,myDoc,myUidoc)
+	#expUtils_viewFocus(s,myDoc,myUidoc)
 	# Prepare an Id list
 	exportSheet = List[DB.ElementId]()
 	exportSheet.Add(s.Id)
 	# Export the sheet to DWG
 	myDoc.Export(d, docName, exportSheet, opt)
 	return 1
+
+#JW
+# export a single sheet to dwg
+def expUtils_exportSheetDwg2(d,s,opt,myDoc,myUidoc,filename):
+	docName = filename
+	dwgDocName = docName.replace('.pdf','')
+	#expUtils_viewFocus(s,myDoc,myUidoc)
+	# Prepare an Id list
+	exportSheet = List[DB.ElementId]()
+	exportSheet.Add(s.Id)
+	# Export the sheet to DWG
+	myDoc.Export(d, dwgDocName, exportSheet, opt)
+	return 1
+#JW
+
 
 # export a single view to dwg
 def expUtils_exportViewDwg(d,v,opt,myDoc,myUidoc):
