@@ -42,6 +42,8 @@ tooltip:
   en_us: |-
     Print sheets in order from a sheet index.
 
+    02.04.2025 - DWG now exports also. Location of export needs tidying.
+
     Note:
     When using the `Combine into one file` option
     in Revit 2022 and earlier,
