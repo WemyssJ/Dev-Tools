@@ -47,8 +47,9 @@ tooltip:
       - v1.1.06: Grid/Level Toggles and AutoDims added to WIP.
       - v1.1.07: Alternative tools added to WIP.
       - v1.1.08: Bug Fixes / Exporting Craddified.
+      - v1.1.09: Sync timer and 'Measurement' added.
 
       Current Version:
-      - v1.1.09: Sync timer and 'Measurement' added.
+      - v1.1.10: 'Printer' tool now Exports DWG. Still needs cleaning up.
       
 context: zero-doc
