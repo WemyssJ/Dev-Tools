@@ -36,6 +36,29 @@ from pyrevit import revit, DB
 from pyrevit import script
 from pyrevit.compat import get_elementid_value_func
 
+#JW
+from pyrevit import revit,DB,forms,script
+from guRoo_expUtils import *
+from pyrevit.framework import clr
+from System.Collections.Generic import List
+import os, datetime
+
+# get document
+doc = revit.doc
+uidoc = revit.uidoc
+
+# make sure you can print, construct print path and make directory
+expUtils_canPrint()
+dirPath = expUtils_getDir() + "\\" + expUtils_getFolder("_DWG")
+expUtils_ensureDir(dirPath)
+
+# ask user for Naming ProtocoL
+namingProtocol = "test"
+
+# open the directory
+expUtils_openDir(dirPath)
+#JW
+
 get_elementid_value = get_elementid_value_func()
 
 logger = script.get_logger()
@@ -466,12 +489,13 @@ class EditNamingFormatsWindow(forms.WPFWindow):
 
     def delete_namingformat(self, sender, args):
         return
+        #JW
         #naming_format = self.selected_naming_format
         #item_index = self.naming_formats.IndexOf(naming_format)
         #self.naming_formats.Remove(naming_format)
         #next_index = min([item_index, self.naming_formats.Count-1])
         #self.selected_naming_format = self.naming_formats[next_index]
-
+        #JW
 
     def save_formats(self, sender, args):
         EditNamingFormatsWindow.set_naming_formats(self.naming_formats)
@@ -985,6 +1009,12 @@ class PrintSheetsWindow(forms.WPFWindow):
                         if self._verify_print_filename(sheet.name,
                                                        print_filepath):
                             print_mgr.SubmitPrint(sheet.revit_sheet)
+                            #JW
+                            # Make print options
+                            opts = expUtils_dwgOpts()
+                            # Export sheet to DWG
+                            expUtils_exportSheetDwg2(dirPath,sheet.revit_sheet,opts,doc,uidoc, sheet.print_filename)
+                            #JW
                     else:
                         logger.debug(
                             'Sheet %s does not have a valid file name.',
@@ -992,6 +1022,9 @@ class PrintSheetsWindow(forms.WPFWindow):
                 else:
                     logger.debug('Sheet %s is not printable. Skipping print.',
                                  sheet.number)
+
+
+
 
     def _print_linked_sheets_in_order(self, target_sheets):
         # make sure we can access the print config
@@ -1424,6 +1457,9 @@ def cleanup_sheetnumbers(doc):
     with revit.Transaction('Cleanup Sheet Numbers', doc=doc):
         for sheet in sheets:
             sheet.SheetNumber = sheet.SheetNumber.replace(NPC, '')
+
+
+    
 
 
 # verify model is printable
