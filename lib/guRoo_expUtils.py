@@ -9,7 +9,7 @@ uidoc = revit.uidoc
 
 # get print directory
 def expUtils_getDir():
-	dp = os.path.expanduser("~/Desktop\\03 - Print Folder")
+	dp = os.path.expanduser("~/Desktop\\CDY-ProTools Print")
 	return dp
 
 # make subfolder extension
@@ -260,6 +260,18 @@ def expUtils_exportSheetPdf(d,s,opt,myDoc,myUidoc,namingProtocol):
 	docName = expUtils_nameSheet(s,namingProtocol)
 	expUtils_viewFocus(s,myDoc,myUidoc)
 	opt.FileName = docName
+	# Prepare an Id list
+	exportSheet = List[DB.ElementId]()
+	exportSheet.Add(s.Id)
+	# Export the sheet to PDF
+	myDoc.Export(d, exportSheet, opt)
+	return 1
+
+# export a single sheet to pdf
+def expUtils_exportSheetPdf2(d,s,opt,myDoc,myUidoc,filename):
+	docName = filename
+	pdfdocName = docName.replace('.pdf','')
+	opt.FileName = pdfdocName
 	# Prepare an Id list
 	exportSheet = List[DB.ElementId]()
 	exportSheet.Add(s.Id)
