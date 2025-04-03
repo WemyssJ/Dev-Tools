@@ -49,17 +49,8 @@ import os, datetime
 doc = revit.doc
 uidoc = revit.uidoc
 
-# make sure you can print, construct print path and make directory
-expUtils_canPrint()
-dirPath = expUtils_getDir() + "\\" + expUtils_getFolder("_DWG")
-expUtils_ensureDir(dirPath)
-
-# ask user for Naming ProtocoL
-namingProtocol = "test"
-
-# open the directory
-expUtils_openDir(dirPath)
 #JW
+
 
 get_elementid_value = get_elementid_value_func()
 
@@ -977,6 +968,16 @@ class PrintSheetsWindow(forms.WPFWindow):
         print_mgr.PrintToFile = True
         per_sheet_psettings = self.selected_print_setting.allows_variable_paper
 
+        #JW
+        # make sure you can print, construct print path and make directory
+        expUtils_canPrint()
+        dirPath = expUtils_getDir() + "\\" + expUtils_getFolder("_DWG_PDF")
+        expUtils_ensureDir(dirPath)
+        # open the directory
+        expUtils_openDir(dirPath)
+        #JW
+
+
         with revit.Transaction('Reload Keynote File',
                                doc=self.selected_doc):
             DB.KeynoteTable.GetKeynoteTable(revit.doc).Reload(None)
@@ -999,8 +1000,9 @@ class PrintSheetsWindow(forms.WPFWindow):
             for sheet in target_sheets:
                 if sheet.printable:
                     if sheet.print_filename:
-                        print_filepath = \
-                            op.join(USER_DESKTOP, sheet.print_filename)
+                        print_filepath = op.join(dirPath + "\\" + sheet.print_filename)
+                        #print_filepath = print_filepath.replace('.pdf','')
+
                         print_mgr.PrintToFileName = print_filepath
 
                         # set the per-sheet print settings if required
@@ -1010,12 +1012,14 @@ class PrintSheetsWindow(forms.WPFWindow):
 
                         if self._verify_print_filename(sheet.name,
                                                        print_filepath):
-                            print_mgr.SubmitPrint(sheet.revit_sheet)
+                            #print_mgr.SubmitPrint(sheet.revit_sheet)
                             #JW
                             # Make print options
-                            opts = expUtils_dwgOpts()
+                            optsdwg = expUtils_dwgOpts()
+                            optspdf = expUtils_pdfOpts()
                             # Export sheet to DWG
-                            expUtils_exportSheetDwg2(dirPath,sheet.revit_sheet,opts,doc,uidoc, sheet.print_filename)
+                            expUtils_exportSheetDwg2(dirPath,sheet.revit_sheet,optsdwg,doc,uidoc, sheet.print_filename)
+                            expUtils_exportSheetPdf2(dirPath,sheet.revit_sheet,optspdf,doc,uidoc, sheet.print_filename)
                             #JW
                     else:
                         logger.debug(
@@ -1037,13 +1041,35 @@ class PrintSheetsWindow(forms.WPFWindow):
         # setting print settings needs a transaction
         # can not be done on linked docs
         # print_mgr.PrintSetup.CurrentPrintSetting =
+
+
+        #JW
+        # make sure you can print, construct print path and make directory
+        expUtils_canPrint()
+        dirPath = expUtils_getDir() + "\\" + expUtils_getFolder("_DWG_PDF")
+        expUtils_ensureDir(dirPath)
+        # open the directory
+        expUtils_openDir(dirPath)
+        #JW
+
         for sheet in target_sheets:
             if sheet.printable:
-                print_filepath = op.join(USER_DESKTOP, sheet.print_filename)
+                print_filepath = op.join(dirPath + "\\" + sheet.print_filename)
                 print_mgr.PrintToFileName = print_filepath
 
                 if self._verify_print_filename(sheet.name, print_filepath):
-                    print_mgr.SubmitPrint(sheet.revit_sheet)
+                    #print_mgr.SubmitPrint(sheet.revit_sheet)
+
+                    #JW
+                    # Make print options
+                    optsdwg = expUtils_dwgOpts()
+                    optspdf = expUtils_pdfOpts()
+                    # Export sheet to DWG
+                    expUtils_exportSheetDwg2(dirPath,sheet.revit_sheet,optsdwg,doc,uidoc, sheet.print_filename)
+                    expUtils_exportSheetPdf2(dirPath,sheet.revit_sheet,optspdf,doc,uidoc, sheet.print_filename)
+
+                    
+                    #JW
             else:
                 logger.debug(
                     'Linked sheet %s is not printable. Skipping print.',
