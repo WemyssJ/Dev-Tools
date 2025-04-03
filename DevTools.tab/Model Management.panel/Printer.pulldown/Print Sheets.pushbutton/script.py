@@ -1,26 +1,27 @@
 # -*- coding: utf-8 -*-
 #pylint: disable=unused-argument,too-many-lines
 #pylint: disable=missing-function-docstring,missing-class-docstring
-"""Print sheets in order from a sheet index.
+"""PDF Print sheets and DWG export to: Desktop\CDY-ProTools Print Folder
+    
+    Note:
+    When using the `Combine into one file` option
+    in Revit 2022 and earlier,
+    the tool adds non-printable character u'\u200e'
+    (Left-To-Right Mark) at the start of the sheet names
+    to push Revit's interenal printing engine to sort
+    the sheets correctly per the drawing index order. 
 
-02.04.2025 - DWG now exports also. Location of export needs tidying.
+    Make sure your drawings indices consider this
+    when filtering for sheet numbers.
 
-Note:
-When using the `Combine into one file` option
-in Revit 2022 and earlier,
-the tool adds non-printable character u'\u200e'
-(Left-To-Right Mark) at the start of the sheet names
-to push Revit's interenal printing engine to sort
-the sheets correctly per the drawing index order.
+    Shift-Click:
+    Shift-Clicking the tool will remove all
+    non-printable characters from the sheet numbers,
+    in case an error in the tool causes these characters
+    to remain.
 
-Make sure your drawings indices consider this
-when filtering for sheet numbers.
-
-Shift-Click:
-Shift-Clicking the tool will remove all
-non-printable characters from the sheet numbers,
-in case an error in the tool causes these characters
-to remain.
+    To Do:
+    Make DWG Optional
 """
 #pylint: disable=import-error,invalid-name,broad-except,superfluous-parens
 import re
