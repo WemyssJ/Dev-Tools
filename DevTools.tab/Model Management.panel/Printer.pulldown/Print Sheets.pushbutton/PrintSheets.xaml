@@ -236,8 +236,8 @@
         </StackPanel>
         <StatusBar DockPanel.Dock="Bottom" Height="25" Background="{DynamicResource pyRevitDarkBrush}">
             <TextBlock Foreground="#ffffff" Margin="10,0,0,0" MouseDown="handle_url_click">
-                <Hyperlink NavigateUri="https://github.com/McCulloughRT/PrintFromIndex" Click="handle_url_click">
-                    Kudos to Ryan McCullough for PrintFromIndex
+                <Hyperlink NavigateUri="https://www.pyrevitlabs.io/">
+                    A pyRevit tool developed by Ehsan Iran-Nejad. Print Index by: Ryan McCullough. DWG export by: Joe Wemyss (thanks to Gavin Crump).
                 </Hyperlink>
             </TextBlock>
         </StatusBar>
