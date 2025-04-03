@@ -9,7 +9,7 @@ uidoc = revit.uidoc
 
 # get print directory
 def expUtils_getDir():
-	dp = os.path.expanduser("~/Desktop\\CDY-ProTools Print")
+	dp = os.path.expanduser("~/Desktop\\CDY-ProTools Print Folder")
 	return dp
 
 # make subfolder extension
