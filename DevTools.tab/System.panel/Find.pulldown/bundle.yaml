@@ -1,0 +1,7 @@
+highlight: new
+
+layout:
+  - File
+  - Parent
+  - CAD
+  - Groups
