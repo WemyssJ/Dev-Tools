@@ -1,0 +1,8 @@
+highlight: new
+
+layout:
+  - CentralFile
+  - File
+  - Parent
+  - CAD
+  - Groups
