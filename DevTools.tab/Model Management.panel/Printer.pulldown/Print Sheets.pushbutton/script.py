@@ -379,8 +379,8 @@ class EditNamingFormatsWindow(forms.WPFWindow):
                 builtin=True
             ),
             NamingFormat(
-                name='Aldi BEP & Parameters',
-                template='{proj_number}-{sheet_param:PM.Sheet.Title.Creator.Originator}-{sheet_param:PM.Sheet.Title.View.Zone}-{sheet_param:PM.Sheet.Title.View.Level}-{sheet_param:PM.Sheet.Title.View.Type}-{sheet_param:PM.Sheet.Title.Creator.Role}-{sheet_param:Classification}{sheet_param:Sheet Number}-{sheet_param:PM.Sheet.Title.Sheet.Suitability}-{rev_number} {sheet_param:Sheet Name}.pdf',
+                name='Aldi: BS1192:2007+A2:2016',
+                template='{proj_number}-{sheet_param:PM.Sheet.Title.Creator.Originator}-{sheet_param:PM.Sheet.Title.View.Zone}-{sheet_param:PM.Sheet.Title.View.Level}-{sheet_param:PM.Sheet.Title.View.Type}-{sheet_param:PM.Sheet.Title.Creator.Role}-{sheet_param:Classification}{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}.pdf',
                 builtin=True
             ),
             NamingFormat(
