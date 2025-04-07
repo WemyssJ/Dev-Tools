@@ -1,7 +1,6 @@
-highlight: updated
-
 layout:
   - Print Sheets
+  - -----
   - SheetsBoth
   - SheetsPDF
   - SheetsDWG
