@@ -8,7 +8,7 @@ def msgUtils_mutePath():
 	userName    = os.environ.get("USERNAME")
 	userProfile = os.environ.get("USERPROFILE")
 	userDocs    = userProfile + '\\AppData\\Roaming\\pyRevit\\'
-	return userDocs + "\\" "guRoo_mute" + ".csv"
+	return userDocs + "\\" "DevTools_mute" + ".csv"
 
 # check if path exists, return its state
 def msgUtils_muted():
