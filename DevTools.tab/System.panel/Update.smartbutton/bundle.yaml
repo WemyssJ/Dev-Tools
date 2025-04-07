@@ -49,8 +49,9 @@ tooltip:
       - v1.1.08: Bug Fixes / Exporting Craddified.
       - v1.1.09: Sync timer and 'Measurement' added.
       - v1.1.10: 'Printer' tool now Exports DWG. Still needs cleaning up.
+      - v1.1.11: 'Printer' tool improved.
   
       Current Version:
-      - v1.1.11: 'Printer' tool improved.
+      - v1.1.12: 'SheetSet', 'Find' and 'Mute' added.
       
 context: zero-doc
