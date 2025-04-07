@@ -6,9 +6,9 @@ layout:
   - Toggles
   - ">>>>>"
   - Settings
-  - Mute
-  - Icons8
   - Extensions
+  - Icons8
+  - Mute
   - Reload
 background:
   panel: 'fffbfb'
