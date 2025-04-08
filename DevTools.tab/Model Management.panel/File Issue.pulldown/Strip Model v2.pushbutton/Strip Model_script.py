@@ -85,39 +85,25 @@ with forms.ProgressBar(step=10) as pb:
         forms.alert("Please detach model from central and save it to your local drive.", ok = True, exitscript= True)
 
     # Collect all views and sheets
-    viewsCollector = DB.FilteredElementCollector(doc).OfClass(DB.View)
-    sheetsCollector = DB.FilteredElementCollector(doc).OfClass(DB.ViewSheet)
+    viewsCollector = DB.FilteredElementCollector(doc).OfClass(DB.View).ToElements()
+    sheetsCollector = DB.FilteredElementCollector(doc).OfClass(DB.ViewSheet).ToElements()
     # Collect all imported elements
     linksCollector = DB.FilteredElementCollector(doc).OfClass(DB.ImportInstance)
     revitLinkCollector = DB.FilteredElementCollector(doc).OfClass(DB.RevitLinkType)
     imagesCollector = DB.FilteredElementCollector(doc).OfCategory(DB.BuiltInCategory.OST_RasterImages)
 
-    # Select parameter in selected view
-    view = None
-    for v in viewsCollector:
-        if v.ViewType == DB.ViewType.FloorPlan:
-            view = v
-            break
-    param = None
-    for p in view.Parameters:
-        if "View Set" in p.Definition.Name:
-            param = p.Definition.Name
-            break
-    
-    # Set view set to select
-    viewSet = [x.LookupParameter(param).AsString() for x in viewsCollector if x.LookupParameter(param) != None]
-    selectSet = sorted(set(viewSet))
+
 
     # Display select view sets form
-    vSet = forms.SelectFromList.show(selectSet, "View Set to Keep", 600, 600, multiselect=True)
-    # Exclude start page to be deleted
-    vSet.append("START PAGE")
+    viewsRetained = forms.select_views(button_name='Views to Keep',
+                                   multiple=True)
+    
+    retainedIds = set(x.Id for x in viewsRetained)
+    
 
     # Classify views
-    viewsIdDelete = [x.Id for x in viewsCollector if x.LookupParameter(param) == None or \
-                    x.LookupParameter(param).AsString() not in vSet]
-    viewsIdKeep = [x.Id for x in viewsCollector if x.LookupParameter(param) != None and \
-                    x.LookupParameter(param).AsString() in vSet]
+    viewsIdDelete = [x.Id for x in viewsCollector if x.Id not in retainedIds]
+    viewsIdKeep = [x.Id for x in viewsCollector if x.Id in retainedIds]
 
     # Retrieve id of all linked elements
     importedInstancesId = [x.Id for x in linksCollector]
@@ -168,7 +154,7 @@ with forms.ProgressBar(step=10) as pb:
         count += 1
 
     # Purge file
-    # purge()
+    purge()
 
     # Commit transaction
     t.Commit()
