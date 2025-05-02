@@ -200,16 +200,16 @@ def expUtils_nameSheet(s, namingProtocol):
 	# make sheet name
 
 	if namingProtocol == ('Craddys: BS EN ISO 19650-2-2018 (+A1 2021)'):
-		preName =  ProjNum + "-" + Originator + "-" + FunctionalBreakdown + "-" + SpatialBreakdown + "-" + Form + "-" + Discipline + "-" + s.SheetNumber + "-" + curNum + " " + s.Name
+		preName =  ProjNum + "-" + Originator + "-" + FunctionalBreakdown + "-" + SpatialBreakdown + "-" + Form + "-" + Discipline + "-" + s.SheetNumber + "-" + curNum + "-" + s.Name + DrawingTitle2 + DrawingTitle3
 	elif namingProtocol == ('Craddys: BS EN ISO 19650-2-2018'):
-		preName =  ProjNum + "-" + Originator + "-" + VolumeOrSystem + "-" + LevelsAndLocation + "-" + Type + "-" + Role + "-" + s.SheetNumber + "-" + curNum + " " + s.Name
+		preName =  ProjNum + "-" + Originator + "-" + VolumeOrSystem + "-" + LevelsAndLocation + "-" + Type + "-" + Role + "-" + s.SheetNumber + "-" + curNum + "-" + s.Name
 	elif namingProtocol == ('Aldi BEP & Parameters'):
-		preName =  ProjNum + "-" + AldiOriginator + "-" + AldiZone + "-" + AldiLevel + "-" + AldiType + "-" + AldiRole + "-" + Classification + "-" + s.SheetNumber + "-" + AldiSuitability + "-" + curNum + " " + s.Name + DrawingTitle2 + DrawingTitle3
+		preName =  ProjNum + "-" + AldiOriginator + "-" + AldiZone + "-" + AldiLevel + "-" + AldiType + "-" + AldiRole + "-" + Classification + "-" + s.SheetNumber + "-" + AldiSuitability + "-" + curNum + "-" + s.Name + DrawingTitle2 + DrawingTitle3
 	elif namingProtocol == ('Morgan Sindall: BS EN ISO 19650-2-2018 (+A1 2021)'):
-		preName =  ProjNum + "-" + Originator + "-" + FunctionalBreakdown + "-" + SpatialBreakdown + "-" + Form + "-" + Discipline + "-" + s.SheetNumber + "-" + curNum + " " + s.Name + DrawingTitle2 + DrawingTitle3
+		preName =  ProjNum + "-" + Originator + "-" + FunctionalBreakdown + "-" + SpatialBreakdown + "-" + Form + "-" + Discipline + "-" + s.SheetNumber + "_" + s.Name + DrawingTitle2 + DrawingTitle3 + "_" + curNum
 	else:
 		##default to latset ISO Standards
-		preName =  ProjNum + "-" + Originator + "-" + FunctionalBreakdown + "-" + SpatialBreakdown + "-" + Form + "-" + Discipline + "-" + s.SheetNumber + "_" + s.Name + DrawingTitle2 + DrawingTitle3 + "_" + curNum
+		preName =  ProjNum + "-" + Originator + "-" + FunctionalBreakdown + "-" + SpatialBreakdown + "-" + Form + "-" + Discipline + "-" + s.SheetNumber + "-" + curNum + "-" + s.Name + DrawingTitle2 + DrawingTitle3
 	shtName = strUtils_legalize(preName)
 	return shtName
 
