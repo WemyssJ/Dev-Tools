@@ -51,8 +51,9 @@ tooltip:
       - v1.1.10: 'Printer' tool now Exports DWG. Still needs cleaning up.
       - v1.1.11: 'Printer' tool improved.
       - v1.1.12: 'SheetSet', 'Find' and 'Mute' added.
+      - v1.1.13: 'Title Case' added.
   
       Current Version:
-      - v1.1.13: 'Title Case' added.
+      - v1.1.14: Element renumbering/Coord added to WIP.
       
 context: zero-doc
