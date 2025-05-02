@@ -370,7 +370,17 @@ class EditNamingFormatsWindow(forms.WPFWindow):
         return [
             NamingFormat(
                 name='Craddys: BS EN ISO 19650-2-2018 (+A1 2021)',
-                template='{proj_number}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf',
+                template='{proj_number}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}.pdf',
+                builtin=True
+            ),
+            NamingFormat(
+                name='Craddys: BS EN ISO 19650-2-2018 (+A1 2021) + Title2',
+                template='{proj_number}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name} {sheet_param:Drawing Title 2}.pdf',
+                builtin=True
+            ),
+            NamingFormat(
+                name='Craddys: BS EN ISO 19650-2-2018 (+A1 2021) + Title2 + Title3',
+                template='{proj_number}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name} {sheet_param:Drawing Title 2} {sheet_param:Drawing Title 3}.pdf',
                 builtin=True
             ),
             NamingFormat(
