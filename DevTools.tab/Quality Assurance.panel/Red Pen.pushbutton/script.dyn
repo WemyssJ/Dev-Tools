@@ -159,52 +159,13 @@
       "Description": "Filters a sequence by looking up corresponding indices in a separate list of booleans.\n\nList.FilterByBoolMask (list: var[]..[], mask: var[]..[]): var[]..[]"
     },
     {
-      "ConcreteType": "Dynamo.Graph.Nodes.ZeroTouch.DSFunction, DynamoCore",
-      "Id": "bf870f0d675540028e0daaf5abd1d65a",
-      "NodeType": "FunctionNode",
-      "Inputs": [
-        {
-          "Id": "b247a84511594cb684ac6ea457a3a77e",
-          "Name": "x",
-          "Description": "Basic type object to compare (e.g. bool, int, double, string, etc.)\n\nvar[]..[]",
-          "UsingDefaultValue": false,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
-        },
-        {
-          "Id": "7ddce3babfa543d4a6d71650e778fa11",
-          "Name": "y",
-          "Description": "Basic type object to compare (e.g. bool, int, double, string, etc.)\n\nvar[]..[]",
-          "UsingDefaultValue": false,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
-        }
-      ],
-      "Outputs": [
-        {
-          "Id": "64a4dab55eef46c8bc35cdaa46bb6e43",
-          "Name": "bool",
-          "Description": "Result of equality check",
-          "UsingDefaultValue": false,
-          "Level": 2,
-          "UseLevels": false,
-          "KeepListStructure": false
-        }
-      ],
-      "FunctionSignature": "==@var[]..[],var[]..[]",
-      "Replication": "Auto",
-      "Description": "Compares if x and y are equal\n\n== (x: var[]..[], y: var[]..[]): var[]..[]"
-    },
-    {
       "ConcreteType": "Dynamo.Graph.Nodes.CodeBlockNodeModel, DynamoCore",
       "Id": "284c144d71cf4e479d2f228014f170e1",
       "NodeType": "CodeBlockNode",
       "Inputs": [],
       "Outputs": [
         {
-          "Id": "f0c7254514734048bf1f0b8416817144",
+          "Id": "8aa7ea84c18f4c18af81fc83a3b52754",
           "Name": "",
           "Description": "Value of expression at line 1",
           "UsingDefaultValue": false,
@@ -215,7 +176,7 @@
       ],
       "Replication": "Disabled",
       "Description": "Allows for DesignScript code to be authored directly",
-      "Code": "\"S_CDY_2.5_Arial Narrow_Internal Comment\";"
+      "Code": "\"Internal Comment\";"
     },
     {
       "ConcreteType": "DSRevitNodesUI.Categories, DSRevitNodesUI",
@@ -686,6 +647,54 @@
       "Replication": "Disabled",
       "Description": "Enables selection between True and False",
       "InputValue": false
+    },
+    {
+      "ConcreteType": "Dynamo.Graph.Nodes.ZeroTouch.DSFunction, DynamoCore",
+      "Id": "190c26cb29294f4fbdc79b455505fa76",
+      "NodeType": "FunctionNode",
+      "Inputs": [
+        {
+          "Id": "d71cf0f65e4a4573bbc603c55dcfed66",
+          "Name": "string",
+          "Description": "String to search in\n\nstring",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "9c469d88b91d4e3db8f7779f40179663",
+          "Name": "searchFor",
+          "Description": "Substring to search for\n\nstring",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "79e1d385f6314da9bd7171be667e99d3",
+          "Name": "ignoreCase",
+          "Description": "Whether or not comparison takes case into account\n\nbool\nDefault value : false",
+          "UsingDefaultValue": true,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "8bec47833f954913a7dc8d57a6e64f4c",
+          "Name": "bool",
+          "Description": "Whether the string contains the substring",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "FunctionSignature": "DSCore.String.Contains@string,string,bool",
+      "Replication": "Auto",
+      "Description": "Determines if the given string contains the given substring.\n\nString.Contains (string: string, searchFor: string, ignoreCase: bool = false): bool"
     }
   ],
   "Connectors": [
@@ -709,8 +718,8 @@
     },
     {
       "Start": "b2758bda0b8d4e4e9b6e450d0a3f3cf6",
-      "End": "b247a84511594cb684ac6ea457a3a77e",
-      "Id": "79aea3d2693744968aace3721f26b5ce",
+      "End": "d71cf0f65e4a4573bbc603c55dcfed66",
+      "Id": "ef01b6785282465a84426fc59a7474e1",
       "IsHidden": "False"
     },
     {
@@ -726,15 +735,9 @@
       "IsHidden": "False"
     },
     {
-      "Start": "64a4dab55eef46c8bc35cdaa46bb6e43",
-      "End": "c65d7c19c1a34c999202ec2910c6c38b",
-      "Id": "0d41c632b3574478bba059e09847fa64",
-      "IsHidden": "False"
-    },
-    {
-      "Start": "f0c7254514734048bf1f0b8416817144",
-      "End": "7ddce3babfa543d4a6d71650e778fa11",
-      "Id": "fa9705e1f12540138838e71aa1ce4b2f",
+      "Start": "8aa7ea84c18f4c18af81fc83a3b52754",
+      "End": "9c469d88b91d4e3db8f7779f40179663",
+      "Id": "90ea6787cb104329a1256c89dc6134c0",
       "IsHidden": "False"
     },
     {
@@ -825,6 +828,12 @@
       "Start": "a27333b6529541bcb77a38aa1aa7f32f",
       "End": "0ffa7472550041e1b6dc34799a3f6dee",
       "Id": "839b630a387241568cad4aee281dc8f7",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "8bec47833f954913a7dc8d57a6e64f4c",
+      "End": "c65d7c19c1a34c999202ec2910c6c38b",
+      "Id": "b2683d9363b4416cb59ad47158b55b2f",
       "IsHidden": "False"
     }
   ],
@@ -927,16 +936,6 @@
         "ShowGeometry": true,
         "X": -5534.9410393344006,
         "Y": 844.24793792075707
-      },
-      {
-        "Id": "bf870f0d675540028e0daaf5abd1d65a",
-        "Name": "==",
-        "IsSetAsInput": false,
-        "IsSetAsOutput": false,
-        "Excluded": false,
-        "ShowGeometry": true,
-        "X": -5779.6164381463623,
-        "Y": 1042.3753340319063
       },
       {
         "Id": "284c144d71cf4e479d2f228014f170e1",
@@ -1087,6 +1086,16 @@
         "ShowGeometry": true,
         "X": -3990.01508355153,
         "Y": 1998.6413541143811
+      },
+      {
+        "Id": "190c26cb29294f4fbdc79b455505fa76",
+        "Name": "String.Contains",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": -5790.6098317152655,
+        "Y": 1062.8997859852971
       }
     ],
     "Annotations": [
@@ -1106,14 +1115,14 @@
         ],
         "HasNestedGroups": false,
         "Left": -6745.1679068563863,
-        "Top": 1423.7116012203812,
+        "Top": 1423.1116012203813,
         "Width": 1045.4215307489321,
-        "Height": 362.77086048455294,
+        "Height": 363.5708604845529,
         "FontSize": 36.0,
         "GroupStyleId": "00000000-0000-0000-0000-000000000000",
         "InitialTop": 1496.1116012203813,
         "InitialHeight": 303.5708604845529,
-        "TextblockHeight": 62.4,
+        "TextblockHeight": 63.0,
         "Background": "#FFC1D676"
       },
       {
@@ -1128,19 +1137,19 @@
           "3017fef8ebc14c38b32f527f3b0aa49b",
           "dcd7e4812e4b4f909f48f40a14dfa0b2",
           "382b2dde339d41dc993ecc0a84d1aa3f",
-          "bf870f0d675540028e0daaf5abd1d65a",
-          "284c144d71cf4e479d2f228014f170e1"
+          "284c144d71cf4e479d2f228014f170e1",
+          "190c26cb29294f4fbdc79b455505fa76"
         ],
         "HasNestedGroups": false,
         "Left": -6762.1411366981574,
-        "Top": 771.84793792075709,
-        "Width": 1471.6000973637565,
-        "Height": 552.21439151081506,
+        "Top": 771.24793792075707,
+        "Width": 1472.2000973637569,
+        "Height": 553.01439151081513,
         "FontSize": 36.0,
         "GroupStyleId": "00000000-0000-0000-0000-000000000000",
         "InitialTop": 844.24793792075707,
-        "InitialHeight": 509.60629262815496,
-        "TextblockHeight": 62.4,
+        "InitialHeight": 493.01439151081513,
+        "TextblockHeight": 63.0,
         "Background": "#FFA4E1FF"
       },
       {
@@ -1155,14 +1164,14 @@
         ],
         "HasNestedGroups": false,
         "Left": -3174.6710679205166,
-        "Top": 918.13955722964886,
+        "Top": 917.73955722964888,
         "Width": 292.0,
-        "Height": 444.19999999999993,
+        "Height": 444.0,
         "FontSize": 36.0,
         "GroupStyleId": "00000000-0000-0000-0000-000000000000",
         "InitialTop": 1129.7395572296489,
         "InitialHeight": 145.0,
-        "TextblockHeight": 201.6,
+        "TextblockHeight": 202.0,
         "Background": "#FFE8F7AD"
       },
       {
@@ -1184,19 +1193,19 @@
         ],
         "HasNestedGroups": false,
         "Left": -5101.23587819203,
-        "Top": 1687.944929970881,
-        "Width": 1670.96948411197,
-        "Height": 571.25331238319018,
+        "Top": 1687.544929970881,
+        "Width": 1670.36948411197,
+        "Height": 571.85331238319009,
         "FontSize": 36.0,
         "GroupStyleId": "00000000-0000-0000-0000-000000000000",
         "InitialTop": 1803.544929970881,
         "InitialHeight": 468.85331238319009,
-        "TextblockHeight": 105.6,
+        "TextblockHeight": 106.0,
         "Background": "#FFFFB8D8"
       }
     ],
-    "X": 1512.137932930985,
-    "Y": 329.01119972092613,
-    "Zoom": 0.18160325229450516
+    "X": 4274.1299685275917,
+    "Y": -375.41049599380722,
+    "Zoom": 0.592950755031767
   }
 }
