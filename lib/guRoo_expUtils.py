@@ -235,7 +235,7 @@ def expUtils_viewFocus(v,myDoc,myUiDoc):
 				pass
 
 # make pdf options
-def expUtils_pdfOpts(hcb=False,hsb=True,hrp=True,hvt=True,mcl=True):
+def expUtils_pdfOpts(hcb=True,hsb=True,hrp=True,hvt=True,mcl=True):
 	opts = DB.PDFExportOptions()
 	# Settings default
 	opts.HideCropBoundaries = hcb
