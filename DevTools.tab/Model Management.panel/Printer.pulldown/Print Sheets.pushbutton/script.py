@@ -19,9 +19,6 @@
     non-printable characters from the sheet numbers,
     in case an error in the tool causes these characters
     to remain.
-
-    To Do:
-    Make DWG Optional
 """
 #pylint: disable=import-error,invalid-name,broad-except,superfluous-parens
 import re
@@ -653,6 +650,11 @@ class PrintSheetsWindow(forms.WPFWindow):
     def combine_print(self):
         return self.combine_cb.IsChecked
 
+    #JW
+    @property
+    def export_dwg_print(self):
+        return self.export_dwg.IsChecked
+    #JW
     @property
     def show_placeholders(self):
         return self.placeholder_cb.IsChecked
@@ -1025,12 +1027,13 @@ class PrintSheetsWindow(forms.WPFWindow):
                                                        print_filepath):
                             #print_mgr.SubmitPrint(sheet.revit_sheet)
                             #JW
-                            # Make print options
-                            optsdwg = expUtils_dwgOpts()
                             optspdf = expUtils_pdfOpts()
-                            # Export sheet to DWG
-                            expUtils_exportSheetDwg2(dirPath,sheet.revit_sheet,optsdwg,doc,uidoc, sheet.print_filename)
                             expUtils_exportSheetPdf2(dirPath,sheet.revit_sheet,optspdf,doc,uidoc, sheet.print_filename)
+
+
+                            if self.export_dwg.IsChecked:
+                                optsdwg = expUtils_dwgOpts()
+                                expUtils_exportSheetDwg2(dirPath,sheet.revit_sheet,optsdwg,doc,uidoc, sheet.print_filename)
                             #JW
                     else:
                         logger.debug(
@@ -1057,7 +1060,7 @@ class PrintSheetsWindow(forms.WPFWindow):
         #JW
         # make sure you can print, construct print path and make directory
         expUtils_canPrint()
-        dirPath = expUtils_getDir() + "\\" + expUtils_getFolder("_DWG_PDF")
+        dirPath = expUtils_getDir() + "\\" + expUtils_getFolder("_PRINT")
         expUtils_ensureDir(dirPath)
         # open the directory
         expUtils_openDir(dirPath)
@@ -1072,14 +1075,13 @@ class PrintSheetsWindow(forms.WPFWindow):
                     #print_mgr.SubmitPrint(sheet.revit_sheet)
 
                     #JW
-                    # Make print options
-                    optsdwg = expUtils_dwgOpts()
                     optspdf = expUtils_pdfOpts()
-                    # Export sheet to DWG
-                    expUtils_exportSheetDwg2(dirPath,sheet.revit_sheet,optsdwg,doc,uidoc, sheet.print_filename)
                     expUtils_exportSheetPdf2(dirPath,sheet.revit_sheet,optspdf,doc,uidoc, sheet.print_filename)
 
-                    
+
+                    if self.export_dwg.IsChecked:
+                        optsdwg = expUtils_dwgOpts()
+                        expUtils_exportSheetDwg2(dirPath,sheet.revit_sheet,optsdwg,doc,uidoc, sheet.print_filename)
                     #JW
             else:
                 logger.debug(
@@ -1346,10 +1348,17 @@ class PrintSheetsWindow(forms.WPFWindow):
             self.hide_element(self.order_sp)
             self.hide_element(self.namingformat_dp)
             self.hide_element(self.pfilename)
+            #jw
+            self.export_dwg.IsChecked = False
+            self.export_dwg.IsEnabled = False
+            #jw
         else:
             self.show_element(self.order_sp)
             self.show_element(self.namingformat_dp)
             self.show_element(self.pfilename)
+            #jw
+            self.export_dwg.IsEnabled = True
+            #jw
 
         # decide whether to show the placeholders or not
         if not self.show_placeholders:
