@@ -984,7 +984,7 @@ class PrintSheetsWindow(forms.WPFWindow):
         #JW
         # make sure you can print, construct print path and make directory
         expUtils_canPrint()
-        dirPath = expUtils_getDir() + "\\" + expUtils_getFolder("_DWG_PDF")
+        dirPath = expUtils_getDir() + "\\" + expUtils_getFolder("_PRINT")
         expUtils_ensureDir(dirPath)
         # open the directory
         expUtils_openDir(dirPath)
