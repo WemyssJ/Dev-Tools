@@ -57,6 +57,6 @@ tooltip:
       - v1.1.16: Print: Crop Region now hidden, DWG optional
   
       Current Version:
-      - v1.1.17: Print: Drawing Title 2 & 3 added within print template.
+      - v1.1.17: Print: Drawing Title 2 & 3 and delete button fail safe fixed.
       
 context: zero-doc
