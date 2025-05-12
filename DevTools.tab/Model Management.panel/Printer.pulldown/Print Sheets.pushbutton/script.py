@@ -372,12 +372,12 @@ class EditNamingFormatsWindow(forms.WPFWindow):
             ),
             NamingFormat(
                 name='Craddys: BS EN ISO 19650-2-2018',
-                template='{proj_number}-{sheet_param:Originator}-{sheet_param:Volume or System}-{sheet_param:Levels and Location}-{sheet_param:Type}-{sheet_param:Role}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}.pdf',
+                template='{proj_number}-{sheet_param:Originator}-{sheet_param:Volume or System}-{sheet_param:Levels and Location}-{sheet_param:Type}-{sheet_param:Role}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf',
                 builtin=True
             ),
             NamingFormat(
                 name='Aldi: BS1192:2007+A2:2016',
-                template='{proj_number}-{sheet_param:PM.Sheet.Title.Creator.Originator}-{sheet_param:PM.Sheet.Title.View.Zone}-{sheet_param:PM.Sheet.Title.View.Level}-{sheet_param:PM.Sheet.Title.View.Type}-{sheet_param:PM.Sheet.Title.Creator.Role}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}.pdf',
+                template='{proj_number}-{sheet_param:PM.Sheet.Title.Creator.Originator}-{sheet_param:PM.Sheet.Title.View.Zone}-{sheet_param:PM.Sheet.Title.View.Level}-{sheet_param:PM.Sheet.Title.View.Type}-{sheet_param:PM.Sheet.Title.Creator.Role}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf',
                 builtin=True
             ),
             NamingFormat(
@@ -479,14 +479,16 @@ class EditNamingFormatsWindow(forms.WPFWindow):
         self.selected_naming_format = new_naming_format
 
     def delete_namingformat(self, sender, args):
-        return
-        #JW
         #naming_format = self.selected_naming_format
-        #item_index = self.naming_formats.IndexOf(naming_format)
-        #self.naming_formats.Remove(naming_format)
-        #next_index = min([item_index, self.naming_formats.Count-1])
-        #self.selected_naming_format = self.naming_formats[next_index]
-        #JW
+        #jw
+        if naming_format.builtin:
+            return
+        #jw
+        item_index = self.naming_formats.IndexOf(naming_format)
+        self.naming_formats.Remove(naming_format)
+        next_index = min([item_index, self.naming_formats.Count-1])
+        self.selected_naming_format = self.naming_formats[next_index]
+        
 
     def save_formats(self, sender, args):
         EditNamingFormatsWindow.set_naming_formats(self.naming_formats)
@@ -1101,16 +1103,18 @@ class PrintSheetsWindow(forms.WPFWindow):
         finder_pattern = r'{' + value_type + r':(.*?)}'
         for param_name in re.findall(finder_pattern, template):
             param_value = value_getter(param_name)
+
             repl_pattern = r'{' + value_type + ':' + param_name + r'}'
+            #JW
             if param_value:
-                #JW
                 if param_name == 'Drawing Title 2' or param_name == 'Drawing Title 3' and param_value != "":
                     param_value = ' ' + param_value
-                #JW
-                
+            #JW
+                    
             template = re.sub(repl_pattern, str(param_value), template)
             template = re.sub(repl_pattern, '', template)
         return template
+    
 
     def _update_print_filename(self, template, sheet):
         # resolve sheet-level custom param values
@@ -1133,6 +1137,8 @@ class PrintSheetsWindow(forms.WPFWindow):
                 revit.query.get_param(sheet.revit_sheet, x)
                 )
         )
+
+    
 
         # resolved the fixed formatters
         try:
