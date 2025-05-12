@@ -1105,14 +1105,15 @@ class PrintSheetsWindow(forms.WPFWindow):
             param_value = value_getter(param_name)
 
             repl_pattern = r'{' + value_type + ':' + param_name + r'}'
-            #JW
+            
             if param_value:
+                #JW
                 if param_name == 'Drawing Title 2' or param_name == 'Drawing Title 3' and param_value != "":
                     param_value = ' ' + param_value
-            #JW
-                    
-            template = re.sub(repl_pattern, str(param_value), template)
+                    #JW
+                template = re.sub(repl_pattern, str(param_value), template)
             template = re.sub(repl_pattern, '', template)
+            
         return template
     
 
