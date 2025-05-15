@@ -385,6 +385,11 @@ class EditNamingFormatsWindow(forms.WPFWindow):
                 template='{proj_number}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Sheet Number}_{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}_{rev_number}.pdf',
                 builtin=True
             ),
+            NamingFormat(
+                name='Superseded Naming Protocol',
+                template='{proj_number}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf',
+                builtin=True
+            ),
         ]
 
     @staticmethod
@@ -1003,8 +1008,9 @@ class PrintSheetsWindow(forms.WPFWindow):
                 return
             if target_sheets:
                 with forms.ProgressBar(step=1, title='Exporting sheets... ' + '{value} of {max_value}', cancellable=True) as pb1:
-                    
                     pbTotal1 = len(target_sheets)
+                    if self.export_dwg.IsChecked:
+                        pbTotal1 = pbTotal1 * 2
                     pbCount1 = 1
                     for sheet in target_sheets:
                         if pb1.cancelled:
@@ -1026,16 +1032,23 @@ class PrintSheetsWindow(forms.WPFWindow):
                                                                 print_filepath):
                                         #print_mgr.SubmitPrint(sheet.revit_sheet)
                                         #JW
+                                        
+
                                         optspdf = expUtils_pdfOpts()
                                         expUtils_exportSheetPdf2(dirPath,sheet.revit_sheet,optspdf,doc,uidoc, sheet.print_filename)
 
+                                        pb1.update_progress(pbCount1, pbTotal1)
+                                        pbCount1 += 1
+                                        
+                                        
 
                                         if self.export_dwg.IsChecked:
                                             optsdwg = expUtils_dwgOpts()
                                             expUtils_exportSheetDwg2(dirPath,sheet.revit_sheet,optsdwg,doc,uidoc, sheet.print_filename)
+                                            pb1.update_progress(pbCount1, pbTotal1)
+                                            pbCount1 += 1
 
-                                        pb1.update_progress(pbCount1, pbTotal1)
-                                        pbCount1 += 1
+                                        
                                         
                                         #JW
                                 else:
@@ -1045,11 +1058,7 @@ class PrintSheetsWindow(forms.WPFWindow):
                             else:
                                 logger.debug('Sheet %s is not printable. Skipping print.',
                                             sheet.number)
-                # Cancel check
-                if pb1.cancelled:
-                    forms.alert("Export process cancelled.", title= "Script cancelled")
-                else:
-                    forms.alert("Export process complete.", title= "Script finished", warn_icon=False)
+
 
 
 
@@ -1465,21 +1474,12 @@ class PrintSheetsWindow(forms.WPFWindow):
         self.namingformat_cb.ItemsSource = editfmt_wnd.naming_formats
         self.namingformat_cb.SelectedItem = editfmt_wnd.selected_naming_format
 
-    #jw
-    def print_by_set(self, sender, args):
-        target_set_sheets = forms.select_sheets(title='Select Sheets', include_placeholder = False, use_selection = True)
-    
-        
-
-    #jw
     def copy_filenames(self, sender, args):
         if self.selected_sheets:
             filenames = [x.print_filename for x in self.selected_sheets]
             script.clipboard_copy('\n'.join(filenames))
 
     def print_sheets(self, sender, args):
-
-        
         if self.sheet_list:
             selected_only = False
             if self.selected_sheets:
@@ -1511,7 +1511,8 @@ class PrintSheetsWindow(forms.WPFWindow):
                         message += ' (out of {} total)'.format(sheet_count)
 
                     if not forms.alert('Are you sure you want to print {} '
-                                       'sheets individually?'.format(message),
+                                       'sheets individually? The process can '
+                                       'not be cancelled.'.format(message),
                                        ok=False, yes=True, no=True):
                         return
             # close window and submit print
@@ -1523,7 +1524,6 @@ class PrintSheetsWindow(forms.WPFWindow):
                     self._print_linked_sheets_in_order(target_sheets)
                 else:
                     self._print_sheets_in_order(target_sheets)
-
 
 
 def cleanup_sheetnumbers(doc):
