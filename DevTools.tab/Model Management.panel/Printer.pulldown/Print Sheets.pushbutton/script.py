@@ -1007,58 +1007,92 @@ class PrintSheetsWindow(forms.WPFWindow):
                     )
                 return
             if target_sheets:
-                with forms.ProgressBar(step=1, title='Exporting sheets... ' + '{value} of {max_value}', cancellable=True) as pb1:
-                    pbTotal1 = len(target_sheets)
-                    if self.export_dwg.IsChecked:
-                        pbTotal1 = pbTotal1 * 2
-                    pbCount1 = 1
-                    for sheet in target_sheets:
-                        if pb1.cancelled:
-                            break
-                        else:
-                            if sheet.printable:
-                                if sheet.print_filename:
-                                    print_filepath = op.join(dirPath + "\\" + sheet.print_filename)
-                                    #print_filepath = print_filepath.replace('.pdf','')
+                if self.export_dwg.IsChecked:
+                    with forms.ProgressBar(step=1, title='Exporting PDF & DWGs... ' + '{value} of {max_value}', cancellable=True) as pb1:
+                        pbTotal1 = len(target_sheets) * 2
+                        pbCount1 = 1
+                        for sheet in target_sheets:
+                            if pb1.cancelled:
+                                break
+                            else:
+                                if sheet.printable:
+                                    if sheet.print_filename:
+                                        print_filepath = op.join(dirPath + "\\" + sheet.print_filename)
+                                        #print_filepath = print_filepath.replace('.pdf','')
 
-                                    print_mgr.PrintToFileName = print_filepath
+                                        print_mgr.PrintToFileName = print_filepath
 
-                                    # set the per-sheet print settings if required
-                                    if per_sheet_psettings:
-                                        print_mgr.PrintSetup.CurrentPrintSetting = \
-                                            sheet.print_settings
+                                        # set the per-sheet print settings if required
+                                        if per_sheet_psettings:
+                                            print_mgr.PrintSetup.CurrentPrintSetting = \
+                                                sheet.print_settings
 
-                                    if self._verify_print_filename(sheet.name,
-                                                                print_filepath):
-                                        #print_mgr.SubmitPrint(sheet.revit_sheet)
-                                        #JW
-                                        
+                                        if self._verify_print_filename(sheet.name,
+                                                                    print_filepath):
+                                            #print_mgr.SubmitPrint(sheet.revit_sheet)
+                                            #JW
+                                            
 
-                                        optspdf = expUtils_pdfOpts()
-                                        expUtils_exportSheetPdf2(dirPath,sheet.revit_sheet,optspdf,doc,uidoc, sheet.print_filename)
+                                            optspdf = expUtils_pdfOpts()
+                                            expUtils_exportSheetPdf2(dirPath,sheet.revit_sheet,optspdf,doc,uidoc, sheet.print_filename)
+                                            pb1.update_progress(pbCount1, pbTotal1)
+                                            pbCount1 += 1
 
-                                        pb1.update_progress(pbCount1, pbTotal1)
-                                        pbCount1 += 1
-                                        
-                                        
-
-                                        if self.export_dwg.IsChecked:
                                             optsdwg = expUtils_dwgOpts()
                                             expUtils_exportSheetDwg2(dirPath,sheet.revit_sheet,optsdwg,doc,uidoc, sheet.print_filename)
                                             pb1.update_progress(pbCount1, pbTotal1)
                                             pbCount1 += 1
-
-                                        
-                                        
-                                        #JW
-                                else:
-                                    logger.debug(
-                                        'Sheet %s does not have a valid file name.',
-                                        sheet.number)
-                            else:
-                                logger.debug('Sheet %s is not printable. Skipping print.',
+                                            
+                                            #JW
+                                    else:
+                                        logger.debug(
+                                            'Sheet %s does not have a valid file name.',
                                             sheet.number)
+                                else:
+                                    logger.debug('Sheet %s is not printable. Skipping print.',
+                                                sheet.number)
+                else :
+                    with forms.ProgressBar(step=1, title='Exporting PDFs... ' + '{value} of {max_value}', cancellable=True) as pb1:
+                        
+                        pbTotal1 = len(target_sheets)
+                        pbCount1 = 1
+                        for sheet in target_sheets:
+                            if pb1.cancelled:
+                                break
+                            else:
+                                if sheet.printable:
+                                    if sheet.print_filename:
+                                        print_filepath = op.join(dirPath + "\\" + sheet.print_filename)
+                                        #print_filepath = print_filepath.replace('.pdf','')
 
+                                        print_mgr.PrintToFileName = print_filepath
+
+                                        # set the per-sheet print settings if required
+                                        if per_sheet_psettings:
+                                            print_mgr.PrintSetup.CurrentPrintSetting = \
+                                                sheet.print_settings
+
+                                        if self._verify_print_filename(sheet.name,
+                                                                    print_filepath):
+                                            #print_mgr.SubmitPrint(sheet.revit_sheet)
+                                            #JW
+                                            
+
+                                            optspdf = expUtils_pdfOpts()
+                                            expUtils_exportSheetPdf2(dirPath,sheet.revit_sheet,optspdf,doc,uidoc, sheet.print_filename)
+
+                                            pb1.update_progress(pbCount1, pbTotal1)
+                                            pbCount1 += 1
+
+                                            
+                                            #JW
+                                    else:
+                                        logger.debug(
+                                            'Sheet %s does not have a valid file name.',
+                                            sheet.number)
+                                else:
+                                    logger.debug('Sheet %s is not printable. Skipping print.',
+                                                sheet.number)
 
 
 
