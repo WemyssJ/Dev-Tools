@@ -1003,6 +1003,7 @@ class PrintSheetsWindow(forms.WPFWindow):
                 return
             if target_sheets:
                 with forms.ProgressBar(step=1, title='Exporting sheets... ' + '{value} of {max_value}', cancellable=True) as pb1:
+                    
                     pbTotal1 = len(target_sheets)
                     pbCount1 = 1
                     for sheet in target_sheets:
@@ -1044,7 +1045,11 @@ class PrintSheetsWindow(forms.WPFWindow):
                             else:
                                 logger.debug('Sheet %s is not printable. Skipping print.',
                                             sheet.number)
-
+                # Cancel check
+                if pb1.cancelled:
+                    forms.alert("Export process cancelled.", title= "Script cancelled")
+                else:
+                    forms.alert("Export process complete.", title= "Script finished", warn_icon=False)
 
 
 
@@ -1460,12 +1465,21 @@ class PrintSheetsWindow(forms.WPFWindow):
         self.namingformat_cb.ItemsSource = editfmt_wnd.naming_formats
         self.namingformat_cb.SelectedItem = editfmt_wnd.selected_naming_format
 
+    #jw
+    def print_by_set(self, sender, args):
+        target_set_sheets = forms.select_sheets(title='Select Sheets', include_placeholder = False, use_selection = True)
+    
+        
+
+    #jw
     def copy_filenames(self, sender, args):
         if self.selected_sheets:
             filenames = [x.print_filename for x in self.selected_sheets]
             script.clipboard_copy('\n'.join(filenames))
 
     def print_sheets(self, sender, args):
+
+        
         if self.sheet_list:
             selected_only = False
             if self.selected_sheets:
@@ -1497,8 +1511,7 @@ class PrintSheetsWindow(forms.WPFWindow):
                         message += ' (out of {} total)'.format(sheet_count)
 
                     if not forms.alert('Are you sure you want to print {} '
-                                       'sheets individually? The process can '
-                                       'not be cancelled.'.format(message),
+                                       'sheets individually?'.format(message),
                                        ok=False, yes=True, no=True):
                         return
             # close window and submit print
@@ -1510,6 +1523,7 @@ class PrintSheetsWindow(forms.WPFWindow):
                     self._print_linked_sheets_in_order(target_sheets)
                 else:
                     self._print_sheets_in_order(target_sheets)
+
 
 
 def cleanup_sheetnumbers(doc):
