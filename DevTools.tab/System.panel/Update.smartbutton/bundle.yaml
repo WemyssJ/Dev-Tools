@@ -55,8 +55,10 @@ tooltip:
       - v1.1.14: Element renumbering/Coord added to WIP.
       - v1.1.15: 'Internal Comments' is now a contains search.
       - v1.1.16: Print: Crop Region now hidden, DWG optional
+      - v1.1.17: Print: Drawing Title 2 & 3 and delete button fail safe fixed.
   
       Current Version:
-      - v1.1.17: Print: Drawing Title 2 & 3 and delete button fail safe fixed.
+      - v1.1.18: Rebar Tools added.
+
       
 context: zero-doc
