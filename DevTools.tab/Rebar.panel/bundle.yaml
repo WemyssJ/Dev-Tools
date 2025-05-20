@@ -2,6 +2,8 @@ layout:
   - Selection
   - Visibility
   - -----
+  - Query
+  - -----
   - Guides
 background:
   panel: 'fffcfb'
