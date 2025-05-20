@@ -1,5 +1,5 @@
 __doc__ = "Select all same number rebars based on selected rebar object."
-__title__ = "Same Rebar Number"
+__title__ = "Same RN"
 __author__ = "MWolinski"
 import Autodesk
 from Autodesk.Revit import DB
