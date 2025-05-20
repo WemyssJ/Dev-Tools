@@ -1,0 +1,10 @@
+layout:
+  - Selection
+  - Visibility
+  - -----
+  - Guides
+background:
+  panel: 'fffcfb'
+  title: 'fff8f3'
+  slideout: 
+
