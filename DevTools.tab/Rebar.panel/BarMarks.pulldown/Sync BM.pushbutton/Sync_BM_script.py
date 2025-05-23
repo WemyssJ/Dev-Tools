@@ -1,4 +1,9 @@
+__doc__ = "Syncronise Rebar Number to Schedule Mark - to use for FREEZING rebar after issue so that BM's can't change automatically"
+__title__ = "Sync BM"
+__author__ = "Joe Wemyss"
+
 from Autodesk.Revit.DB import Transaction, BuiltInParameter
+
 
 doc = __revit__.ActiveUIDocument.Document
 uidoc = __revit__.ActiveUIDocument
