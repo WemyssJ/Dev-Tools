@@ -1,5 +1,5 @@
 __doc__ = "Select all rebars with the same partition as the selected rebar(s) and move them to a TEMP partition, then restore them by Rebar Number."
-__title__ = "Swap RN"
+__title__ = "Swap BM"
 __author__ = "Joe Wemyss"
 
 import Autodesk
