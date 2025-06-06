@@ -1,3 +1,5 @@
+highlight: new
+
 layout:
   - Flip Grid Ends
   - Toggle Grids
@@ -11,6 +13,5 @@ layout:
   - Pick Model Elements
   - -----
   - Convert line styles
-  - Shake filled regions
   - -----
   - Unhide Elements in View
