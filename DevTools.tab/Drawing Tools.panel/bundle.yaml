@@ -1,17 +1,15 @@
 layout:
-  - Orient
-  - Foundation Tools
+  - Flip Grid Ends
+  - Toggle Grids
+  - Toggle Levels
   - -----
-  - Text
+  - Dim Grids Automatic
+  - Dim Grids SemiAutomatic
+  - Dim Levels SemiAutomatic
   - -----
-  - 2D Drafting
-  - 3D Modeling
+  - Pick Detail Elements
+  - Pick Model Elements
   - -----
-  - Measurement
-
-
-background:
-  panel: 'fbffff'
-  title: 'f3ffff'
-  slideout: 
-
+  - Convert line styles
+  - -----
+  - Unhide Elements in View
