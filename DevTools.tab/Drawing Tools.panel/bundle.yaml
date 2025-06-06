@@ -1,17 +1,10 @@
 highlight: new
 
 layout:
-  - Flip Grid Ends
-  - Toggle Grids
-  - Toggle Levels
+  - Foundation Tools
   - -----
-  - Dim Grids Automatic
-  - Dim Grids SemiAutomatic
-  - Dim Levels SemiAutomatic
+  - Text
   - -----
-  - Pick Detail Elements
-  - Pick Model Elements
+  - 2D Drafting
+  - 3D Modeling
   - -----
-  - Convert line styles
-  - -----
-  - Unhide Elements in View
