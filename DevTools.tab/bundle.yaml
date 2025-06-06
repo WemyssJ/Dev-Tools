@@ -3,5 +3,5 @@ layout:
   - Quality Assurance
   - Model Management
   - Drawing Tools
-  #- Rebar (temporarily hidden, progressing Rebar tool in C#)
+  - Rebar
   - Other
