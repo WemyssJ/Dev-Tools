@@ -1,57 +1,68 @@
-# import pyrevit libraries
-from pyrevit import script,revit,DB
+#This script uses python and Revit API to find the CAD file of the selected element
+# Using pyrevit libraries
+import clr
+clr.AddReference('RevitAPI')
+clr.AddReference('RevitServices')
+from Autodesk.Revit.DB import *
+from Autodesk.Revit.DB import FilteredElementCollector, ImportInstance
+# import pyrevit forms
+from pyrevit import script
+from pyrevit import forms
+from pyrevit import revit
+from pyrevit import DB
+from pyrevit import HOST_APP
 
-# Get active revit document
-doc = revit.doc
-
-# Get output for later linkifying
+# get the current document
+doc = __revit__.ActiveUIDocument.Document
 output = script.get_output()
 
-# Get all images and their views
-coll_cad = DB.FilteredElementCollector(doc).OfClass(DB.ImportInstance).ToElements()
-typ_names = []
+# collect all the CAD links in the document
+cad_links = FilteredElementCollector(doc).OfClass(ImportInstance).ToElementIds()
 
-# Get CAD Type names
-for c in coll_cad:
-	typ = doc.GetElement(c.GetTypeId())
-	n = DB.Element.Name.__get__(typ)
-	typ_names.append(n)
+modelbased = []
+modelbasednames = []
+detailbaesd = []
+detailbasednames = []
+nonlinked = []
+nonlinkednames = []
 
-set_name = list(set(typ_names))
+for cad_link in cad_links:
+    cadlinkelement = doc.GetElement(cad_link)
+    if cadlinkelement.IsLinked == False:
+        nonlinked.append(cadlinkelement)
+        # get the catrgory name if the link is not linked
+        nonlinkednames.append(cadlinkelement.get_Parameter(BuiltInParameter.IMPORT_SYMBOL_NAME).AsString())
+        pass
+    else:
+        #determine if OwnerViewId is a valid view
+        owner_view = doc.GetElement(cadlinkelement.OwnerViewId)
+        if owner_view == None:
+            modelbased.append(cadlinkelement)
+            modelbasednames.append(cadlinkelement.get_Parameter(BuiltInParameter.IMPORT_SYMBOL_NAME).AsString())
+        else:
+            detailbaesd.append(cadlinkelement)
+            detailbasednames.append(cadlinkelement.get_Parameter(BuiltInParameter.IMPORT_SYMBOL_NAME).AsString())
 
-# Group CAD by their names
-lstId,lstLink,lstView = [],[],[]
+#define HTML style for header text
+output.add_style('header {font-size: 20px; color: #000000;}')
 
-for n in set_name:
-	slstId   = []
-	slstLink = []
-	slstView = []
-	for i,na in zip(coll_cad,typ_names):
-		if na == n:
-			slstId.append(i.Id)
-			if i.IsLinked:
-				slstLink.append("Linked instance: ")
-			else:
-				slstLink.append("Import instance: ")
-			if i.ViewSpecific:
-				slstView.append(i.OwnerViewId)
-			else:
-				slstView.append("")
-	lstId.append(slstId)
-	lstLink.append(slstLink)
-	lstView.append(slstView)
+#display the results
+output.print_md('### Linked Model CADs')
 
-# Report header
-output.print_md("REPORT OF CAD INSTANCES")
-print('\n' + str(len(set_name)) + ' Total CAD types found in model.')
-print('Click on the Id to select an object in Revit.' + '\n\n')
+for modelbased_link in modelbased:
+    modelbased_linkId = modelbased_link.Id
+    print(output.linkify(modelbased_linkId) + modelbased_link.get_Parameter(BuiltInParameter.IMPORT_SYMBOL_NAME).AsString())
 
-# Report contents
-for t,ids,links,views in zip(set_name,lstId, lstLink, lstView):
-	print('\n' + t + ':')
-	for i,l,v in zip(ids,links,views):
-		if v == "":
-			print(l + 'id {}'.format(output.linkify(i)) + " (not view specific).")
-		else:
-			print(l + 'id {}'.format(output.linkify(i)) + " specific to view " + 'id {}'.format(output.linkify(v)))
-	print('\n')
+# add some space and a separator
+output.print_md('---')
+output.print_md('### Linked Detail CADs')
+for detailbased_link in detailbaesd:
+    detailbased_linkId = detailbased_link.Id
+    print(output.linkify(detailbased_linkId) + detailbased_link.get_Parameter(BuiltInParameter.IMPORT_SYMBOL_NAME).AsString())
+# add some space and a separator
+output.print_md('---')
+
+output.print_md('### Non-Linked CADs')
+for nonlinked_link in nonlinked:
+    nonlinked_linkId = nonlinked_link.Id
+    print(output.linkify(nonlinked_linkId) + nonlinked_link.get_Parameter(BuiltInParameter.IMPORT_SYMBOL_NAME).AsString())
