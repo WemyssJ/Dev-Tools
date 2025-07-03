@@ -7,9 +7,14 @@ from pyrevit import script
 
 logger = script.get_logger()
 
+# define a filterfunc to filter out issued revisions
+def filterfunc(rev):
+    return rev.Issued == False
 
 revisions = forms.select_revisions(button_name='Select Revision',
-                                   multiple=True)
+                                   multiple=True,
+                                   filterfunc=filterfunc)
+
 
 logger.debug(revisions)
 
