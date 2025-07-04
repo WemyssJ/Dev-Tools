@@ -1,6 +1,6 @@
 Collection of homemade Revit productivity tools + helpful tools from other pyRevit addins, all combined into one toolbar (with Structural Engineering bias). 
 
-Testing grounds for tools prior to roling out to the entire company.
+Testing grounds for tools prior to roling out to the company.
 
 /////////////
 
