@@ -27,6 +27,17 @@ from pyrevit.coreutils import logger
 from pyrevit import forms
 import core
 
+
+# Toast notify for new updates
+try:
+    if core.update_needed() == True:
+        forms.toaster.send_toast("New update for DevTools extension available: {}".format(core.get_git_version()))
+    else:
+        pass
+except Exception:
+    pass
+
+
 # Create a logger instance for this script
 script_logger = logger.get_logger('switchback_api')
 
