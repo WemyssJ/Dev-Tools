@@ -3,7 +3,6 @@ context:
     - active-sheet
     - active-legend
     - active-schedule
-    - active-3d-view
     - doc-family
 
 title: Find Sheet
