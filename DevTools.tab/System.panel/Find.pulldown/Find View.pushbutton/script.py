@@ -26,21 +26,7 @@ if ownerView is None:
     except:
         pass
 
-# Try sheet view (e.g. if view is on a sheet)
-if ownerView is None and primaryView is None:
-    try:
-        # Get the sheet that contains this view (via Viewport)
-        viewports = DB.FilteredElementCollector(doc).OfClass(DB.Viewport).ToElements()
-        for vp in viewports:
-            if vp.ViewId == curView.Id:
-                sheet = doc.GetElement(vp.SheetId)
-                if sheet:
-                    uidoc.RequestViewChange(sheet)
-                    ownerView = sheet
-                    break
-    except:
-        pass
 
 # Alert if no owner view was found
 if ownerView is None:
-    forms.alert('View has no parent, primary, or sheet view.', title='Script complete', warn_icon=False)
+    forms.alert('View has no parent/primary view.', title='Script complete', warn_icon=False)
