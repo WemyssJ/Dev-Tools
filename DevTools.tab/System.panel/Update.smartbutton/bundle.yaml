@@ -57,9 +57,10 @@ tooltip:
       - v1.1.16: Print: Crop Region now hidden, DWG optional
       - v1.1.17: Print: Drawing Title 2 & 3 and delete button fail safe fixed.
       - v1.1.18: Rebar Tools added.
+      - v1.1.19: Test Button added.
   
       Current Version:
-      - v1.1.19: Test Button added.
+      - v1.1.20: Find/Revision features improved, Test button mirrored to modify tab.
 
       
 context: zero-doc
