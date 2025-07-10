@@ -56,9 +56,12 @@ tooltip:
       - v1.1.15: 'Internal Comments' is now a contains search.
       - v1.1.16: Print: Crop Region now hidden, DWG optional
       - v1.1.17: Print: Drawing Title 2 & 3 and delete button fail safe fixed.
+      - v1.1.18: Rebar Tools added.
+      - v1.1.19: Bug fixes / general improvements
+      - v1.1.20: Making tools safer
   
       Current Version:
-      - v1.1.18: Rebar Tools added.
+      - v1.1.21: Startup improved - legwork for 1 maintainable toolbar
 
       
 context: zero-doc
