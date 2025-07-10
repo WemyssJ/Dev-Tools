@@ -79,9 +79,12 @@ def Hidden_Panel():
 
     ribbon = AdWindows.ComponentManager.Ribbon
     HiddenPanel = "Developer"
+    pyRevitTabName = "pyRevit"  # Change this if your tab has a different title
+
     if not ribbon:
         return
 
+    # Hide "Developer" panel in "DevTools" tab if unauthorized
     for tab in ribbon.Tabs:
         if tab.Title == "DevTools" and tab.IsVisible:
             for panel in tab.Panels:
@@ -94,7 +97,20 @@ def Hidden_Panel():
                     else:
                         if not panel.IsVisible:
                             script_logger.info("Loading {} panel for {}".format(HiddenPanel, revit_username))
-                    return
+            # No return here because we want to continue to check other tabs
+
+    # Hide entire pyRevit.extension tab if unauthorized
+    for tab in ribbon.Tabs:
+        if tab.Title == pyRevitTabName:
+            if revit_username not in authorized_users:
+                if tab.IsVisible:
+                    tab.IsVisible = False
+                    script_logger.info("Hiding pyRevit.extension tab for unauthorized user {}".format(revit_username))
+            else:
+                if not tab.IsVisible:
+                    tab.IsVisible = True
+                    script_logger.info("Showing pyRevit.extension tab for authorized user {}".format(revit_username))
+            return
 
 
 def debug_list_panels_ui():
