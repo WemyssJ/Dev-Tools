@@ -2,6 +2,7 @@ highlight: new
 
 layout:
   - Flip Grid Ends
+  - Flip Level Ends
   - Toggle Grids
   - Toggle Levels
   - -----
