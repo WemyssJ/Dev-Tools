@@ -1,294 +1,138 @@
 # -*- coding: utf-8 -*-
 """
-Checks github for update
+Checks GitHub for update.
 Clones a panel to the Modify tab when a document is opened.
-Creates an API endpoint to select an element by ID in a specific 3D view.
+Shows a popup listing DevTools panels on startup.
+Hides the "Other" panel for unauthorized users.
 """
-
+# --- Imports ---
 import clr
 clr.AddReference('AdWindows')
 import Autodesk.Windows as AdWindows
-
-# Add Windows Forms reference for window focusing
 clr.AddReference('System.Windows.Forms')
 from System.Windows.Forms import SendKeys
 
-from pyrevit import HOST_APP, routes
-from System import EventHandler
-from Autodesk.Revit.DB import (
-    Events, ElementId, Transaction, View3D, ViewFamilyType,
-    FilteredElementCollector, BoundingBoxXYZ,
-    ViewFamily, XYZ
-)
-from Autodesk.Revit.UI import UIDocument
-from System.Collections.Generic import List
+from pyrevit import HOST_APP, forms
 from pyrevit.coreutils import logger
+from System import EventHandler
+from Autodesk.Revit.UI.Events import IdlingEventArgs
+from Autodesk.Revit.DB import Events
 
-from pyrevit import forms
+import os
 import core
 
+# --- Flags ---
+DEBUG_UI = False               # Toggle detailed UI debug output
+already_hooked = False         # Ensure idling is hooked only once
 
-# Toast notify for new updates
+# --- User Info ---
+windows_username = os.getenv('USERNAME')
+revit_username = HOST_APP.username
+
+# --- Logger ---
+script_logger = logger.get_logger('switchback_api')
+
+# --- Check for updates ---
 try:
-    if core.update_needed() == True:
+    if core.update_needed():
         forms.toaster.send_toast("New update for DevTools extension available: {}".format(core.get_git_version()))
-    else:
-        pass
 except Exception:
     pass
 
-
-# Create a logger instance for this script
-script_logger = logger.get_logger('switchback_api')
 
 def find_and_clone_target_panel1():
     ribbon = AdWindows.ComponentManager.Ribbon
     if not ribbon:
         return
-    
-    # Find the Modify tab
+
     target_tab = next((tab for tab in ribbon.Tabs 
                       if tab.Title == "Modify" and tab.IsVisible), None)
-    
     if not target_tab:
         return
-        
-    # Find the source target panel
+
     source_panel = None
     for tab in ribbon.Tabs:
         if not tab.IsVisible:
             continue
         for panel in tab.Panels:
-            if panel.Source and "Test Button" == panel.Source.Title:
+            if panel.Source and panel.Source.Title == "Test Button":
                 source_panel = panel
                 break
         if source_panel:
             break
-            
+
     if not source_panel:
         return
-        
-    # Check if panel already exists in Modify tab
+
     if any(panel.Source and panel.Source.Title == source_panel.Source.Title 
            for panel in target_tab.Panels):
         return
-        
-    # Clone panel to Modify tab
+
     target_tab.Panels.Add(AdWindows.RibbonPanel())
     new_panel = target_tab.Panels[target_tab.Panels.Count - 1]
     new_panel.Source = source_panel.Source.Clone()
     new_panel.IsEnabled = True
 
-def find_and_clone_target_panel2():
+
+def Hidden_Panel():
+    authorized_users = ["joe.wemyss", "james.scrivens", "andrew.owen"]
+
     ribbon = AdWindows.ComponentManager.Ribbon
+    HiddenPanel = "Developer"
     if not ribbon:
         return
-    
-    # Find the Modify tab
-    target_tab = next((tab for tab in ribbon.Tabs 
-                      if tab.Title == "geeWiz" and tab.IsVisible), None)
-    
-    if not target_tab:
-        return
-        
-    # Find the source target panel
-    source_panel = None
-    for tab in ribbon.Tabs:
-        if not tab.IsVisible:
-            continue
-        for panel in tab.Panels:
-            if panel.Source and "System" == panel.Source.Title:
-                source_panel = panel
-                break
-        if source_panel:
-            break
-            
-    if not source_panel:
-        return
-        
-    # Check if panel already exists in Modify tab
-    if any(panel.Source and panel.Source.Title == source_panel.Source.Title 
-           for panel in target_tab.Panels):
-        return
-        
-    # Clone panel to Modify tab
-    target_tab.Panels.Add(AdWindows.RibbonPanel())
-    new_panel = target_tab.Panels[target_tab.Panels.Count - 1]
-    new_panel.Source = source_panel.Source.Clone()
-    new_panel.IsEnabled = True
 
-def find_and_clone_target_panel3():
+    for tab in ribbon.Tabs:
+        if tab.Title == "DevTools" and tab.IsVisible:
+            for panel in tab.Panels:
+                if panel.Source and panel.Source.Title == HiddenPanel:
+                    if revit_username not in authorized_users:
+                        panel.IsVisible = False
+                        panel.IsEnabled = False
+                        script_logger.info("Unloading {} panel for {}".format(HiddenPanel, revit_username))
+                    else:
+                        script_logger.info("Loading {} panel for {}".format(HiddenPanel, revit_username))
+                    return
+
+
+def debug_list_panels_ui():
     ribbon = AdWindows.ComponentManager.Ribbon
     if not ribbon:
+        script_logger.info("Ribbon not found")
         return
-    
-    # Find the Modify tab
-    target_tab = next((tab for tab in ribbon.Tabs 
-                      if tab.Title == "geeWiz" and tab.IsVisible), None)
-    
-    if not target_tab:
-        return
-        
-    # Find the source target panel
-    source_panel = None
+
     for tab in ribbon.Tabs:
-        if not tab.IsVisible:
-            continue
-        for panel in tab.Panels:
-            if panel.Source and "Quality Assurance" == panel.Source.Title:
-                source_panel = panel
-                break
-        if source_panel:
-            break
-            
-    if not source_panel:
-        return
-        
-    # Check if panel already exists in Modify tab
-    if any(panel.Source and panel.Source.Title == source_panel.Source.Title 
-           for panel in target_tab.Panels):
-        return
-        
-    # Clone panel to Modify tab
-    target_tab.Panels.Add(AdWindows.RibbonPanel())
-    new_panel = target_tab.Panels[target_tab.Panels.Count - 1]
-    new_panel.Source = source_panel.Source.Clone()
-    new_panel.IsEnabled = True
-
-def find_and_clone_target_panel4():
-    ribbon = AdWindows.ComponentManager.Ribbon
-    if not ribbon:
-        return
-    
-    # Find the Modify tab
-    target_tab = next((tab for tab in ribbon.Tabs 
-                      if tab.Title == "geeWiz" and tab.IsVisible), None)
-    
-    if not target_tab:
-        return
-        
-    # Find the source target panel
-    source_panel = None
-    for tab in ribbon.Tabs:
-        if not tab.IsVisible:
-            continue
-        for panel in tab.Panels:
-            if panel.Source and "Model Management" == panel.Source.Title:
-                source_panel = panel
-                break
-        if source_panel:
-            break
-            
-    if not source_panel:
-        return
-        
-    # Check if panel already exists in Modify tab
-    if any(panel.Source and panel.Source.Title == source_panel.Source.Title 
-           for panel in target_tab.Panels):
-        return
-        
-    # Clone panel to Modify tab
-    target_tab.Panels.Add(AdWindows.RibbonPanel())
-    new_panel = target_tab.Panels[target_tab.Panels.Count - 1]
-    new_panel.Source = source_panel.Source.Clone()
-    new_panel.IsEnabled = True
-
-def find_and_clone_target_panel5():
-    ribbon = AdWindows.ComponentManager.Ribbon
-    if not ribbon:
-        return
-    
-    # Find the Modify tab
-    target_tab = next((tab for tab in ribbon.Tabs 
-                      if tab.Title == "geeWiz" and tab.IsVisible), None)
-    
-    if not target_tab:
-        return
-        
-    # Find the source target panel
-    source_panel = None
-    for tab in ribbon.Tabs:
-        if not tab.IsVisible:
-            continue
-        for panel in tab.Panels:
-            if panel.Source and "Drawing Tools" == panel.Source.Title:
-                source_panel = panel
-                break
-        if source_panel:
-            break
-            
-    if not source_panel:
-        return
-        
-    # Check if panel already exists in Modify tab
-    if any(panel.Source and panel.Source.Title == source_panel.Source.Title 
-           for panel in target_tab.Panels):
-        return
-        
-    # Clone panel to Modify tab
-    target_tab.Panels.Add(AdWindows.RibbonPanel())
-    new_panel = target_tab.Panels[target_tab.Panels.Count - 1]
-    new_panel.Source = source_panel.Source.Clone()
-    new_panel.IsEnabled = True
-
-def find_and_clone_target_panel6():
-    ribbon = AdWindows.ComponentManager.Ribbon
-    if not ribbon:
-        return
-    
-    # Find the Modify tab
-    target_tab = next((tab for tab in ribbon.Tabs 
-                      if tab.Title == "geeWiz" and tab.IsVisible), None)
-    
-    if not target_tab:
-        return
-        
-    # Find the source target panel
-    source_panel = None
-    for tab in ribbon.Tabs:
-        if not tab.IsVisible:
-            continue
-        for panel in tab.Panels:
-            if panel.Source and "Other" == panel.Source.Title:
-                source_panel = panel
-                break
-        if source_panel:
-            break
-            
-    if not source_panel:
-        return
-        
-    # Check if panel already exists in Modify tab
-    if any(panel.Source and panel.Source.Title == source_panel.Source.Title 
-           for panel in target_tab.Panels):
-        return
-        
-    # Clone panel to Modify tab
-    target_tab.Panels.Add(AdWindows.RibbonPanel())
-    new_panel = target_tab.Panels[target_tab.Panels.Count - 1]
-    new_panel.Source = source_panel.Source.Clone()
-    new_panel.IsEnabled = True
+        if tab.Title == "DevTools":
+            msg = "DevTools tab found, Visible={}\n\nPanels:\n".format(tab.IsVisible)
+            for panel in tab.Panels:
+                title = panel.Source.Title if panel.Source else "<No Source>"
+                msg += " - '{}' Visible={}\n".format(title, panel.IsVisible)
+            script_logger.info(msg)
+            return
+    script_logger.info("DevTools tab not found")
 
 
-# Run on startup / reload
+def on_idling(sender, args):
+    try:
+        if DEBUG_UI:
+            debug_list_panels_ui()  # Show popup with panel info
+        Hidden_Panel()              # Hide the Other panel if needed
+    except Exception as e:
+        script_logger.info("Error during panel debug or hiding:\n{}".format(str(e)))
+    HOST_APP.uiapp.Idling -= on_idling  # Unsubscribe after running once
+
+
+# --- Initial clone on startup ---
 find_and_clone_target_panel1()
-find_and_clone_target_panel2()
-find_and_clone_target_panel3()
-find_and_clone_target_panel4()
-find_and_clone_target_panel5()
-find_and_clone_target_panel6()
 
-# Run on document open on event
+# --- Hook the idling event only once ---
+global already_hooked
+if not already_hooked:
+    HOST_APP.uiapp.Idling += EventHandler[IdlingEventArgs](on_idling)
+    already_hooked = True
+
+# --- Also run clone on document opening ---
 def doc_opening_handler(sender, args):
     find_and_clone_target_panel1()
-    find_and_clone_target_panel2()
-    find_and_clone_target_panel3()
-    find_and_clone_target_panel4()
-    find_and_clone_target_panel5()
-    find_and_clone_target_panel6()
 
-# Register the event handler to load the target panel when a document is opened
-HOST_APP.app.DocumentOpening += \
-    EventHandler[Events.DocumentOpeningEventArgs](
-        doc_opening_handler
-    )
+HOST_APP.app.DocumentOpening += EventHandler[Events.DocumentOpeningEventArgs](doc_opening_handler)
