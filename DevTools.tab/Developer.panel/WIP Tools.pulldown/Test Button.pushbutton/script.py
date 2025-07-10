@@ -14,7 +14,7 @@ if __shiftclick__:
     AppDataList = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData).split("\\")
     AppDataList.pop(-1)
     AppData = "\\".join(AppDataList)
-    button_location = AppData + "\Roaming\pyRevit\Extensions\DevTools.extension\DevTools.tab\Test Button.panel\Test Button.pushbutton"
+    button_location = AppData + "\Roaming\pyRevit\Extensions\DevTools.extension\DevTools.tab\Developer.panel\WIP Tools.pulldown\Test Button.pushbutton"
     print(button_location)
 
     os.startfile(button_location)
