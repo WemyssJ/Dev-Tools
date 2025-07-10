@@ -1,0 +1,11 @@
+layout:
+  - Update
+  - -----
+  - Find
+  - -----
+  - Toggles
+background:
+  panel: 'fffbfb'
+  title: 'fff3f3'
+  slideout: 
+
