@@ -5,6 +5,7 @@ Clones a panel to the Modify tab when a document is opened.
 Shows a popup listing DevTools panels on startup.
 Hides the "Other" panel for unauthorized users.
 """
+
 # --- Imports ---
 import clr
 clr.AddReference('AdWindows')
@@ -23,7 +24,6 @@ import core
 
 # --- Flags ---
 DEBUG_UI = False               # Toggle detailed UI debug output
-already_hooked = False         # Ensure idling is hooked only once
 
 # --- User Info ---
 windows_username = os.getenv('USERNAME')
@@ -40,42 +40,42 @@ except Exception:
     pass
 
 
-def find_and_clone_target_panel1():
-    ribbon = AdWindows.ComponentManager.Ribbon
-    if not ribbon:
-        return
+# def find_and_clone_target_panel1():
+#     ribbon = AdWindows.ComponentManager.Ribbon
+#     if not ribbon:
+#         return
 
-    target_tab = next((tab for tab in ribbon.Tabs 
-                      if tab.Title == "Modify" and tab.IsVisible), None)
-    if not target_tab:
-        return
+#     target_tab = next((tab for tab in ribbon.Tabs 
+#                       if tab.Title == "Modify" and tab.IsVisible), None)
+#     if not target_tab:
+#         return
 
-    source_panel = None
-    for tab in ribbon.Tabs:
-        if not tab.IsVisible:
-            continue
-        for panel in tab.Panels:
-            if panel.Source and panel.Source.Title == "Test Button":
-                source_panel = panel
-                break
-        if source_panel:
-            break
+#     source_panel = None
+#     for tab in ribbon.Tabs:
+#         if not tab.IsVisible:
+#             continue
+#         for panel in tab.Panels:
+#             if panel.Source and panel.Source.Title == "Test Button":
+#                 source_panel = panel
+#                 break
+#         if source_panel:
+#             break
 
-    if not source_panel:
-        return
+#     if not source_panel:
+#         return
 
-    if any(panel.Source and panel.Source.Title == source_panel.Source.Title 
-           for panel in target_tab.Panels):
-        return
+#     if any(panel.Source and panel.Source.Title == source_panel.Source.Title 
+#            for panel in target_tab.Panels):
+#         return
 
-    target_tab.Panels.Add(AdWindows.RibbonPanel())
-    new_panel = target_tab.Panels[target_tab.Panels.Count - 1]
-    new_panel.Source = source_panel.Source.Clone()
-    new_panel.IsEnabled = True
+#     target_tab.Panels.Add(AdWindows.RibbonPanel())
+#     new_panel = target_tab.Panels[target_tab.Panels.Count - 1]
+#     new_panel.Source = source_panel.Source.Clone()
+#     new_panel.IsEnabled = True
 
 
 def Hidden_Panel():
-    authorized_users = ["joe.wemyss", "james.scrivens", "andrew.owen"]
+    authorized_users = ["joewemyss", "jamesscrivens", "andrewowen"]
 
     ribbon = AdWindows.ComponentManager.Ribbon
     HiddenPanel = "Developer"
@@ -87,11 +87,13 @@ def Hidden_Panel():
             for panel in tab.Panels:
                 if panel.Source and panel.Source.Title == HiddenPanel:
                     if revit_username not in authorized_users:
-                        panel.IsVisible = False
-                        panel.IsEnabled = False
-                        script_logger.info("Unloading {} panel for {}".format(HiddenPanel, revit_username))
+                        if panel.IsVisible or panel.IsEnabled:
+                            panel.IsVisible = False
+                            panel.IsEnabled = False
+                            script_logger.info("Unloading {} panel for {}".format(HiddenPanel, revit_username))
                     else:
-                        script_logger.info("Loading {} panel for {}".format(HiddenPanel, revit_username))
+                        if not panel.IsVisible:
+                            script_logger.info("Loading {} panel for {}".format(HiddenPanel, revit_username))
                     return
 
 
@@ -116,23 +118,24 @@ def on_idling(sender, args):
     try:
         if DEBUG_UI:
             debug_list_panels_ui()  # Show popup with panel info
-        Hidden_Panel()              # Hide the Other panel if needed
+        Hidden_Panel()              # Hide the Developer panel if needed
     except Exception as e:
         script_logger.info("Error during panel debug or hiding:\n{}".format(str(e)))
     HOST_APP.uiapp.Idling -= on_idling  # Unsubscribe after running once
 
 
-# --- Initial clone on startup ---
-find_and_clone_target_panel1()
-
-# --- Hook the idling event only once ---
-global already_hooked
-if not already_hooked:
+def safe_hook_idling():
     HOST_APP.uiapp.Idling += EventHandler[IdlingEventArgs](on_idling)
-    already_hooked = True
+
+
+# --- Initial clone on startup ---
+# find_and_clone_target_panel1()
+
+# --- Safe hook to idling event ---
+safe_hook_idling()
 
 # --- Also run clone on document opening ---
-def doc_opening_handler(sender, args):
-    find_and_clone_target_panel1()
+#def doc_opening_handler(sender, args):
+    # find_and_clone_target_panel1()
 
-HOST_APP.app.DocumentOpening += EventHandler[Events.DocumentOpeningEventArgs](doc_opening_handler)
+#HOST_APP.app.DocumentOpening += EventHandler[Events.DocumentOpeningEventArgs](doc_opening_handler)
