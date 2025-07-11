@@ -1,8 +1,0 @@
-engine: 
-  clean: true
-title:
-  en_us: Find OS GridRef Gridlines
-tooltip: 
-  en_us: locate project Gridline Intersections on UK Grid Finder
-authors: >-
-  Joe Wemyss
