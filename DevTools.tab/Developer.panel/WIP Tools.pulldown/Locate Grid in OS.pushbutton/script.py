@@ -75,23 +75,42 @@ def rotate_point(x, y, angle_rad):
     y_rot = x * sin_theta + y * cos_theta
     return x_rot, y_rot
 
-# Get Project Base Point (for origin offset)
-pbp = next((bp for bp in FilteredElementCollector(doc).OfClass(BasePoint) if not bp.IsShared), None)
-if not pbp:
-    print("Project Base Point not found.")
+# Get both Project Base Point and Survey Point
+base_points = list(FilteredElementCollector(doc).OfClass(BasePoint))
+pbp = next((bp for bp in base_points if not bp.IsShared), None)  # Project Base Point
+survey_point = next((bp for bp in base_points if bp.IsShared), None)  # Survey Point
+
+if not pbp or not survey_point:
+    print("Error: Could not find both Project Base Point and Survey Point.")
     script.exit()
 
-ns_raw = get_param_value(pbp, "N/S")
-ew_raw = get_param_value(pbp, "E/W")
+# Get Project Base Point parameters (for real-world coordinates and rotation)
+pbp_ns = get_param_value(pbp, "N/S")
+pbp_ew = get_param_value(pbp, "E/W")
 angle_to_true_north_rad = get_param_value(pbp, "Angle to True North")
 
-if ns_raw is None or ew_raw is None or angle_to_true_north_rad is None:
+if pbp_ns is None or pbp_ew is None or angle_to_true_north_rad is None:
     print("Error: Missing Project Base Point parameters (N/S, E/W, or Angle to True North).")
     script.exit()
 
-# Convert origin to meters
-origin_x_m = feet_to_m(ew_raw)
-origin_y_m = feet_to_m(ns_raw)
+# Get Survey Point position (this is its position in the internal coordinate system)
+survey_position = survey_point.Position
+survey_x_internal = survey_position.X  # feet
+survey_y_internal = survey_position.Y  # feet
+
+# Get Project Base Point position (this is its position in the internal coordinate system)
+pbp_position = pbp.Position
+pbp_x_internal = pbp_position.X  # feet
+pbp_y_internal = pbp_position.Y  # feet
+
+# Calculate the offset between Survey Point and Project Base Point in internal coordinates
+offset_x_feet = survey_x_internal - pbp_x_internal
+offset_y_feet = survey_y_internal - pbp_y_internal
+
+print("Survey Point internal position: X={:.3f}ft, Y={:.3f}ft".format(survey_x_internal, survey_y_internal))
+print("Project Base Point internal position: X={:.3f}ft, Y={:.3f}ft".format(pbp_x_internal, pbp_y_internal))
+print("Offset (Survey - Project) in internal coords: X={:.3f}ft, Y={:.3f}ft".format(offset_x_feet, offset_y_feet))
+print("Project Base Point real-world coords: E={:.3f}m, N={:.3f}m".format(feet_to_m(pbp_ew), feet_to_m(pbp_ns)))
 
 # Gather all grids and extract their curves
 grids = list(FilteredElementCollector(doc).OfClass(Grid))
@@ -113,14 +132,20 @@ print("Found {} intersection points.".format(len(intersections)))
 # Convert to OS Grid Reference format
 gridrefs = []
 for x, y in intersections:
-    # Rotate point from Project North to True North
-    x_rot, y_rot = rotate_point(x, y, -angle_to_true_north_rad)
-
-    e_m = feet_to_m(x_rot)
-    n_m = feet_to_m(y_rot)
-
-    abs_e = origin_x_m + e_m
-    abs_n = origin_y_m + n_m
+    # Convert from feet to meters
+    x_m = feet_to_m(x)
+    y_m = feet_to_m(y)
+    
+    # Rotate point from Project North to True North first
+    x_rot, y_rot = rotate_point(x_m, y_m, -angle_to_true_north_rad)
+    
+    # Add the Survey Point offset to the rotated grid intersection position
+    # The offset needs to be rotated too since it's in the same coordinate system
+    offset_x_rot, offset_y_rot = rotate_point(feet_to_m(offset_x_feet), feet_to_m(offset_y_feet), -angle_to_true_north_rad)
+    
+    # Add Project Base Point real-world coordinates and the rotated offset
+    abs_e = feet_to_m(pbp_ew) + x_rot + offset_x_rot
+    abs_n = feet_to_m(pbp_ns) + y_rot + offset_y_rot
 
     gridref = os_grid_ref(abs_e, abs_n)
     if gridref:
