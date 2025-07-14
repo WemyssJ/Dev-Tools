@@ -1,0 +1,8 @@
+engine: 
+  clean: true
+title:
+  en_us: DetailNumber to ViewName
+tooltip: 
+  en_us: Copy DetailNumber to ViewName for selected viewports
+authors: >-
+  Joe Wemyss

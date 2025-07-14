@@ -7,11 +7,10 @@ uidoc = revit.uidoc
 output = script.get_output()
 output.set_title("Copy View Name to Detail Number (Selected Viewports)")
 
-# Function to remove all non-alphanumeric characters
+# Function to remove all non-alphanumeric characters except allowed symbols
 def sanitize_for_detail_number(view_name):
     # Keep letters, numbers, dashes, underscores, slashes, and dots
     return re.sub(r'[^A-Za-z0-9_\-/.]', '', view_name)
-
 
 # Get selected elements
 selection_ids = uidoc.Selection.GetElementIds()
@@ -54,9 +53,10 @@ with revit.Transaction("Copy View Name to Detail Number (Selected Viewports)"):
 
             detail_param = vp.LookupParameter("Detail Number")
             if detail_param:
+                old_detail_num = detail_param.AsString()
                 detail_param.Set(new_detail_num)
-                output.print_md("✅ Set detail number to `{}` for view `{}` on sheet `{}`".format(
-                    new_detail_num, view.Name, sheet.SheetNumber
+                output.print_md("✅ Set detail number to `{}` from `{}` for view `{}` on sheet `{}`".format(
+                    new_detail_num, old_detail_num, view.Name, sheet.SheetNumber
                 ))
             else:
                 output.print_md("⚠️ Could not find 'Detail Number' parameter on viewport with view `{}`".format(view.Name))
