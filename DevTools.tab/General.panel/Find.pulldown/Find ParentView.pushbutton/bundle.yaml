@@ -6,7 +6,7 @@ context:
     - active-3d-view
     - doc-family
 
-title: Find View
+title: Find ParentView
 
 tooltip: If there is one, takes you to the parent/primary view of the active one.
 
