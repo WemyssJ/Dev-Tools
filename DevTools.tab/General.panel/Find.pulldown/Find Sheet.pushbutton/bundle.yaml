@@ -1,0 +1,11 @@
+context:
+    not_any:
+    - active-sheet
+    - active-legend
+    - active-schedule
+    - active-3d-view
+    - doc-family
+
+title: Find Sheet
+
+tooltip: Takes you to the sheet this view is placed on.

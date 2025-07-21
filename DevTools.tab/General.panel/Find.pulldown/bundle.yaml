@@ -5,5 +5,6 @@ layout:
   - -----
   - DWG
   - -----
-  - Find View
   - Find Sheet
+  - Find View
+  - Find ParentView
