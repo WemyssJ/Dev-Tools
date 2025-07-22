@@ -20,3 +20,5 @@ tooltip:
     -> Run the script
     -> Select settings if necessary
     -> Click on Align Viewports
+
+context: active-sheet 
