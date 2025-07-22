@@ -23,3 +23,5 @@ tooltip:
     die Ansicht verschoben werden soll. Wählen Sie auf dem Plan die/den Ansicht(en) 
     aus und klicken Sie in der Optionsleiste auf den "Fertig stellen" Button. Die 
     zuvor ausgewählten Ansichten werden auf den gewählten Plan verschoben. 
+
+context: active-sheet 
