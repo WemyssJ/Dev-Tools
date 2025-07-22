@@ -4,7 +4,7 @@ title:
     Hide/UnHide
 
 tooltip: 
-  en_us: Toggles visibility of all "S_CDY_2.5_Arial Narrow_Internal Comment" within project
+  en_us: Toggles visibility of all text which has a type name containing "Internal Comment" within the project.
 media: 
   en_us: tooltip.mp4
 authors: >-
