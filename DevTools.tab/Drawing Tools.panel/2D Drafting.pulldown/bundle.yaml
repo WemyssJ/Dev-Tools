@@ -1,17 +1,9 @@
 layout:
   - Flip Grid Ends
   - Flip Level Ends
-  - Toggle Grids
-  - Toggle Levels
   - -----
-  - Dim Grids Automatic
-  - Dim Grids SemiAutomatic
-  - Dim Levels SemiAutomatic
+  - Dim Grids
+  - Dim Levels
   - -----
   - Pick Detail Elements
   - Pick Model Elements
-  - -----
-  - Convert Line Styles
-  - Shake Filled Regions
-  - -----
-  - Unhide Elements in View
