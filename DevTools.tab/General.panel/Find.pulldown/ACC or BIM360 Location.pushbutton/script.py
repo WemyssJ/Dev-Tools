@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 __title__ = 'ACC or BIM360 Location'
-__author__  = 'Tay Othman, AIA'
+__author__  = 'Tay Othman, Joe Wemyss'
 __doc__ = """This script will open the Autodesk Construction Cloud (ACC) website for the current project in the default web browser.
             Author: Tay Othman, AIA """
 
