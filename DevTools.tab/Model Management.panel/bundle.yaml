@@ -1,8 +1,8 @@
 layout:
   - Views & Sheets
+  - -----
   - Revision
   - File Issue
-  - Printer
 
 background:
   panel: 'fefbff'

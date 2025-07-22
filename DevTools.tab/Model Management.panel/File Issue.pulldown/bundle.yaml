@@ -1,1 +1,11 @@
 title: File Issue
+
+layout:
+  - Printer
+  - -----
+  - Strip Model
+  - Export DocReg
+  - -----
+  - Find Sheet
+  - Find View
+  - Find ParentView
