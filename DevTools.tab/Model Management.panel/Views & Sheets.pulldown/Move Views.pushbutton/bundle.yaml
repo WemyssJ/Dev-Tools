@@ -16,7 +16,7 @@ tooltip:
   en_us: >-
     Open the source sheet. Run this script and select destination sheet. Select
     Viewports and push Finish button on the properties bar. The selected views
-    will be MOVED to the destination sheet
+    will be MOVED to the destination sheet. Detail number will be maintained where possible.
   de_de: >-
     Öffnen Sie den Plan auf dem die Ansicht bereits platziert wurde (Quelle). 
     Führen Sie dieses Skript aus und wählen Sie den Plan aus (Ziel) auf den 
@@ -25,5 +25,5 @@ tooltip:
     zuvor ausgewählten Ansichten werden auf den gewählten Plan verschoben. 
 
 context: active-sheet 
-Author: pyRevit
+Author: pyRevit & Joe Wemyss
 
