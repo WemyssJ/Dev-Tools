@@ -60,10 +60,11 @@ tooltip:
       - v1.1.19: Bug fixes / general improvements
       - v1.1.20: Making tools safer
       - v1.1.21: Startup improved - legwork for 1 maintainable toolbar
+      - v1.2beta: System overhaul, final testing before release
   
       Current Version:
-      - v1.2beta: System overhaul, final testing before release
-
+      - v1.2beta2: WIP tools added, access updated
+      
       
 context: zero-doc
 
