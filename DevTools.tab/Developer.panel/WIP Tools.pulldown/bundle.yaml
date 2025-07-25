@@ -3,6 +3,8 @@ highlight: new
 title: WIP Tools
 
 layout:
+- Printer [WIP]
+- -----
 - Export Families
 - SpellChecker [WIP]
 - Internal Comments Hide/UnHide (Py)
