@@ -1,25 +1,3 @@
 highlight: new
 
 title: WIP Tools
-
-layout:
-- Printer [WIP]
-- -----
-- Export Families
-- SpellChecker [WIP]
-- Internal Comments Hide/UnHide (Py)
-- Remove Revision From Sheets
-- Reset Overrides
-- Disable Constraints [NFD]
-- -----
-- DetailNumber to ViewName
-- ViewName to DetailNumber
-- -----
-- Element (Re)numbering
-- Element E+N+Z
-- -----
-- Place at Co-ordinate [WIP]
-- Locate All Grids in OS
-- Locate All Piles in OS [WIP]
-- Locate BP in OS
-- Locate Corner Grids in OS
