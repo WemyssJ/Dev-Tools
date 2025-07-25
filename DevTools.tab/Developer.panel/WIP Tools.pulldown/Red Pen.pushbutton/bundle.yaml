@@ -1,7 +1,9 @@
+highlight: new
+
 title:
   en_us: |-
     Internal Comments
-    Hide/UnHide (Py)
+    Hide/UnHide [WIP]
 
 tooltip: 
   en_us: Toggles visibility of all "S_CDY_2.5_Arial Narrow_Internal Comment" within project
