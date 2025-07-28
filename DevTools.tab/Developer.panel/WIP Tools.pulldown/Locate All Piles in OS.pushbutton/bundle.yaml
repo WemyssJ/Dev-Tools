@@ -1,7 +1,7 @@
 engine: 
   clean: true
 title:
-  en_us: Locate All Piles in OS [WIP]
+  en_us: Locate All Piles in OS
 tooltip: 
   en_us: locate all Piles based off parameters "Co-ord X (E/W)" & "Co-ord Y (N/S)" on UK Grid Finder
 authors: >-

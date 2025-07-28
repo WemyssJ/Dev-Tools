@@ -1,7 +1,7 @@
 highlight: new
 
 title:
-  en_us: Pile E+N+Z [WIP]
+  en_us: Pile E+N+Z (py upgrade)
 tooltip: 
   en_us: Acquire co-ordinates from SURVEY POINT for all STRUCTURAL FOUNDATIONS with the TYPE NAME "Pile". Parameters "Co-ord Y (N/S)", "Co-ord X (E/W)" and "Co-ord Z (Elev)" must be Preloaded.
 authors: >-
