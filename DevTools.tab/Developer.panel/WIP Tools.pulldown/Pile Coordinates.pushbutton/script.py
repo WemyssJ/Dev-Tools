@@ -5,9 +5,6 @@ import math
 doc = revit.doc
 output = script.get_output()
 
-def feet_to_mm(feet):
-    return round(feet * 304.8, 1)  # Convert feet to mm (0.1 mm precision)
-
 def rotate(x, y, angle_rad):
     cos_theta = math.cos(angle_rad)
     sin_theta = math.sin(angle_rad)
@@ -43,7 +40,7 @@ bp_ns = get_param_val(pbp, "N/S")  # Northing offset
 angle_rad = get_param_val(pbp, "Angle to True North")  # rotation angle in radians
 
 # Get survey elevation and positions
-svp_elev_mm = svp.get_Parameter(BuiltInParameter.BASEPOINT_ELEVATION_PARAM).AsDouble()
+svp_elev_ft = svp.get_Parameter(BuiltInParameter.BASEPOINT_ELEVATION_PARAM).AsDouble()
 pbp_pos = pbp.Position
 svp_pos = svp.Position
 
@@ -84,28 +81,28 @@ for pile in foundations:
     # Rotate into true north orientation
     dx_rot, dy_rot = rotate(dx, dy, -angle_rad)
 
-    # Convert to mm for coordinates
-    easting_mm = feet_to_mm(bp_ew + dx_rot)
-    northing_mm = feet_to_mm(bp_ns + dy_rot)
+    # Use raw feet values directly (no feet_to_mm conversion)
+    easting_ft = bp_ew + dx_rot
+    northing_ft = bp_ns + dy_rot
 
     # Elevation relative to Survey Point (in feet)
-    elevation_rel_mm = pt.Z - svp_pos.Z
-    elevation_total_mm = elevation_rel_mm + svp_elev_mm
+    elevation_rel_ft = pt.Z - svp_pos.Z
+    elevation_total_ft = elevation_rel_ft + svp_elev_ft
 
-    # Set custom parameters
+    # Set custom parameters - assuming these parameters accept feet directly
     param_x = pile.LookupParameter("Co-ord X (E/W)")
     param_y = pile.LookupParameter("Co-ord Y (N/S)")
     param_z = pile.LookupParameter("Co-ord Z (Elev)")
 
     if param_x and param_x.StorageType == StorageType.Double:
-        param_x.Set(easting_mm)
+        param_x.Set(easting_ft)
     if param_y and param_y.StorageType == StorageType.Double:
-        param_y.Set(northing_mm)
+        param_y.Set(northing_ft)
     if param_z and param_z.StorageType == StorageType.Double:
-        param_z.Set(elevation_total_mm)  # Keep elevation in mm
+        param_z.Set(elevation_total_ft)  # Elevation in feet
 
     pile_count += 1
 
 t.Commit()
 
-output.print_md("### Set coordinates for **{}** pile foundations.\n- Easting/Northing in **mm**\n- Elevation in **mm** (relative to Survey Point).".format(pile_count))
+output.print_md("### Set coordinates for **{}** pile foundations.\n- Easting/Northing set (relative to Survey Point). \n- Elevation set (relative to Survey Point).".format(pile_count))

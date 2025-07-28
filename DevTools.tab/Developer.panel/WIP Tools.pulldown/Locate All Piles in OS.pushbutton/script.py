@@ -22,8 +22,8 @@ def get_param_value(elem, name):
             return param.AsString()
     return None
 
-def mm_to_m(mm):
-    return mm / 1000.0
+def feet_to_m(feet):
+    return feet / 3.28084  # Convert feet to meters
 
 def os_grid_ref(easting, northing, digits=10):
     # Only allow coordinates in valid OS range
@@ -98,8 +98,9 @@ for f in foundations:
         output.print_md("Skipping element ID {} because coordinate parameters not found or empty".format(f.Id))
         continue
 
-    x_m = mm_to_m(x_val)
-    y_m = mm_to_m(y_val)
+    # Convert feet to meters here
+    x_m = feet_to_m(x_val)
+    y_m = feet_to_m(y_val)
 
     points.append((x_m, y_m))
 
