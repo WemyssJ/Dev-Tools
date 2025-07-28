@@ -6,7 +6,7 @@ doc = revit.doc
 output = script.get_output()
 
 def feet_to_mm(feet):
-    return round(feet * 304.8, 1)  # mm, 0.1 mm precision
+    return round(feet * 304.8, 1)  # Convert feet to mm (0.1 mm precision)
 
 def rotate(x, y, angle_rad):
     cos_theta = math.cos(angle_rad)
@@ -15,23 +15,39 @@ def rotate(x, y, angle_rad):
     y_rot = x * sin_theta + y * cos_theta
     return x_rot, y_rot
 
-def get_param_val(elem, name):
-    p = elem.LookupParameter(name)
-    return p.AsDouble() if p and p.StorageType == StorageType.Double else 0
+def get_param_val(elem, param_name):
+    param = elem.LookupParameter(param_name)
+    if param and param.StorageType == StorageType.Double:
+        return param.AsDouble()
+    return 0.0
 
+# --- Retrieve Base Points ---
 bps = list(FilteredElementCollector(doc).OfClass(BasePoint))
-pbp = next(bp for bp in bps if not bp.IsShared)
-svp = next(bp for bp in bps if bp.IsShared)
 
-bp_ew = get_param_val(pbp, "E/W")  # feet
-bp_ns = get_param_val(pbp, "N/S")  # feet
-angle_rad = get_param_val(pbp, "Angle to True North")  # radians
+# Find Project Base Point and Survey Point
+pbp = None
+svp = None
 
-svp_elev = svp.get_Parameter(BuiltInParameter.BASEPOINT_ELEVATION_PARAM).AsDouble()  # feet
+for bp in bps:
+    if bp.IsShared:
+        svp = bp
+    else:
+        pbp = bp
 
-pbp_internal = pbp.Position
-svp_internal = svp.Position
+if not pbp or not svp:
+    script.exit("Could not find both Project Base Point and Survey Point.")
 
+# Get base point values (in feet and radians)
+bp_ew = get_param_val(pbp, "E/W")  # Easting offset
+bp_ns = get_param_val(pbp, "N/S")  # Northing offset
+angle_rad = get_param_val(pbp, "Angle to True North")  # rotation angle in radians
+
+# Get survey elevation and positions
+svp_elev_mm = svp.get_Parameter(BuiltInParameter.BASEPOINT_ELEVATION_PARAM).AsDouble()
+pbp_pos = pbp.Position
+svp_pos = svp.Position
+
+# --- Begin Transaction ---
 t = Transaction(doc, "Set Pile Coordinates")
 t.Start()
 
@@ -44,9 +60,15 @@ foundations = FilteredElementCollector(doc) \
 
 for pile in foundations:
     type_elem = doc.GetElement(pile.GetTypeId())
-    name = type_elem.get_Parameter(BuiltInParameter.SYMBOL_NAME_PARAM).AsString()
+    if not type_elem:
+        continue
 
-    if "Pile" not in name:
+    family_name_param = type_elem.get_Parameter(BuiltInParameter.SYMBOL_NAME_PARAM)
+    if not family_name_param:
+        continue
+
+    family_name = family_name_param.AsString()
+    if "Pile" not in family_name:
         continue
 
     loc = pile.Location
@@ -55,34 +77,35 @@ for pile in foundations:
 
     pt = loc.Point
 
-    dx = pt.X - pbp_internal.X
-    dy = pt.Y - pbp_internal.Y
+    # Translate to base point origin
+    dx = pt.X - pbp_pos.X
+    dy = pt.Y - pbp_pos.Y
 
+    # Rotate into true north orientation
     dx_rot, dy_rot = rotate(dx, dy, -angle_rad)
 
-    # Easting and Northing in mm
+    # Convert to mm for coordinates
     easting_mm = feet_to_mm(bp_ew + dx_rot)
     northing_mm = feet_to_mm(bp_ns + dy_rot)
 
-    # Elevation relative to Survey Point elevation, in feet
-    elevation_rel_ft = pt.Z - svp_internal.Z  # difference in feet
+    # Elevation relative to Survey Point (in feet)
+    elevation_rel_mm = pt.Z - svp_pos.Z
+    elevation_total_mm = elevation_rel_mm + svp_elev_mm
 
-    # Add Survey Point's elevation (feet)
-    elevation_mm = elevation_rel_ft + svp_elev
-
+    # Set custom parameters
     param_x = pile.LookupParameter("Co-ord X (E/W)")
     param_y = pile.LookupParameter("Co-ord Y (N/S)")
     param_z = pile.LookupParameter("Co-ord Z (Elev)")
 
     if param_x and param_x.StorageType == StorageType.Double:
-        param_x.Set(easting_mm)   # mm assumed
+        param_x.Set(easting_mm)
     if param_y and param_y.StorageType == StorageType.Double:
-        param_y.Set(northing_mm)  # mm assumed
+        param_y.Set(northing_mm)
     if param_z and param_z.StorageType == StorageType.Double:
-        param_z.Set(elevation_mm)  # feet (internal units)
+        param_z.Set(elevation_total_mm)  # Keep elevation in mm
 
     pile_count += 1
 
 t.Commit()
 
-output.print_md("### Set coordinates for {} pile foundations. Easting/Northing in mm, Elevation relative to Survey Point in feet.".format(pile_count))
+output.print_md("### Set coordinates for **{}** pile foundations.\n- Easting/Northing in **mm**\n- Elevation in **mm** (relative to Survey Point).".format(pile_count))
