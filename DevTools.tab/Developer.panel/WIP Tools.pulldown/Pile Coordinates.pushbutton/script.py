@@ -1,6 +1,10 @@
 from Autodesk.Revit.DB import *
 from pyrevit import revit, script
 import math
+import re
+from pyrevit import script
+
+
 
 doc = revit.doc
 output = script.get_output()
@@ -49,6 +53,7 @@ t = Transaction(doc, "Set Pile Coordinates")
 t.Start()
 
 pile_count = 0
+log_data = []
 
 foundations = FilteredElementCollector(doc) \
     .OfCategory(BuiltInCategory.OST_StructuralFoundation) \
@@ -81,7 +86,7 @@ for pile in foundations:
     # Rotate into true north orientation
     dx_rot, dy_rot = rotate(dx, dy, -angle_rad)
 
-    # Use raw feet values directly (no feet_to_mm conversion)
+    # Use raw feet values directly
     easting_ft = bp_ew + dx_rot
     northing_ft = bp_ns + dy_rot
 
@@ -101,8 +106,40 @@ for pile in foundations:
     if param_z and param_z.StorageType == StorageType.Double:
         param_z.Set(elevation_total_ft)  # Elevation in feet
 
+    # Get pile mark
+    mark_param = pile.LookupParameter("Mark")
+    pile_mark = mark_param.AsString() if mark_param and mark_param.HasValue else "N/A"
+
+    # Append log row with both ft and mm
+    log_data.append((
+        pile_mark,
+        round(easting_ft, 3),
+        round(northing_ft, 3),
+        round(elevation_total_ft, 3),
+        "**" + str(round(easting_ft * 304.8)) + "**",
+        "**" + str(round(northing_ft * 304.8)) + "**",
+        "**" + str(round(elevation_total_ft * 304.8)) + "**"
+    ))
+
     pile_count += 1
 
 t.Commit()
 
-output.print_md("### Set coordinates for **{}** pile foundations.\n- Easting/Northing set (relative to Survey Point). \n- Elevation set (relative to Survey Point).".format(pile_count))
+# Natural sort: by prefix and then numeric portion of mark (e.g., P1, P2, P10)
+def sort_key(item):
+    mark = item[0]
+    match = re.search(r'(\d+)', mark)
+    return (re.sub(r'\d+', '', mark), int(match.group(1)) if match else 0)
+
+log_data.sort(key=sort_key)
+
+# Output table of coordinates
+output.print_table(
+    table_data=log_data,
+    title="Pile Coordinates Log",
+    columns=[
+        "Pile Mark",
+        "Internal X (ft)", "Internal Y (ft)", "Internal Z (ft)",
+        "Co-ord X (E/W) (mm)", "Co-ord Y (N/S) (mm)", "Co-ord Z (Elev) (mm)"
+    ]
+)
