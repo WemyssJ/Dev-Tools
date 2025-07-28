@@ -27,7 +27,13 @@ IGNORE_UPPERCASE = True
 
 CUSTOM_IGNORE = set([
     "resourced", "RAMS", "WPP", "CDM", "PPE", "COSHH",
-    "BIM", "QA", "HSE", "HVAC", "FFE", "M&E"
+    "BIM", "QA", "HSE", "HVAC", "FFE", "M&E", "tof",
+    "bof", "toc", "tow", "ffl", "ssl", "ga", "ga's",
+    "dpc", "dpm", "debonded", "craddys", "h6", "h8",
+    "h10", "h12", "h16", "h20", "h25", "h32", "h40",
+    "blockwork", "a393", "a252", "a193", "a142", "b1131",
+    "b785", "b503", "b385", "b283", "c785", "c636", "c503",
+    "c385", "c283", "d98", "d49"
 ])
 
 COMMON_REVIT_WORDS = set([
@@ -42,7 +48,7 @@ def clean_word(word):
     return re.sub(r"[^\w']", '', word).lower()
 
 def looks_like_dimension(word):
-    return re.match(r'^\d+([xX*/]\d+)?(mm|cm|m)?$', word) or word.startswith('Ø')
+    return re.match(r'^\d+([xX*/]\d+)?(mm|cm|m|nmm|cc)?$', word) or word.startswith('Ø')
 
 def is_false_positive(word):
     if not word:
