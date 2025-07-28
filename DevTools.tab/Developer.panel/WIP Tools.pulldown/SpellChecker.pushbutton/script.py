@@ -33,7 +33,10 @@ CUSTOM_IGNORE = set([
     "h10", "h12", "h16", "h20", "h25", "h32", "h40",
     "blockwork", "a393", "a252", "a193", "a142", "b1131",
     "b785", "b503", "b385", "b283", "c785", "c636", "c503",
-    "c385", "c283", "d98", "d49"
+    "c385", "c283", "d98", "d49", "nsss", "s275", "s355", "uno",
+    "thk", "b500a", "b500b", "b500c", "kingspan", "multibeam", "tbc",
+    "citb", "svp", "nhbc", "windpost", "csunk", "ubar", "lbar", "c/c's",
+    "bjr", "st1", "rt2", "er1", "naylor", "baseplates", "fosorc", "insitu"
 ])
 
 COMMON_REVIT_WORDS = set([
@@ -48,7 +51,7 @@ def clean_word(word):
     return re.sub(r"[^\w']", '', word).lower()
 
 def looks_like_dimension(word):
-    return re.match(r'^\d+([xX*/]\d+)?(mm|cm|m|nmm|cc)?$', word) or word.startswith('Ø')
+    return re.match(r'^\d+([xX*/]\d+)?(mm|cm|m|nmm|cc|knm2|sq|kg|knm|no|kn|kgm|hrs)?$', word) or word.startswith('Ø')
 
 def is_false_positive(word):
     if not word:
