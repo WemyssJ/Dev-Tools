@@ -1,87 +1,119 @@
 from pyrevit import script
 from pyrevit.revit import doc
-from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory, BuiltInParameter
+from Autodesk.Revit.DB import BasePoint, FilteredElementCollector
 import webbrowser
 import math
 
 output = script.get_output()
 
-def os_grid_ref(easting, northing, digits=10):
-    if not (0 <= easting < 700000 and 0 <= northing < 1300000):
-        return ""
+def feet_to_m(feet):
+    return feet * 0.3048
 
-    grid_letters = "ABCDEFGHJKLMNOPQRSTUVWXYZ"
-    e100km = int(easting) // 100000
-    n100km = int(northing) // 100000
-
-    l1 = (19 - n100km) - (19 - n100km) % 5 + int((e100km + 10) / 5)
-    l2 = (19 - n100km) * 5 % 25 + e100km % 5
-
-    if l1 < 0 or l1 >= len(grid_letters) or l2 < 0 or l2 >= len(grid_letters):
-        return ""
-
-    letters = grid_letters[l1] + grid_letters[l2]
-    e_remainder = int(round(easting)) % 100000
-    n_remainder = int(round(northing)) % 100000
-    digits_per_coord = digits // 2
-    e_str = str(e_remainder).zfill(5)[:digits_per_coord]
-    n_str = str(n_remainder).zfill(5)[:digits_per_coord]
-
-    return "{}{}{}".format(letters, e_str, n_str)
+def rad_to_deg(radians):
+    return round(radians * (180.0 / math.pi), 3)
 
 def get_param_value(elem, name):
     param = elem.LookupParameter(name)
     if param:
-        if param.StorageType == 1:  # double
-            return param.AsDouble()
-        elif param.StorageType == 0:  # integer
-            return param.AsInteger()
-        elif param.StorageType == 2:  # string
-            return param.AsString()
+        return param.AsDouble()
     return None
 
-# Conversion mm to meters
-def mm_to_m(mm):
-    return mm / 1000.0
+def os_grid_ref(easting, northing, digits=10):
+    print("DEBUG: Input Easting: {}, Northing: {}".format(easting, northing))
 
-# Collect all structural foundation instances
-foundations = FilteredElementCollector(doc) \
-    .OfCategory(BuiltInCategory.OST_StructuralFoundation) \
-    .WhereElementIsNotElementType() \
-    .ToElements()
+    if not (0 <= easting < 700000 and 0 <= northing < 1300000):
+        print("DEBUG: Input out of OS grid bounds")
+        return ""
 
-points = []
+    # The grid letters exclude 'I' - this is the correct 25-letter alphabet for OS grid
+    grid_letters = "ABCDEFGHJKLMNOPQRSTUVWXYZ"
 
-for f in foundations:
-    x_mm = get_param_value(f, "Co-ord X (E/W)")
-    y_mm = get_param_value(f, "Co-ord Y (N/S)")
+    # Get the 100km-grid indices
+    e100km = int(easting) // 100000
+    n100km = int(northing) // 100000
+    print("DEBUG: 100km grid indices -> e100k: {}, n100k: {}".format(e100km, n100km))
 
-    if x_mm is None or y_mm is None:
-        output.print_md(f"Skipping element ID {f.Id} because coordinate parameters not found")
-        continue
+    # Official OS Grid Reference letter calculation from Movable Type source
+    # translate those into numeric equivalents of the grid letters
+    l1 = (19 - n100km) - (19 - n100km) % 5 + int((e100km + 10) / 5)
+    l2 = (19 - n100km) * 5 % 25 + e100km % 5
+    
+    print("DEBUG: Letter indices -> l1: {}, l2: {}".format(l1, l2))
 
-    x_m = mm_to_m(x_mm)
-    y_m = mm_to_m(y_mm)
+    if l1 < 0 or l1 >= len(grid_letters) or l2 < 0 or l2 >= len(grid_letters):
+        print("DEBUG: Letter indices out of range")
+        return ""
 
-    # Add to list for OS Grid conversion
-    points.append((x_m, y_m))
+    letters = grid_letters[l1] + grid_letters[l2]
+    print("DEBUG: Grid letters: {}".format(letters))
 
-if not points:
-    output.print_md("No valid coordinates found on Structural Foundations.")
-    script.exit()
+    e_remainder = int(round(easting)) % 100000
+    n_remainder = int(round(northing)) % 100000
+    print("DEBUG: Easting remainder: {}, Northing remainder: {}".format(e_remainder, n_remainder))
 
-# Convert points to OS Grid references
-gridrefs = []
-for e, n in points:
-    gridref = os_grid_ref(e, n)
-    if gridref:
-        entry = "{}|{:.4f}_s__c__s_{:.4f}|1".format(gridref, e, n)
-        gridrefs.append(entry)
+    digits_per_coord = digits // 2
+    e_str = str(e_remainder).zfill(5)[:digits_per_coord]
+    n_str = str(n_remainder).zfill(5)[:digits_per_coord]
+    print("DEBUG: Numeric parts -> e_str: {}, n_str: {}".format(e_str, n_str))
 
-if not gridrefs:
-    output.print_md("No valid OS grid references generated.")
-    script.exit()
+    result = "{}{}{}".format(letters, e_str, n_str)
+    print("DEBUG: Final OS Grid Reference: {}".format(result))
 
-url = "https://gridreferencefinder.com/#gr=" + ",".join(gridrefs)
-output.print_md(f"Opening browser with {len(gridrefs)} points...")
-webbrowser.open(url)
+    return result
+
+
+
+# Get Project Base Point
+pbp = None
+for bp in FilteredElementCollector(doc).OfClass(BasePoint):
+    if not bp.IsShared:
+        pbp = bp
+        break
+
+if not pbp:
+    print("Project Base Point not found.")
+else:
+    ns_raw = get_param_value(pbp, "N/S")
+    ew_raw = get_param_value(pbp, "E/W")
+    elev_raw = get_param_value(pbp, "Elev")
+    angle = get_param_value(pbp, "Angle to True North")
+
+    print("\nRaw Revit parameters (internal units, feet):")
+    print("N/S raw: {}".format(ns_raw))
+    print("E/W raw: {}".format(ew_raw))
+    print("Elev raw: {}".format(elev_raw))
+
+    if ns_raw is None or ew_raw is None:
+        print("\nError: N/S or E/W parameter missing.")
+    else:
+        if ns_raw > 3000000:
+            print("\nN/S raw seems too large, scaling down by factor 10.")
+            ns_raw = ns_raw / 10
+
+        ns_m = feet_to_m(ns_raw)
+        ew_m = feet_to_m(ew_raw)
+        elev_m = feet_to_m(elev_raw) if elev_raw is not None else None
+
+        print("\nConverted coordinates (meters):")
+        print("N/S: {:.5f} m".format(ns_m))
+        print("E/W: {:.5f} m".format(ew_m))
+
+        grid_ref = os_grid_ref(ew_m, ns_m, digits=10)
+
+        if grid_ref:
+            url = "https://gridreferencefinder.com/#gr={}|{:.4f}_s__c__s_{:.5f}|1".format(grid_ref, ew_m, ns_m)
+            print("\nOS Grid Reference: {}".format(grid_ref))
+            print("\nOpening in browser:\n" + url)
+            webbrowser.open(url)
+        else:
+            print("\nCould not calculate OS Grid Reference from coordinates.")
+
+    if elev_m is not None:
+        print("\nElevation: {:.3f} m".format(elev_m))
+    else:
+        print("\nElevation parameter missing.")
+
+    if angle is not None:
+        print("Angle to True North: {} deg".format(rad_to_deg(angle)))
+    else:
+        print("Angle to True North: N/A")
