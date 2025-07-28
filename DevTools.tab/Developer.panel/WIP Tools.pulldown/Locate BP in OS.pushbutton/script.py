@@ -62,7 +62,6 @@ def os_grid_ref(easting, northing, digits=10):
     return result
 
 
-
 # Get Project Base Point
 pbp = None
 for bp in FilteredElementCollector(doc).OfClass(BasePoint):
@@ -86,10 +85,6 @@ else:
     if ns_raw is None or ew_raw is None:
         print("\nError: N/S or E/W parameter missing.")
     else:
-        if ns_raw > 3000000:
-            print("\nN/S raw seems too large, scaling down by factor 10.")
-            ns_raw = ns_raw / 10
-
         ns_m = feet_to_m(ns_raw)
         ew_m = feet_to_m(ew_raw)
         elev_m = feet_to_m(elev_raw) if elev_raw is not None else None
