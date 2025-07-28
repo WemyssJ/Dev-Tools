@@ -68,7 +68,7 @@ for pile in foundations:
     elevation_rel_ft = pt.Z - svp_internal.Z  # difference in feet
 
     # Add Survey Point's elevation (feet)
-    elevation_ft = elevation_rel_ft + svp_elev
+    elevation_mm = elevation_rel_ft + svp_elev
 
     param_x = pile.LookupParameter("Co-ord X (E/W)")
     param_y = pile.LookupParameter("Co-ord Y (N/S)")
@@ -79,7 +79,7 @@ for pile in foundations:
     if param_y and param_y.StorageType == StorageType.Double:
         param_y.Set(northing_mm)  # mm assumed
     if param_z and param_z.StorageType == StorageType.Double:
-        param_z.Set(elevation_ft)  # feet (internal units)
+        param_z.Set(elevation_mm)  # feet (internal units)
 
     pile_count += 1
 
