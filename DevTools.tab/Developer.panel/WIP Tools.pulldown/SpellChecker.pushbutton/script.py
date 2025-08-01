@@ -4,7 +4,7 @@ __author__ = 'Joe Wemyss'
 __doc__ = 'Spell checks all TextNotes in the project with filters for abbreviations and dimensions.'
 
 from pyrevit import revit, script, forms
-from Autodesk.Revit.DB import FilteredElementCollector, TextNote
+from Autodesk.Revit.DB import FilteredElementCollector, TextNote, Transaction
 import os
 import re
 
@@ -51,7 +51,6 @@ def clean_word(word):
     return re.sub(r"[^\w']", '', word).lower()
 
 def split_and_clean(word):
-    # Split on common separators and clean each part
     parts = re.split(r'[\/\-\&\+\_:]', word)
     return [clean_word(part) for part in parts if part]
 
@@ -72,6 +71,16 @@ def is_false_positive(word):
     if looks_like_dimension(word):
         return True
     return False
+
+def highlight_misspelled(word, text):
+    pattern = r'\b({})\b'.format(re.escape(word))
+    return re.sub(pattern, r'>>\1<<', text, count=1, flags=re.IGNORECASE)
+
+# --- Ask user if they want to correct mistakes interactively ---
+enable_corrections = forms.alert(
+    "Would you like to correct spelling mistakes interactively?",
+    options=["Yes", "No"]
+) == "Yes"
 
 # --- Collect TextNotes ---
 textnotes = FilteredElementCollector(doc).OfClass(TextNote).ToElements()
@@ -103,14 +112,35 @@ with forms.ProgressBar(step=1,
                     misspelled_words.add(cleaned)
 
         if misspelled_words:
-            mistakes.extend([(w, tn.Text, tn, tn.OwnerViewId) for w in misspelled_words])
+            original_text = tn.Text
+            updated_text = original_text
+
+            if enable_corrections:
+                for misspelled in sorted(misspelled_words):
+                    context_preview = highlight_misspelled(misspelled, updated_text)
+                    prompt = (
+                        "Misspelled word: '{}'\n\n"
+                        "Context:\n{}\n\n"
+                        "Enter correction (leave blank to ignore):"
+                    ).format(misspelled, context_preview)
+                    correction = forms.ask_for_string(prompt=prompt, default="")
+                    if correction and correction != misspelled:
+                        updated_text = re.sub(r'\b{}\b'.format(re.escape(misspelled)), correction, updated_text)
+
+                if updated_text != original_text:
+                    with Transaction(doc, "Correct Spelling in TextNote"):
+                        tn.Text = updated_text
+
+            # Log output
+            mistakes.extend([(w, original_text, tn, tn.OwnerViewId) for w in misspelled_words])
             view = doc.GetElement(tn.OwnerViewId)
             el_id = output.linkify(tn.Id)
             view_id_str = output.linkify(tn.OwnerViewId)
-            # Format all misspelled words bold + underlined, joined by commas
             highlighted_words = ", ".join("**<u>{}</u>**".format(w) for w in sorted(misspelled_words))
             output.print_md("### ❌ Spelling Mistakes: {}".format(highlighted_words))
-            output.print_md("- 📝 Context: `{}`".format(tn.Text))
+            output.print_md("- 📝 Original: `{}`".format(original_text))
+            if updated_text != original_text:
+                output.print_md("- ✅ Corrected: `{}`".format(updated_text))
             output.print_md("- 📍 In view: **{}** (id: {})".format(view.Name if view else "Unknown", view_id_str))
             output.print_md("- 🔗 Element ID: {}".format(el_id))
             output.print_md("---")
