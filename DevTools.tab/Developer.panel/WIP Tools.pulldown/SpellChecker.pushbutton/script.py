@@ -50,6 +50,11 @@ COMMON_REVIT_WORDS = set([
 def clean_word(word):
     return re.sub(r"[^\w']", '', word).lower()
 
+def split_and_clean(word):
+    # Split on common separators and clean each part
+    parts = re.split(r'[\/\-\&\+\_:]', word)
+    return [clean_word(part) for part in parts if part]
+
 def looks_like_dimension(word):
     return re.match(r'^\d+([xX*/]\d+)?(mm|cm|m|nmm|cc|knm2|sq|kg|knm|no|kn|kgm|hrs)?$', word) or word.startswith('Ø')
 
@@ -88,12 +93,14 @@ with forms.ProgressBar(step=1,
 
         words = tn.Text.split()
         misspelled_words = set()
+
         for word in words:
-            cleaned = clean_word(word)
-            if is_false_positive(cleaned):
-                continue
-            if cleaned not in ENGLISH_WORDS:
-                misspelled_words.add(cleaned)
+            subwords = split_and_clean(word)
+            for cleaned in subwords:
+                if is_false_positive(cleaned):
+                    continue
+                if cleaned not in ENGLISH_WORDS:
+                    misspelled_words.add(cleaned)
 
         if misspelled_words:
             mistakes.extend([(w, tn.Text, tn, tn.OwnerViewId) for w in misspelled_words])
