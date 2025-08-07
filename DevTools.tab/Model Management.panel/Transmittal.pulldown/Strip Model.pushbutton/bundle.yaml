@@ -1,3 +1,9 @@
 tooltip: |
-  Model Stripper V2 (faster via code). Next: Retain RevSchedule and purge final 3 styles.
+ Strips model in preperation for issue. Select view/sheets to keep (ie, Coversheet & 3D Coversheet).
+ 
+ Known Bugs:
+ 1. Cover Sheet Title Block needs to be cut and pasted to fix disappearing Rev Schedule.
+ 2. Model needs to be manually purged at end of cycle.
+ 
 Author: Joe Wemyss & James Scrivens
+
