@@ -2,26 +2,10 @@
 __title__ = "Sheets:Find and Replace"  # Name of the button displayed in Revit
 __author__ = "Erik Frits"
 __version__ = 'Version: 1.1'
-__doc__ = """Version: 1.1
-Date    = 28.07.2020
-_____________________________________________________________________
-Description:
-
-Rename multiple sheets at once with Find/Replace/Suffix/Prefix logic.
+__doc__ = """Rename multiple sheets at once with Find/Replace/Suffix/Prefix logic.
 You can select sheets in Project Browser or if nothing selected
 you will get a menu to select your sheets.
-_____________________________________________________________________
-How-to:
 
--> Select sheets in ProjectBrowser (optional)
--> Click the button
--> Set your criterias
--> Rename
-_____________________________________________________________________
-Last update:
-- [15.12.2022] - 1.1 RELEASE
-- [28.07.2020] - 1.0 RELEASE
-_____________________________________________________________________
 Author: Erik Frits"""
 
 # ╦╔╦╗╔═╗╔═╗╦═╗╔╦╗╔═╗
