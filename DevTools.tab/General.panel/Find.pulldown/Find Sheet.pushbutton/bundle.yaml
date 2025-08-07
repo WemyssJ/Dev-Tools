@@ -8,5 +8,5 @@ context:
 
 title: Find Sheet
 
-tooltip: Takes you to the sheet this view is placed on.
+tooltip: From a view, takes you to the sheet this view is on.
 Author: Gavin Crump
