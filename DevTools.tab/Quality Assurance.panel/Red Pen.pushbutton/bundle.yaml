@@ -1,10 +1,14 @@
+highlight: updated
+
 title:
   en_us: |-
     Internal Comments
     Hide/UnHide
 
 tooltip: 
-  en_us: Toggles visibility of all text which has a type name containing "Internal Comment" within the project.
+  en_us: |- 
+    Toggles visibility of all text which has a type name containing "Internal Comment" within the project.
+    Updated Upgraded from Dynamo to Python to greatly improve speed.
 media: 
   en_us: tooltip.mp4
 authors: >-
