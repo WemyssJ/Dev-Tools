@@ -61,43 +61,48 @@ def set_elements_visibility(text_elements, views, visible):
                 view.HideElements(List[ElementId]([elem.Id]))
 
 def main():
-    output = script.get_output()
-    output.print_md("# Toggle Text Visibility Script (Synced)")
-    output.print_md("---")
+    # output = script.get_output()
+    # output.print_md("# Toggle Internal Comment Visibility")
+    # output.print_md("---")
 
     # Get all text elements with 'Internal Comment' in their TextNoteType
     text_elements = get_text_elements_with_internal_comment_type()
-    output.print_md("Found **{0}** text elements with 'Internal Comment' TextNoteType".format(len(text_elements)))
+    # output.print_md("Found **{0}** text elements with 'Internal Comment' TextNoteType".format(len(text_elements)))
 
     if not text_elements:
-        forms.alert("No matching text elements found in the document.", exitscript=True)
+        forms.alert("No matching text elements found in the document.", exitscript=False)
 
     # Get all views (excluding templates and sheets)
     view_collector = FilteredElementCollector(doc).OfClass(View)
     views = {v.Id.IntegerValue: v for v in view_collector if not v.IsTemplate and not isinstance(v, ViewSheet)}
 
-    output.print_md("Found **{0}** views".format(len(views)))
+    # output.print_md("Found **{0}** views".format(len(views)))
 
-    # Confirm with user
+    # Determine current visibility state
+    any_hidden = are_any_elements_hidden(text_elements, views)
+    new_visibility_state = "Visible" if any_hidden else "Hidden"
+
+    # Confirm with user, showing what will happen
     result = forms.alert(
-        "This will toggle visibility of {0} text elements in their respective views *together*.\n"
-        "If any are hidden, all will be shown; otherwise, all will be hidden.\n\n"
-        "Do you want to continue?".format(len(text_elements)),
+        "{0} Internal Comment text elements found.\n"
+        "These elements will be made:\n\n"
+        "{1}.\n\n"
+        "Do you want to continue?".format(len(text_elements), new_visibility_state),
         yes=True, no=True
     )
     if not result:
         script.exit()
 
-    with revit.Transaction("Toggle Text Visibility Synced"):
-        any_hidden = are_any_elements_hidden(text_elements, views)
+    # Toggle visibility
+    with revit.Transaction("Toggle Internal Comment Visibility"):
         set_elements_visibility(text_elements, views, visible=any_hidden)
 
-    output.print_md("---")
-    output.print_md("## Results")
-    output.print_md("- Total elements processed: **{0}**".format(len(text_elements)))
-    output.print_md("- Set all elements to: **{0}**".format("Visible" if any_hidden else "Hidden"))
-    output.print_md("---")
-    output.print_md("**Script completed successfully!**")
+    # output.print_md("---")
+    # output.print_md("## Results")
+    # output.print_md("- Total elements processed: **{0}**".format(len(text_elements)))
+    # output.print_md("- Set all elements to: **{0}**".format(new_visibility_state))
+    # output.print_md("---")
+    # output.print_md("**Script completed successfully!**")
 
 if __name__ == "__main__":
     main()
