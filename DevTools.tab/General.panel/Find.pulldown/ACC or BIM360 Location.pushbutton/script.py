@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 __title__ = 'ACC or BIM360 Location'
 __author__  = 'Tay Othman, Joe Wemyss'
-__doc__ = """This script will open the Autodesk Construction Cloud (ACC) website for the current project in the default web browser.
+__doc__ = """Open the Autodesk Construction Cloud (ACC) website for the current project in the default web browser.
             Author: Tay Othman, Joe Wemyss """
 
 # _________________________________________________________________________________________.NET imports
@@ -39,4 +39,5 @@ else:
     accurl = "https://acc.autodesk.eu/insight/accounts/" + hub_str + "/projects/" + proj_str + "/home"
     # TaskDialog.Show("GetHubId and GetProjectId", accurl)
     webbrowser.open_new_tab(accurl)
+
 
