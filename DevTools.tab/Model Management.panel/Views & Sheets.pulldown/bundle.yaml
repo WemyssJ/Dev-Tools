@@ -1,3 +1,5 @@
+highlight: new
+
 layout:
   - FindReplace - Views
   - FindReplace_Sheets
