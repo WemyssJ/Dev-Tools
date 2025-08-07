@@ -617,6 +617,7 @@ class UnlistedSheetsList(object):
 
 
 class PrintSheetsWindow(forms.WPFWindow):
+    _highlight_cycle_state = 0
     def __init__(self, xaml_file_name):
         forms.WPFWindow.__init__(self, xaml_file_name)
 
@@ -630,25 +631,55 @@ class PrintSheetsWindow(forms.WPFWindow):
         self._setup_docs_list()
         self._setup_naming_formats()
 
-    _empty_highlight_active = False
+    _highlight_cycle_state = 0  # 0: empty, 1: today, 2: reset
 
     def find_empty_sheets_clicked(self, sender, args):
         from Autodesk.Revit.DB import ViewSheet
+        from System import DateTime
+        from System.Windows.Controls import TextBlock
+        from System.Windows.Documents import Run
+        from System.Windows import FontWeights
 
-        if not self._empty_highlight_active:
-            # Highlight empty sheets
+        def set_button_label(bold_text, normal_text):
+            tb = TextBlock()
+            bold_part = Run(bold_text)
+            bold_part.FontWeight = FontWeights.Bold
+            normal_part = Run(normal_text)
+            tb.Inlines.Add(bold_part)
+            tb.Inlines.Add(normal_part)
+            sender.Content = tb
+
+        today_str = DateTime.Today.ToString("dd.MM.yy")
+
+        if self._highlight_cycle_state == 0:
+            # 1st Click: Highlight sheets with NO views
             for sheet_item in self.sheet_list:
                 rvtsheet = sheet_item.revit_sheet
                 if isinstance(rvtsheet, ViewSheet):
                     placed_view_ids = rvtsheet.GetAllPlacedViews()
                     sheet_item.is_empty = not placed_view_ids or len(placed_view_ids) == 0
-            self._empty_highlight_active = True
+
+            set_button_label("Sheets With No Views Highlighted", " (Click to Highlight Sheets With Todays Date)")
+            self._highlight_cycle_state = 1
+
+        elif self._highlight_cycle_state == 1:
+            # 2nd Click: Highlight sheets with today's REVISION DATE
+            for sheet_item in self.sheet_list:
+                rev_date = sheet_item.revision.date.strip() if sheet_item.revision and sheet_item.revision.date else ""
+                sheet_item.is_empty = (rev_date == today_str)
+
+            set_button_label("Sheets With Todays Date Highlighted", " (Click to Clear Highlights)")
+            self._highlight_cycle_state = 2
+
         else:
-            # Clear highlights
+            # 3rd Click: Reset all highlights
             for sheet_item in self.sheet_list:
                 sheet_item.is_empty = False
-            self._empty_highlight_active = False
-        sender.Content = "Clear Highlights" if self._empty_highlight_active else "Find Empty Sheets"
+
+            set_button_label("No Sheets Highlighted", " (Click to Highlight Sheets With No Views)")
+            self._highlight_cycle_state = 0
+
+
 
 
 
