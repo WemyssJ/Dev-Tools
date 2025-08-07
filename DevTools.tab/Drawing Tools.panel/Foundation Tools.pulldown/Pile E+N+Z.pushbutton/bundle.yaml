@@ -4,6 +4,7 @@ title:
 tooltip: 
   en_us: |- 
     Acquire co-ordinates from SURVEY POINT for all STRUCTURAL FOUNDATIONS with the TYPE NAME "Pile". Parameters "Co-ord Y (N/S)", "Co-ord X (E/W)" and "Co-ord Z (Elev)" must be Preloaded.
-    Updated Upgraded from Dynamo to Python to greatly improve speed.
+    Updated from Dynamo to Python to greatly improve speed.
 authors: >-
   Joe Wemyss, James Scrivens
+
