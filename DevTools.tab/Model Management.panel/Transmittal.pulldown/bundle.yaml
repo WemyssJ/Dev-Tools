@@ -1,5 +1,8 @@
+highlight: new
+
 title: Transmittal
 
 layout:
   - Strip Model
   - Export DocReg
+
