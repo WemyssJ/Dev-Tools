@@ -1,5 +1,5 @@
 title:
-  en_us: Pad Renumbering
+  en_us: Pad (Re)numbering
 tooltip: 
   en_us: Renumber the MARK parameter of all STRUCTURAL FOUNDATIONS which contain 'Pad' in their TYPE NAME. Users can customise Prefix. Marks are Ordered top to bottom (left to right).
 authors: >-
