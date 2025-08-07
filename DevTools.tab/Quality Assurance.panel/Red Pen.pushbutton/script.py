@@ -1,13 +1,4 @@
 # -*- coding: utf-8 -*-
-"""Toggle Text Visibility in Their Own Views (Synced)
-This script finds all TextNote elements with TextNoteType containing "Internal Comment"
-and toggles their visibility together in their host views.
-If any are hidden, all will be unhidden; if all are visible, all will be hidden.
-"""
-
-__title__ = "Toggle Text\nVisibility (Synced)"
-__author__ = "Your Name"
-
 # pyRevit imports
 from pyrevit import revit, DB, forms
 from pyrevit import script
