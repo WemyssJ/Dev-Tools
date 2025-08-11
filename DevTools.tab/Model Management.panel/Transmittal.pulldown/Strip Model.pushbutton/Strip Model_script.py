@@ -3,7 +3,7 @@
 
 NOTE:
 """
-__author__ = "nWn"
+__author__ = "Joe Wemyss"
 __title__ = "Strip\n Model"
 
 # Import 
@@ -20,20 +20,31 @@ from System.Collections.Generic import List
 doc = __revit__.ActiveUIDocument.Document
 uidoc = __revit__.ActiveUIDocument
 
-# Function to check file is not workshared in the server
 def checkCentral():
-    # Check if model is not workshared
+    """
+    Return:
+     0 - allow script to run
+     1 - blocked because model is workshared and not detached
+     2 - blocked because model is non-workshared but NOT saved on C:
+    """
     try:
-        # Check central model path
-        modelPath = doc.GetWorksharingCentralModelPath()
-        centralPath = DB.ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPath)
+        is_workshared = doc.IsWorkshared
     except:
-        return False
-    # Check if model is detached or workshared in the local drive
-    if doc.IsWorkshared and not centralPath.startswith("C:"):
-        return True
-    else:
-        return False
+        is_workshared = False
+    
+    is_detached = getattr(doc, "IsDetached", False)
+    file_path = doc.PathName
+    
+    if is_workshared and not is_detached:
+        # Workshared but NOT detached -> block and message 1
+        return 1
+    
+    if not is_workshared and not file_path.startswith("C:"):
+        # Non workshared but NOT on C: drive -> block and message 2
+        return 2
+    
+    # Otherwise allow
+    return 0
 
 # Function to round to ten
 def roundNumber(number, multiple):
@@ -54,17 +65,13 @@ def purge():
     ruleId = None
     allRuleIds = performanceAdviser.GetAllRuleIds()
     for rule in allRuleIds:
-        # Finds the PerformanceAdviserRuleId for the purge command
         if str(rule.Guid) == purgeGuid:
             ruleId = rule
     ruleIds = List[DB.PerformanceAdviserRuleId]([ruleId])
     for i in range(3):
-        # Purge
         failureMessages = performanceAdviser.ExecuteRules(doc, ruleIds)
         if failureMessages.Count > 0:
-            # Retrieves the elements
             purgableElementIds = failureMessages[0].GetFailingElements()
-    # Delete elements
     try:
         doc.Delete(purgableElementIds)
     except:
@@ -74,73 +81,92 @@ def purge():
             except:
                 pass
 
-# Create progress bar
+def refresh_all_title_blocks():
+    sheetsCollector = DB.FilteredElementCollector(doc).OfClass(DB.ViewSheet).ToElements()
+    if not sheetsCollector:
+        script.get_logger().warning("No sheets found in document.")
+        return
+
+    for sheet in sheetsCollector:
+        # Find title blocks on this sheet
+        title_blocks = DB.FilteredElementCollector(doc, sheet.Id).OfCategory(DB.BuiltInCategory.OST_TitleBlocks).WhereElementIsNotElementType().ToElements()
+
+        for tb in title_blocks:
+            loc = tb.Location
+            if isinstance(loc, DB.LocationPoint):
+                point = loc.Point
+            elif isinstance(loc, DB.LocationCurve):
+                point = loc.Curve.GetEndPoint(0)
+            else:
+                point = DB.XYZ(0, 0, 0)
+
+            symbol = tb.Symbol
+
+            # Delete old title block instance
+            try:
+                doc.Delete(tb.Id)
+            except:
+                # ignore failures deleting title block
+                pass
+
+            # Place a new instance on the sheet
+            try:
+                new_tb = doc.Create.NewFamilyInstance(point, symbol, sheet)
+                # Try to set "Help" parameter to False (0)
+                help_param = new_tb.LookupParameter("Help")
+                if help_param and not help_param.IsReadOnly:
+                    help_param.Set(0)  # 0 = unchecked/False
+            except:
+                pass
+
 count = 1
 finalCount = 0
 with forms.ProgressBar(step=10) as pb:
 
-    # Check if model is linked to central
-    if checkCentral():
-        # Finish execution script if model is not detached
-        forms.alert("Please detach model from central and save it to your local drive.", ok = True, exitscript= True)
+    check = checkCentral()
+    if check == 1:
+        forms.alert("Please detach model from central and try again.", ok=True, exitscript=True)
+    elif check == 2:
+        forms.alert("This is a non work shared model, please save to your C: drive and try again.", ok=True, exitscript=True)
 
     # Collect all views and sheets
     viewsCollector = DB.FilteredElementCollector(doc).OfClass(DB.View).ToElements()
     sheetsCollector = DB.FilteredElementCollector(doc).OfClass(DB.ViewSheet).ToElements()
-    # Collect all imported elements
     linksCollector = DB.FilteredElementCollector(doc).OfClass(DB.ImportInstance)
     revitLinkCollector = DB.FilteredElementCollector(doc).OfClass(DB.RevitLinkType)
     imagesCollector = DB.FilteredElementCollector(doc).OfCategory(DB.BuiltInCategory.OST_RasterImages)
 
-
-
-    # Display select view sets form
     viewsRetained = forms.select_views(button_name='Views to Keep',
-                                   multiple=True)
+                                       multiple=True)
     
     retainedIds = set(x.Id for x in viewsRetained)
     
-
-    # Classify views
     viewsIdDelete = [x.Id for x in viewsCollector if x.Id not in retainedIds]
     viewsIdKeep = [x.Id for x in viewsCollector if x.Id in retainedIds]
 
-    # Retrieve id of all linked elements
     importedInstancesId = [x.Id for x in linksCollector]
     revitLinksId = [x.Id for x in revitLinkCollector]
     imagesId = [x.Id for x in imagesCollector]
 
-    # Prompt form to check if user wants to keep annotations
     delAnnotations = forms.alert("Delete annotation elements", title="Delete annotations?", yes=True, no=True)
 
-    # Create group transaction
     tg = DB.TransactionGroup(doc, "Delete elements in document")
-    # Start group transaction
     tg.Start()
 
-    # Collect annotation categories to be deleted
     annoElements = []
 
-    # Check if annotation elements must be deleted
     if delAnnotations:
-        
-        # Categories
         categories = doc.Settings.Categories
-        # Elements of categories to delete
         catDel = ("Dimensions", "Railing Tags", "Furniture Tags", "Spot Slopes", "Spot Elevations", "Floor Tags", "Door Tags", "Window Tags", "Specialty Equipment Tags", "Material Tags", "Property Line Segment Tags", "Wall Tags", "Parking Tags", "Color Fill Legends", "Spot Elevation Symbols", "Structural Column Tags", "Room Tags", "Generic Model Tags", "Text Notes", "Callout Heads", "Structural Foundation Tags", "Lighting Device Tags", "Curtain Panel Tags", "Ceiling Tags",  "Plumbing Fixture Tags", "Roof Tags", "Casework Tags", "Revision Clouds", "Electrical Fixture Tags")
-        # Check elements to delete
         for cat in categories:
             if cat.CategoryType == DB.CategoryType.Annotation:
                 collector = DB.FilteredElementCollector(doc).OfCategoryId(cat.Id)
                 elemIds = [x.Id for x in collector if x.Category.Name in catDel]
                 annoElements = annoElements + elemIds
-        # annoIds = List[DB.ElementId](annoElements)
     
-    # Collect all elemtns to delete
     delElements = annoElements + viewsIdDelete + importedInstancesId + revitLinksId + imagesId
     finalCount = len(delElements)
     
-    # Create single transaction and start it
     t = DB.Transaction(doc, "Delete elements")
     t.Start()
 
@@ -149,14 +175,17 @@ with forms.ProgressBar(step=10) as pb:
             doc.Delete(e)
         except:
             pass
-        # Update progress bar
         pb.update_progress(count, roundNumber(finalCount, 10))
         count += 1
 
-    # Purge file
     purge()
 
-    # Commit transaction
     t.Commit()
-    # Commit group transaction
     tg.Commit()
+
+# Run the refresh of title blocks in its own transaction after committing deletions
+with DB.Transaction(doc, "Refresh Title Blocks on All Sheets") as tx:
+    tx.Start()
+    refresh_all_title_blocks()
+
+    tx.Commit()
