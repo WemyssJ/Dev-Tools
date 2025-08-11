@@ -3,7 +3,7 @@
 
 NOTE:
 """
-__author__ = "Joe Wemyss"
+__author__ = "nWn"
 __title__ = "Strip\n Model"
 
 # Import 
@@ -102,6 +102,24 @@ def refresh_all_title_blocks():
 
             symbol = tb.Symbol
 
+            # Store all writable instance parameter values from the old title block
+            param_values = {}
+            for param in tb.Parameters:
+                if param.IsReadOnly:
+                    continue
+                try:
+                    if param.StorageType == DB.StorageType.Integer:
+                        param_values[param.Definition.Name] = param.AsInteger()
+                    elif param.StorageType == DB.StorageType.Double:
+                        param_values[param.Definition.Name] = param.AsDouble()
+                    elif param.StorageType == DB.StorageType.String:
+                        param_values[param.Definition.Name] = param.AsString()
+                    elif param.StorageType == DB.StorageType.ElementId:
+                        param_values[param.Definition.Name] = param.AsElementId()
+                except:
+                    # Ignore parameters that fail to read
+                    pass
+
             # Delete old title block instance
             try:
                 doc.Delete(tb.Id)
@@ -112,12 +130,26 @@ def refresh_all_title_blocks():
             # Place a new instance on the sheet
             try:
                 new_tb = doc.Create.NewFamilyInstance(point, symbol, sheet)
-                # Try to set "Help" parameter to False (0)
-                help_param = new_tb.LookupParameter("Help")
-                if help_param and not help_param.IsReadOnly:
-                    help_param.Set(0)  # 0 = unchecked/False
+
+                # Restore all stored parameter values to new instance
+                for pname, pvalue in param_values.items():
+                    param = new_tb.LookupParameter(pname)
+                    if param and not param.IsReadOnly:
+                        try:
+                            if param.StorageType == DB.StorageType.Integer and isinstance(pvalue, int):
+                                param.Set(pvalue)
+                            elif param.StorageType == DB.StorageType.Double and isinstance(pvalue, float):
+                                param.Set(pvalue)
+                            elif param.StorageType == DB.StorageType.String and isinstance(pvalue, str):
+                                param.Set(pvalue)
+                            elif param.StorageType == DB.StorageType.ElementId and isinstance(pvalue, DB.ElementId):
+                                param.Set(pvalue)
+                        except:
+                            # Ignore if unable to set
+                            pass
             except:
                 pass
+
 
 count = 1
 finalCount = 0
@@ -187,5 +219,21 @@ with forms.ProgressBar(step=10) as pb:
 with DB.Transaction(doc, "Refresh Title Blocks on All Sheets") as tx:
     tx.Start()
     refresh_all_title_blocks()
-
     tx.Commit()
+
+# --- NEW CODE TO OPEN PURGE UNUSED DIALOG ---
+uiapp = __revit__.Application
+uidoc = __revit__.ActiveUIDocument
+
+# Get the Revit UI application (UIApplication)
+from Autodesk.Revit.UI import RevitCommandId
+
+uiapp = __revit__.Application  # Actually __revit__ is UIDocument, so we get UIApplication via uidoc
+uiapp = __revit__.ActiveUIDocument.Application  # This is UIApplication
+
+cmdId = RevitCommandId.LookupCommandId("ID_PURGE_UNUSED")
+if cmdId:
+    uiapp.PostCommand(cmdId)
+else:
+    print("Could not find command id for Purge Unused")
+
