@@ -3,7 +3,7 @@
 
 NOTE:
 """
-__author__ = "nWn"
+__author__ = "Joe Wemyss"
 __title__ = "Strip\n Model"
 
 # Import 
@@ -153,13 +153,49 @@ def refresh_all_title_blocks():
 
 count = 1
 finalCount = 0
-with forms.ProgressBar(step=10) as pb:
 
-    check = checkCentral()
-    if check == 1:
-        forms.alert("Please detach model from central and try again.", ok=True, exitscript=True)
-    elif check == 2:
-        forms.alert("This is a non work shared model, please save to your C: drive and try again.", ok=True, exitscript=True)
+# --- PROMPT USER TO SELECT VIEWS TO KEEP BEFORE ANY TRANSACTIONS ---
+viewsRetained = forms.select_views(button_name='Views to Keep', multiple=True)
+retainedIds = set(x.Id for x in viewsRetained)
+
+check = checkCentral()
+if check == 1:
+    forms.alert("Please detach model from central and try again.", ok=True, exitscript=True)
+elif check == 2:
+    forms.alert("This is a non work shared model, please save to your C: drive and try again.", ok=True, exitscript=True)
+
+# --- Set active view first (no transaction) ---
+sheet_to_keep = None
+for v in viewsRetained:
+    if isinstance(v, DB.ViewSheet):
+        sheet_to_keep = v
+        break
+if not sheet_to_keep and viewsRetained:
+    sheet_to_keep = viewsRetained[0]
+
+if sheet_to_keep:
+    uidoc.ActiveView = sheet_to_keep  # <-- NO TRANSACTION allowed here!
+
+# --- Now open transaction to close other views ---
+with DB.Transaction(doc, "Close Other Views") as tx:
+    tx.Start()
+
+    # Close all other open UI views except the one kept
+    open_ui_views = list(uidoc.GetOpenUIViews())
+    for ui_view in open_ui_views:
+        if ui_view.ViewId != sheet_to_keep.Id:
+            try:
+                ui_view.Close()
+            except:
+                pass
+
+    tx.Commit()
+
+
+# --- NOW START THE TRANSACTION GROUP FOR STRIPPING ---
+with forms.ProgressBar(step=10) as pb:
+    tg = DB.TransactionGroup(doc, "Delete elements in document")
+    tg.Start()
 
     # Collect all views and sheets
     viewsCollector = DB.FilteredElementCollector(doc).OfClass(DB.View).ToElements()
@@ -168,22 +204,13 @@ with forms.ProgressBar(step=10) as pb:
     revitLinkCollector = DB.FilteredElementCollector(doc).OfClass(DB.RevitLinkType)
     imagesCollector = DB.FilteredElementCollector(doc).OfCategory(DB.BuiltInCategory.OST_RasterImages)
 
-    viewsRetained = forms.select_views(button_name='Views to Keep',
-                                       multiple=True)
-    
-    retainedIds = set(x.Id for x in viewsRetained)
-    
     viewsIdDelete = [x.Id for x in viewsCollector if x.Id not in retainedIds]
-    viewsIdKeep = [x.Id for x in viewsCollector if x.Id in retainedIds]
 
     importedInstancesId = [x.Id for x in linksCollector]
     revitLinksId = [x.Id for x in revitLinkCollector]
     imagesId = [x.Id for x in imagesCollector]
 
     delAnnotations = forms.alert("Delete annotation elements", title="Delete annotations?", yes=True, no=True)
-
-    tg = DB.TransactionGroup(doc, "Delete elements in document")
-    tg.Start()
 
     annoElements = []
 
@@ -198,7 +225,7 @@ with forms.ProgressBar(step=10) as pb:
     
     delElements = annoElements + viewsIdDelete + importedInstancesId + revitLinksId + imagesId
     finalCount = len(delElements)
-    
+
     t = DB.Transaction(doc, "Delete elements")
     t.Start()
 
@@ -221,19 +248,13 @@ with DB.Transaction(doc, "Refresh Title Blocks on All Sheets") as tx:
     refresh_all_title_blocks()
     tx.Commit()
 
-# --- NEW CODE TO OPEN PURGE UNUSED DIALOG ---
-uiapp = __revit__.Application
-uidoc = __revit__.ActiveUIDocument
 
-# Get the Revit UI application (UIApplication)
+# --- OPEN PURGE UNUSED DIALOG ---
 from Autodesk.Revit.UI import RevitCommandId
 
-uiapp = __revit__.Application  # Actually __revit__ is UIDocument, so we get UIApplication via uidoc
-uiapp = __revit__.ActiveUIDocument.Application  # This is UIApplication
-
+uiapp = __revit__.ActiveUIDocument.Application
 cmdId = RevitCommandId.LookupCommandId("ID_PURGE_UNUSED")
 if cmdId:
     uiapp.PostCommand(cmdId)
 else:
     print("Could not find command id for Purge Unused")
-
