@@ -1,8 +1,17 @@
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Print Sheets" Height="800" Width="1500" ShowInTaskbar="False" ResizeMode="CanResizeWithGrip"
+        Title="Print Sheets" Height="800" Width="1000" ShowInTaskbar="False" ResizeMode="CanResizeWithGrip"
         WindowStartupLocation="CenterScreen" HorizontalContentAlignment="Center">
+        
     <Window.Resources>
+        <DrawingImage x:Key="my_svg_image">
+            <DrawingImage.Drawing>
+                <DrawingGroup>
+                    <GeometryDrawing Brush="#f0f3f7" Geometry="M20.0244 6.68262V13.5674H19.4531C19.0234 11.7705 18.2227 10.3936 17.0508 9.43652C15.8789 8.47949 14.5508 8.00098 13.0664 8.00098C11.8262 8.00098 10.6885 8.35742 9.65332 9.07031C8.61816 9.7832 7.86133 10.7158 7.38281 11.8682C6.76758 13.3428 6.45996 14.9834 6.45996 16.79C6.45996 18.5674 6.68457 20.1885 7.13379 21.6533C7.58301 23.1084 8.28613 24.2119 9.24316 24.9639C10.2002 25.7061 11.4404 26.0771 12.9639 26.0771C14.2139 26.0771 15.3564 25.8037 16.3916 25.2568C17.4365 24.71 18.5352 23.7676 19.6875 22.4297V24.1436C18.5742 25.3057 17.4121 26.1504 16.2012 26.6777C15 27.1953 13.5938 27.4541 11.9824 27.4541C9.86328 27.4541 7.97852 27.0293 6.32812 26.1797C4.6875 25.3301 3.41797 24.1094 2.51953 22.5176C1.63086 20.9258 1.18652 19.2314 1.18652 17.4346C1.18652 15.54 1.67969 13.7432 2.66602 12.0439C3.66211 10.3447 5 9.02637 6.67969 8.08887C8.36914 7.15137 10.1611 6.68262 12.0557 6.68262C13.4521 6.68262 14.9268 6.98535 16.4795 7.59082C17.3779 7.94238 17.9492 8.11816 18.1934 8.11816C18.5059 8.11816 18.7744 8.00586 18.999 7.78125C19.2334 7.54688 19.3848 7.18066 19.4531 6.68262H20.0244ZM33.2484 17.9473V23.5137C33.2484 24.5879 33.3119 25.2666 33.4389 25.5498C33.5756 25.8232 33.81 26.043 34.142 26.209C34.474 26.375 35.0941 26.458 36.0023 26.458V27H25.8363V26.458C26.7543 26.458 27.3744 26.375 27.6967 26.209C28.0287 26.0332 28.2582 25.8086 28.3852 25.5352C28.5219 25.2617 28.5902 24.5879 28.5902 23.5137V10.623C28.5902 9.54883 28.5219 8.875 28.3852 8.60156C28.2582 8.31836 28.0287 8.09375 27.6967 7.92773C27.3646 7.76172 26.7445 7.67871 25.8363 7.67871V7.13672H35.0648C37.4672 7.13672 39.225 7.30273 40.3383 7.63477C41.4516 7.9668 42.3598 8.58203 43.0629 9.48047C43.766 10.3691 44.1176 11.4141 44.1176 12.6152C44.1176 14.0801 43.5902 15.291 42.5355 16.248C41.8617 16.8535 40.9193 17.3076 39.7084 17.6104L44.4838 24.334C45.1088 25.2031 45.5531 25.7451 45.8168 25.96C46.2172 26.2627 46.6811 26.4287 47.2084 26.458V27H40.9535L34.5521 17.9473H33.2484ZM33.2484 8.20605V16.9072H34.0834C35.4408 16.9072 36.4564 16.7852 37.1303 16.541C37.8041 16.2871 38.3314 15.8379 38.7123 15.1934C39.1029 14.5391 39.2982 13.6895 39.2982 12.6445C39.2982 11.1309 38.9418 10.0127 38.2289 9.29004C37.5258 8.56738 36.3881 8.20605 34.8158 8.20605H33.2484ZM63.0398 21.3457H56.0232L55.1883 23.2793C54.9148 23.9238 54.7781 24.4561 54.7781 24.876C54.7781 25.4326 55.0027 25.8428 55.452 26.1064C55.7156 26.2627 56.365 26.3799 57.4002 26.458V27H50.7938V26.458C51.5066 26.3506 52.0926 26.0576 52.5516 25.5791C53.0105 25.0908 53.577 24.0898 54.2508 22.5762L61.3553 6.72656H61.6336L68.7967 23.0156C69.4803 24.5586 70.0418 25.5303 70.4813 25.9307C70.8133 26.2334 71.282 26.4092 71.8875 26.458V27H62.2781V26.458H62.6736C63.4451 26.458 63.9871 26.3506 64.2996 26.1357C64.5145 25.9795 64.6219 25.7549 64.6219 25.4619C64.6219 25.2861 64.5926 25.1055 64.534 24.9199C64.5145 24.832 64.368 24.4658 64.0945 23.8213L63.0398 21.3457ZM62.5418 20.2617L59.5828 13.4209L56.5359 20.2617H62.5418ZM76.2346 27V26.458H76.8938C77.4699 26.458 77.9094 26.3701 78.2121 26.1943C78.5246 26.0088 78.7541 25.7598 78.9006 25.4473C78.9885 25.2422 79.0324 24.627 79.0324 23.6016V10.5352C79.0324 9.51953 78.9787 8.88477 78.8713 8.63086C78.7639 8.37695 78.5441 8.15723 78.2121 7.97168C77.8898 7.77637 77.4504 7.67871 76.8938 7.67871H76.2346V7.13672H85.1262C87.4992 7.13672 89.4084 7.45898 90.8537 8.10352C92.6213 8.89453 93.9592 10.0908 94.8674 11.6924C95.7854 13.2939 96.2443 15.1055 96.2443 17.127C96.2443 18.5234 96.0197 19.8125 95.5705 20.9941C95.1213 22.166 94.5402 23.1377 93.8273 23.9092C93.1145 24.6709 92.2893 25.2861 91.3518 25.7549C90.424 26.2139 89.2863 26.5703 87.9387 26.8242C87.343 26.9414 86.4055 27 85.1262 27H76.2346ZM83.8078 8.26465V23.7627C83.8078 24.583 83.8469 25.0859 83.925 25.2715C84.0031 25.457 84.135 25.5986 84.3205 25.6963C84.5842 25.8428 84.965 25.916 85.4631 25.916C87.0939 25.916 88.3391 25.3594 89.1984 24.2461C90.3703 22.7422 90.9563 20.4082 90.9563 17.2441C90.9563 14.6953 90.5559 12.6592 89.7551 11.1357C89.1203 9.94434 88.3049 9.13379 87.3088 8.7041C86.6057 8.40137 85.4387 8.25488 83.8078 8.26465ZM101.514 27V26.458H102.173C102.75 26.458 103.189 26.3701 103.492 26.1943C103.804 26.0088 104.034 25.7598 104.18 25.4473C104.268 25.2422 104.312 24.627 104.312 23.6016V10.5352C104.312 9.51953 104.258 8.88477 104.151 8.63086C104.044 8.37695 103.824 8.15723 103.492 7.97168C103.17 7.77637 102.73 7.67871 102.173 7.67871H101.514V7.13672H110.406C112.779 7.13672 114.688 7.45898 116.133 8.10352C117.901 8.89453 119.239 10.0908 120.147 11.6924C121.065 13.2939 121.524 15.1055 121.524 17.127C121.524 18.5234 121.299 19.8125 120.85 20.9941C120.401 22.166 119.82 23.1377 119.107 23.9092C118.394 24.6709 117.569 25.2861 116.631 25.7549C115.704 26.2139 114.566 26.5703 113.218 26.8242C112.623 26.9414 111.685 27 110.406 27H101.514ZM109.088 8.26465V23.7627C109.088 24.583 109.127 25.0859 109.205 25.2715C109.283 25.457 109.415 25.5986 109.6 25.6963C109.864 25.8428 110.245 25.916 110.743 25.916C112.374 25.916 113.619 25.3594 114.478 24.2461C115.65 22.7422 116.236 20.4082 116.236 17.2441C116.236 14.6953 115.836 12.6592 115.035 11.1357C114.4 9.94434 113.585 9.13379 112.588 8.7041C111.885 8.40137 110.718 8.25488 109.088 8.26465ZM147.727 7.13672V7.67871C147.072 7.7666 146.569 7.95703 146.218 8.25C145.729 8.66016 144.958 9.77832 143.903 11.6045L139.597 18.7969V23.6016C139.597 24.627 139.65 25.2666 139.758 25.5205C139.865 25.7646 140.075 25.9844 140.388 26.1797C140.71 26.3652 141.135 26.458 141.662 26.458H142.775V27H131.628V26.458H132.668C133.254 26.458 133.718 26.3555 134.06 26.1504C134.313 26.0137 134.514 25.7793 134.66 25.4473C134.768 25.2129 134.821 24.5977 134.821 23.6016V19.6172L130.148 11.1064C129.221 9.42676 128.566 8.44043 128.186 8.14746C127.805 7.84473 127.297 7.68848 126.662 7.67871V7.13672H136.184V7.67871H135.759C135.183 7.67871 134.777 7.76172 134.543 7.92773C134.318 8.09375 134.206 8.26953 134.206 8.45508C134.206 8.80664 134.597 9.69043 135.378 11.1064L138.967 17.6836L142.541 11.6924C143.43 10.2275 143.874 9.25586 143.874 8.77734C143.874 8.51367 143.747 8.29395 143.493 8.11816C143.161 7.87402 142.551 7.72754 141.662 7.67871V7.13672H147.727ZM165.77 6.68262L165.931 13.3037H165.33C165.047 11.6436 164.349 10.3105 163.236 9.30469C162.132 8.28906 160.936 7.78125 159.647 7.78125C158.651 7.78125 157.86 8.0498 157.274 8.58691C156.698 9.11426 156.41 9.72461 156.41 10.418C156.41 10.8574 156.512 11.248 156.717 11.5898C157 12.0488 157.454 12.5029 158.079 12.9521C158.538 13.2744 159.598 13.8457 161.258 14.666C163.582 15.8086 165.15 16.8877 165.96 17.9033C166.761 18.9189 167.162 20.0811 167.162 21.3896C167.162 23.0498 166.512 24.4805 165.213 25.6816C163.924 26.873 162.284 27.4688 160.291 27.4688C159.666 27.4688 159.076 27.4053 158.519 27.2783C157.962 27.1514 157.264 26.9121 156.424 26.5605C155.955 26.3652 155.57 26.2676 155.267 26.2676C155.013 26.2676 154.745 26.3652 154.461 26.5605C154.178 26.7559 153.949 27.0537 153.773 27.4541H153.231V19.9541H153.773C154.203 22.0635 155.028 23.6748 156.248 24.7881C157.479 25.8916 158.802 26.4434 160.218 26.4434C161.312 26.4434 162.181 26.1455 162.826 25.5498C163.48 24.9541 163.807 24.2607 163.807 23.4697C163.807 23.001 163.68 22.5469 163.426 22.1074C163.182 21.668 162.806 21.2529 162.298 20.8623C161.79 20.4619 160.892 19.9443 159.603 19.3096C157.796 18.4209 156.497 17.6641 155.706 17.0391C154.915 16.4141 154.305 15.7158 153.875 14.9443C153.455 14.1729 153.246 13.3232 153.246 12.3955C153.246 10.8135 153.827 9.46582 154.989 8.35254C156.151 7.23926 157.616 6.68262 159.383 6.68262C160.028 6.68262 160.653 6.76074 161.258 6.91699C161.717 7.03418 162.274 7.25391 162.928 7.57617C163.592 7.88867 164.056 8.04492 164.32 8.04492C164.574 8.04492 164.774 7.9668 164.92 7.81055C165.067 7.6543 165.204 7.27832 165.33 6.68262H165.77Z"/>
+                </DrawingGroup>
+            </DrawingImage.Drawing>
+        </DrawingImage>
+
         <SolidColorBrush x:Key="RevBGColor" Color="#FFEEEEEE"/>
 
         <Style x:Key="IndexColumnStyle" TargetType="{x:Type DataGridCell}">
@@ -40,10 +49,10 @@
                     <TextBlock Text="{Binding revision.number}" Foreground="Black" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                 </Border>
                 <Border Background="{StaticResource RevBGColor}" MinWidth="16" Margin="0,2,0,2" Padding="5,0,5,0" BorderBrush="LightGray" BorderThickness="1,0,1,0">
-                    <TextBlock Text="{Binding revision.date}" Foreground="Black" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                    <TextBlock Text="{Binding revision.desc}" Foreground="Black" VerticalAlignment="Center" HorizontalAlignment="Left"/>
                 </Border>
                 <Border Background="{StaticResource RevBGColor}" CornerRadius="0,3,3,0" MinWidth="16" Padding="5,0,5,0" Margin="0,2,0,2">
-                    <TextBlock Text="{Binding revision.desc}" Foreground="Black" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                    <TextBlock Text="{Binding revision.date}" Foreground="Black" VerticalAlignment="Center" HorizontalAlignment="Left"/>
                 </Border>
             </StackPanel>
             <DataTemplate.Triggers>
@@ -80,6 +89,8 @@
                 </Path.LayoutTransform>
             </Path>
         </Canvas>
+        
+
 
         <DataTemplate x:Key="printSettingsItem">
             <WrapPanel>
@@ -249,18 +260,24 @@
             </TextBlock>
         </StatusBar>
         <DataGrid x:Name="sheets_lb"
-                AutoGenerateColumns="False"
-                Margin="10,0,10,10"
-                BorderThickness="1"
-                RowHeaderWidth="0"
-                CanUserSortColumns="True"
-                HorizontalGridLinesBrush="#dedede"
-                VerticalGridLinesBrush="#dedede"
-                EnableColumnVirtualization="True"
-                EnableRowVirtualization="True"
-                VirtualizingPanel.IsVirtualizing="True"
-                VirtualizingPanel.VirtualizationMode="Recycling"
-                SelectionChanged="sheet_selection_changed">
+          AutoGenerateColumns="False"
+          Margin="10,0,10,10"
+          BorderThickness="1"
+          RowHeaderWidth="0"
+          CanUserSortColumns="True"
+          HorizontalGridLinesBrush="#dedede"
+          VerticalGridLinesBrush="#dedede"
+          EnableColumnVirtualization="True"
+          EnableRowVirtualization="True"
+          VirtualizingPanel.IsVirtualizing="True"
+          VirtualizingPanel.VirtualizationMode="Recycling"
+          SelectionChanged="sheet_selection_changed">
+
+            <DataGrid.Background>
+                <DrawingBrush 
+            Stretch="Uniform"
+            Drawing="{Binding Source={StaticResource my_svg_image}, Path=Drawing}" />
+            </DataGrid.Background>
 
             <DataGrid.Resources>
                 <ContextMenu x:Key="ItemContextMenu">
@@ -268,16 +285,15 @@
                 </ContextMenu>
             </DataGrid.Resources>
 
-            <!-- 🔴 Highlight entire row if is_empty is True -->
             <DataGrid.RowStyle>
                 <Style TargetType="DataGridRow">
-                    <Setter Property="Background" Value="White"/>
+                    <Setter Property="Background" Value="#80FFFFFF"/>
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding is_empty}" Value="True">
-                            <Setter Property="Background" Value="LightCoral"/>
+                            <Setter Property="Background" Value="#80F08080"/>
                         </DataTrigger>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter Property="Background" Value="LightBlue"/>
+                            <Setter Property="Background" Value="#8033B5E5"/>
                         </Trigger>
                     </Style.Triggers>
                 </Style>
@@ -286,12 +302,13 @@
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Print Index" Binding="{Binding print_index}" MinWidth="70" Width="70" IsReadOnly="True" CellStyle="{StaticResource IndexColumnStyle}"/>
                 <DataGridTextColumn Header="Sheet Number" Binding="{Binding number}" MinWidth="100" Width="100" IsReadOnly="True" CellStyle="{StaticResource DefaultColumnStyle}"/>
-                <DataGridTextColumn Header="Sheet Name" Binding="{Binding name}" MinWidth="400" Width="400" IsReadOnly="True" CellStyle="{StaticResource DefaultColumnStyle}"/>
-                <DataGridTemplateColumn Header="Sheet Revision (Sort By Date)" MinWidth="50" Width="1*" IsReadOnly="True"
-                                        CellTemplate="{StaticResource RevisionCell}" SortMemberPath="revision_date_sortable" />
+                <DataGridTextColumn Header="Sheet Name" Binding="{Binding name}" MinWidth="50" Width="2*" IsReadOnly="True" CellStyle="{StaticResource DefaultColumnStyle}"/>
+                <DataGridTemplateColumn Header="Sheet Revision" MinWidth="50" Width="1*" IsReadOnly="True"
+                                CellTemplate="{StaticResource RevisionCell}" SortMemberPath="revision.number" />
                 <DataGridTemplateColumn x:Name="psettingcol" Header="Print Setting" MinWidth="50" Width="*" IsReadOnly="True" CellTemplate="{StaticResource PrintSettingCell}" Visibility="Collapsed"/>
                 <DataGridTextColumn x:Name="pfilename" Header="File Name" FontFamily="Consolas" Binding="{Binding print_filename}" MinWidth="50" Width="2*" IsReadOnly="True" CellStyle="{StaticResource DefaultColumnStyle}" Visibility="Collapsed"/>
             </DataGrid.Columns>
         </DataGrid>
+
     </DockPanel>
 </Window>
