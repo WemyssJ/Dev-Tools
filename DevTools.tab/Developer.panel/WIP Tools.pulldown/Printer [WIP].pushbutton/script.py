@@ -652,31 +652,20 @@ class PrintSheetsWindow(forms.WPFWindow):
         today_str = DateTime.Today.ToString("dd.MM.yy")
 
         if self._highlight_cycle_state == 0:
-            # 1st Click: Highlight sheets with NO views
-            for sheet_item in self.sheet_list:
-                rvtsheet = sheet_item.revit_sheet
-                if isinstance(rvtsheet, ViewSheet):
-                    placed_view_ids = rvtsheet.GetAllPlacedViews()
-                    sheet_item.is_empty = not placed_view_ids or len(placed_view_ids) == 0
-
-            set_button_label("Sheets With No Views Highlighted", " (Click to Highlight Sheets With Todays Date)")
-            self._highlight_cycle_state = 1
-
-        elif self._highlight_cycle_state == 1:
-            # 2nd Click: Highlight sheets with today's REVISION DATE
+            # 1st Click: Highlight sheets with today's REVISION DATE
             for sheet_item in self.sheet_list:
                 rev_date = sheet_item.revision.date.strip() if sheet_item.revision and sheet_item.revision.date else ""
                 sheet_item.is_empty = (rev_date == today_str)
 
             set_button_label("Sheets With Todays Date Highlighted", " (Click to Clear Highlights)")
-            self._highlight_cycle_state = 2
+            self._highlight_cycle_state = 1
 
         else:
-            # 3rd Click: Reset all highlights
+            # 2nd Click: Reset all highlights
             for sheet_item in self.sheet_list:
                 sheet_item.is_empty = False
 
-            set_button_label("No Sheets Highlighted", " (Click to Highlight Sheets With No Views)")
+            set_button_label("No Sheets Highlighted", " (Click to Highlight Sheets With Todays Date)")
             self._highlight_cycle_state = 0
 
 
