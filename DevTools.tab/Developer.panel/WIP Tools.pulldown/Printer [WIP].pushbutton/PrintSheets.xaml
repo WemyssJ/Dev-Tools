@@ -15,7 +15,7 @@
         <SolidColorBrush x:Key="RevBGColor" Color="#FFEEEEEE"/>
 
         <Style x:Key="IndexColumnStyle" TargetType="{x:Type DataGridCell}">
-            <Setter Property="Foreground" Value="{DynamicResource pyRevitAccentBrush}"/>
+            <Setter Property="Foreground" Value="#e52620"/>
         </Style>
 
         <Style x:Key="DefaultColumnStyle" TargetType="{x:Type DataGridCell}">
