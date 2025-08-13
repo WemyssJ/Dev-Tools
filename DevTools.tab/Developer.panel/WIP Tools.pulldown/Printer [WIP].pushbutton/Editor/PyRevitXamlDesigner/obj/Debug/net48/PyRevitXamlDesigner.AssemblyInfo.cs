@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PyRevitXamlDesigner")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5306ba59808116a67cea1438c8314a738dd1cb1e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+810293fbb231e2231a1d1cb30abac5f152d3a8d0")]
 [assembly: System.Reflection.AssemblyProductAttribute("PyRevitXamlDesigner")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PyRevitXamlDesigner")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
