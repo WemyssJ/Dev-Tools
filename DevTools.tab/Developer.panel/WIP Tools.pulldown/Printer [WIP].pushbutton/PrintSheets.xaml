@@ -288,7 +288,7 @@
                 <DataGridTextColumn Header="Sheet Number" Binding="{Binding number}" MinWidth="100" Width="100" IsReadOnly="True" CellStyle="{StaticResource DefaultColumnStyle}"/>
                 <DataGridTextColumn Header="Sheet Name" Binding="{Binding name}" MinWidth="50" Width="2*" IsReadOnly="True" CellStyle="{StaticResource DefaultColumnStyle}"/>
                 <DataGridTemplateColumn Header="Sheet Revision" MinWidth="50" Width="1*" IsReadOnly="True"
-                                        CellTemplate="{StaticResource RevisionCell}" SortMemberPath="revision.number" />
+                                        CellTemplate="{StaticResource RevisionCell}" SortMemberPath="revision_date_sortable" />
                 <DataGridTemplateColumn x:Name="psettingcol" Header="Print Setting" MinWidth="50" Width="*" IsReadOnly="True" CellTemplate="{StaticResource PrintSettingCell}" Visibility="Collapsed"/>
                 <DataGridTextColumn x:Name="pfilename" Header="File Name" FontFamily="Consolas" Binding="{Binding print_filename}" MinWidth="50" Width="2*" IsReadOnly="True" CellStyle="{StaticResource DefaultColumnStyle}" Visibility="Collapsed"/>
             </DataGrid.Columns>

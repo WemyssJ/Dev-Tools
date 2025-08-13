@@ -1259,7 +1259,22 @@ class PrintSheetsWindow(forms.WPFWindow):
                 )
         )
 
-    
+
+        #order date by yy.mm.dd so it can be sorted
+        rev_date_str = sheet.revision.date or ""
+        sortable_date = ""
+
+        parts = rev_date_str.split(".")
+        if len(parts) == 3:
+            day, month, year = parts
+            if len(year) == 2:
+                year = "20" + year
+            sortable_date = year + month + day
+
+        # Store on the Python-side sheet object, not on the .NET revision object
+        sheet.revision_date_sortable = sortable_date
+
+
 
         # resolved the fixed formatters
         try:
