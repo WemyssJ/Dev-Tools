@@ -290,11 +290,8 @@
                     <Setter Property="Background" Value="#80FFFFFF"/>
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding is_empty}" Value="True">
-                            <Setter Property="Background" Value="#80F08080"/>
+                            <Setter Property="Background" Value="#dbffde"/>
                         </DataTrigger>
-                        <Trigger Property="IsSelected" Value="True">
-                            <Setter Property="Background" Value="#8033B5E5"/>
-                        </Trigger>
                     </Style.Triggers>
                 </Style>
             </DataGrid.RowStyle>
@@ -312,3 +309,4 @@
 
     </DockPanel>
 </Window>
+
