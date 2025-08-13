@@ -617,7 +617,7 @@ class UnlistedSheetsList(object):
 
 
 class PrintSheetsWindow(forms.WPFWindow):
-    _highlight_cycle_state = 0
+    _highlight_cycle_state = 1
     def __init__(self, xaml_file_name):
         forms.WPFWindow.__init__(self, xaml_file_name)
 
@@ -1649,3 +1649,4 @@ if __shiftclick__:  #pylint: disable=E0602
             cleanup_sheetnumbers(open_doc)
 else:
     PrintSheetsWindow('PrintSheets.xaml').ShowDialog()
+
