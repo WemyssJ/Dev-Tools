@@ -77,6 +77,7 @@ TitleBlockPrintSettings = \
     namedtuple('TitleBlockPrintSettings', ['psettings', 'set_by_param'])
 
 
+
 class NamingFormat(forms.Reactive):
     """Print File Naming Format"""
     def __init__(self, name, template, builtin=False):
@@ -112,7 +113,7 @@ class NamingFormat(forms.Reactive):
 
 class ViewSheetListItem(forms.Reactive):
     """Revit Sheet show in Print Window"""
-
+    
     def __init__(self, view_sheet, view_tblock,
                  print_settings=None, rev_settings=None):
         self._sheet = view_sheet
@@ -153,6 +154,14 @@ class ViewSheetListItem(forms.Reactive):
                 is_set=True
             )
 
+    @forms.reactive
+    def is_empty(self):
+        return getattr(self, '_is_empty', False)
+
+    @is_empty.setter
+    def is_empty(self, value):
+        self._is_empty = value
+        
     @property
     def revit_sheet(self):
         """Revit sheet instance"""
@@ -559,7 +568,7 @@ class ScheduleSheetList(object):
                 except Exception:
                     continue
 
-        sorted_keys = sorted(ordered_sheets_dict.keys())
+        sorted_keys = sorted(ordered_sheets_dict.keys(), reverse=True)
         return [ordered_sheets_dict[x] for x in sorted_keys]
 
     def _get_ordered_schedule_sheets(self, doc):
@@ -608,6 +617,7 @@ class UnlistedSheetsList(object):
 
 
 class PrintSheetsWindow(forms.WPFWindow):
+    _highlight_cycle_state = 1
     def __init__(self, xaml_file_name):
         forms.WPFWindow.__init__(self, xaml_file_name)
 
@@ -620,6 +630,47 @@ class PrintSheetsWindow(forms.WPFWindow):
 
         self._setup_docs_list()
         self._setup_naming_formats()
+
+    _highlight_cycle_state = 0  # 0: empty, 1: today, 2: reset
+
+    def find_empty_sheets_clicked(self, sender, args):
+        from Autodesk.Revit.DB import ViewSheet
+        from System import DateTime
+        from System.Windows.Controls import TextBlock
+        from System.Windows.Documents import Run
+        from System.Windows import FontWeights
+
+        def set_button_label(bold_text, normal_text):
+            tb = TextBlock()
+            bold_part = Run(bold_text)
+            bold_part.FontWeight = FontWeights.Bold
+            normal_part = Run(normal_text)
+            tb.Inlines.Add(bold_part)
+            tb.Inlines.Add(normal_part)
+            sender.Content = tb
+
+        today_str = DateTime.Today.ToString("dd.MM.yy")
+
+        if self._highlight_cycle_state == 0:
+            # 1st Click: Highlight sheets with today's REVISION DATE
+            for sheet_item in self.sheet_list:
+                rev_date = sheet_item.revision.date.strip() if sheet_item.revision and sheet_item.revision.date else ""
+                sheet_item.is_empty = (rev_date == today_str)
+
+            set_button_label("Sheets With Todays Date Highlighted", " (Click to Clear Highlights)")
+            self._highlight_cycle_state = 1
+
+        else:
+            # 2nd Click: Reset all highlights
+            for sheet_item in self.sheet_list:
+                sheet_item.is_empty = False
+
+            set_button_label("No Sheets Highlighted", " (Click to Highlight Sheets With Todays Date)")
+            self._highlight_cycle_state = 0
+
+
+
+
 
     # doc and schedule
     @property
@@ -1197,7 +1248,22 @@ class PrintSheetsWindow(forms.WPFWindow):
                 )
         )
 
-    
+
+        #order date by yy.mm.dd so it can be sorted
+        rev_date_str = sheet.revision.date or ""
+        sortable_date = ""
+
+        parts = rev_date_str.split(".")
+        if len(parts) == 3:
+            day, month, year = parts
+            if len(year) == 2:
+                year = "20" + year
+            sortable_date = year + month + day
+
+        # Store on the Python-side sheet object, not on the .NET revision object
+        sheet.revision_date_sortable = sortable_date
+
+
 
         # resolved the fixed formatters
         try:
@@ -1583,3 +1649,4 @@ if __shiftclick__:  #pylint: disable=E0602
             cleanup_sheetnumbers(open_doc)
 else:
     PrintSheetsWindow('PrintSheets.xaml').ShowDialog()
+

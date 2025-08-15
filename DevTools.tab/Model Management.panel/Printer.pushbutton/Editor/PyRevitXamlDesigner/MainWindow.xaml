@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Print Sheets" Height="800" Width="1500" ShowInTaskbar="False" ResizeMode="CanResizeWithGrip"
         WindowStartupLocation="CenterScreen" HorizontalContentAlignment="Center">
-        
+
     <Window.Resources>
         <DrawingImage x:Key="my_svg_image">
             <DrawingImage.Drawing>
@@ -89,7 +89,7 @@
                 </Path.LayoutTransform>
             </Path>
         </Canvas>
-        
+
 
 
         <DataTemplate x:Key="printSettingsItem">
@@ -290,16 +290,19 @@
                     <Setter Property="Background" Value="#80FFFFFF"/>
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding is_empty}" Value="True">
-                            <Setter Property="Background" Value="#dbffde"/>
+                            <Setter Property="Background" Value="#80F08080"/>
                         </DataTrigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Background" Value="#8033B5E5"/>
+                        </Trigger>
                     </Style.Triggers>
                 </Style>
             </DataGrid.RowStyle>
 
-                   <DataGrid.Columns>
+            <DataGrid.Columns>
                 <DataGridTextColumn Header="Print Index" Binding="{Binding print_index}" MinWidth="70" Width="70" IsReadOnly="True" CellStyle="{StaticResource IndexColumnStyle}"/>
                 <DataGridTextColumn Header="Sheet Number" Binding="{Binding number}" MinWidth="100" Width="100" IsReadOnly="True" CellStyle="{StaticResource DefaultColumnStyle}"/>
-                <DataGridTextColumn Header="Sheet Name" Binding="{Binding name}" MinWidth="400" Width="400" IsReadOnly="True" CellStyle="{StaticResource DefaultColumnStyle}" SortDirection="Descending"/>
+                <DataGridTextColumn Header="Sheet Name" Binding="{Binding name}" MinWidth="400" Width="400" IsReadOnly="True" CellStyle="{StaticResource DefaultColumnStyle}"/>
                 <DataGridTemplateColumn Header="Sheet Revision (Sort By Date)" MinWidth="50" Width="1*" IsReadOnly="True"
                                         CellTemplate="{StaticResource RevisionCell}" SortMemberPath="revision_date_sortable" />
                 <DataGridTemplateColumn x:Name="psettingcol" Header="Print Setting" MinWidth="50" Width="*" IsReadOnly="True" CellTemplate="{StaticResource PrintSettingCell}" Visibility="Collapsed"/>
