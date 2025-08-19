@@ -1,89 +1,167 @@
 # -*- coding: utf-8 -*-
-#============================================ IMPORTS
+__title__   = "Apply Filters to Templates (Optimized)"
+__doc__     = """Version = 1.5
+Date    = 08.19.2025
+Optimized version with caching and minimal API calls.
+"""
 
 import sys
 import clr
+clr.AddReference('System')
 clr.AddReference('RevitAPI')
 
 from Autodesk.Revit.DB import *
-from pyrevit import forms
+from pyrevit import revit, DB, forms
 
 #============================================ VARIABLES
-uidoc  = __revit__.ActiveUIDocument
-doc    = uidoc.Document  # type: Document
-active_view = doc.ActiveView  # source view
+doc = __revit__.ActiveUIDocument.Document
+active_view = __revit__.ActiveUIDocument.ActiveView
 
-#============================================ FUNCTIONS
+#============================================ CACHES
+line_pattern_cache = {}
+fill_pattern_cache = {}
+color_cache = {}
 
-def clone_override(ogs):
-    """Clone an OverrideGraphicSettings with all properties"""
-    if not ogs:
-        return OverrideGraphicSettings()
-    new_ogs = OverrideGraphicSettings()
-    new_ogs.SetCutLineColor(ogs.CutLineColor)
-    new_ogs.SetProjectionLineColor(ogs.ProjectionLineColor)
+#============================================ HELPERS
 
-    new_ogs.SetCutLinePatternId(ogs.CutLinePatternId)
-    new_ogs.SetProjectionLinePatternId(ogs.ProjectionLinePatternId)
+def color_to_rgb_square(c):
+    """Cache Revit Color objects to avoid repeated processing."""
+    if not c or not c.IsValid:
+        return "⬜ None"
+    key = (c.Red, c.Green, c.Blue)
+    if key in color_cache:
+        return color_cache[key]
+    rgbval = "({0}, {1}, {2})".format(c.Red, c.Green, c.Blue)
+    swatch = u"\u2588\u2588 " + rgbval
+    color_cache[key] = swatch
+    return swatch
 
-    new_ogs.SetCutForegroundPatternId(ogs.CutForegroundPatternId)
-    new_ogs.SetCutForegroundPatternColor(ogs.CutForegroundPatternColor)
-    new_ogs.SetCutBackgroundPatternId(ogs.CutBackgroundPatternId)
-    new_ogs.SetCutBackgroundPatternColor(ogs.CutBackgroundPatternColor)
 
-    new_ogs.SetSurfaceForegroundPatternId(ogs.SurfaceForegroundPatternId)
-    new_ogs.SetSurfaceForegroundPatternColor(ogs.SurfaceForegroundPatternColor)
-    new_ogs.SetSurfaceBackgroundPatternId(ogs.SurfaceBackgroundPatternId)
-    new_ogs.SetSurfaceBackgroundPatternColor(ogs.SurfaceBackgroundPatternColor)
+def get_line_pattern_preview(pid):
+    """Cache LinePatternElement previews."""
+    if not pid or pid == ElementId.InvalidElementId:
+        return "None"
+    if pid in line_pattern_cache:
+        return line_pattern_cache[pid]
+    lpe = doc.GetElement(pid)
+    preview = ""
+    try:
+        for seg in lpe.GetLinePattern().Segments:
+            if seg.SegmentType == LinePatternSegmentType.Dash:
+                preview += "- "
+            elif seg.SegmentType == LinePatternSegmentType.Dot:
+                preview += "· "
+            elif seg.SegmentType == LinePatternSegmentType.Space:
+                preview += "  "
+            elif seg.SegmentType == LinePatternSegmentType.Solid:
+                preview += "─"
+    except:
+        preview = lpe.Name
+    line_pattern_cache[pid] = preview.strip()
+    return line_pattern_cache[pid]
 
-    new_ogs.SetHalftone(ogs.Halftone)
-    new_ogs.SetSurfaceTransparency(ogs.Transparency)
-    return new_ogs
+def get_fill_pattern_name(pid):
+    """Cache FillPatternElement names."""
+    if not pid or pid == ElementId.InvalidElementId:
+        return "None"
+    if pid in fill_pattern_cache:
+        return fill_pattern_cache[pid]
+    el = doc.GetElement(pid)
+    name = el.Name if el else "None"
+    fill_pattern_cache[pid] = name
+    return name
 
+def copy_overrides(src_override):
+    """Build a new OverrideGraphicSettings object from existing one."""
+    ovr = OverrideGraphicSettings()
+    ovr.SetCutLineColor(src_override.CutLineColor)
+    ovr.SetProjectionLineColor(src_override.ProjectionLineColor)
+    ovr.SetCutLineWeight(src_override.CutLineWeight)
+    ovr.SetProjectionLineWeight(src_override.ProjectionLineWeight)
+    ovr.SetCutLinePatternId(src_override.CutLinePatternId)
+    ovr.SetProjectionLinePatternId(src_override.ProjectionLinePatternId)
+    ovr.SetCutForegroundPatternId(src_override.CutForegroundPatternId)
+    ovr.SetCutForegroundPatternColor(src_override.CutForegroundPatternColor)
+    ovr.SetCutBackgroundPatternId(src_override.CutBackgroundPatternId)
+    ovr.SetCutBackgroundPatternColor(src_override.CutBackgroundPatternColor)
+    ovr.SetSurfaceForegroundPatternId(src_override.SurfaceForegroundPatternId)
+    ovr.SetSurfaceForegroundPatternColor(src_override.SurfaceForegroundPatternColor)
+    ovr.SetSurfaceBackgroundPatternId(src_override.SurfaceBackgroundPatternId)
+    ovr.SetSurfaceBackgroundPatternColor(src_override.SurfaceBackgroundPatternColor)
+    ovr.SetHalftone(src_override.Halftone)
+    ovr.SetSurfaceTransparency(src_override.Transparency)
+    return ovr
 
 #============================================ MAIN
 
-# Collect filters applied to current view
-applied_filter_ids = active_view.GetFilters()
-if not applied_filter_ids:
+# Get applied filters
+applied_filters = active_view.GetFilters()
+if not applied_filters:
     forms.alert("No filters are applied to the active view.", exitscript=True)
 
-viewfilters = [doc.GetElement(fid) for fid in applied_filter_ids]
-viewfilternames = [vf.Name for vf in viewfilters]
+filter_map = {}
+items = []
 
-# Let user pick one or more from active view
-selected_names = forms.SelectFromList.show(viewfilternames,
-                                           button_name='Select Filters',
-                                           title='Select One or More Filters from Active View',
-                                           multiselect=True)
-if not selected_names:
+for fid in applied_filters:
+    f = doc.GetElement(fid)
+    ovr = active_view.GetFilterOverrides(fid)
+    
+    # Use cached helpers
+    proj_color = color_to_rgb_square(ovr.ProjectionLineColor)
+    cut_color  = color_to_rgb_square(ovr.CutLineColor)
+    proj_pattern = get_line_pattern_preview(ovr.ProjectionLinePatternId)
+    cut_pattern  = get_line_pattern_preview(ovr.CutLinePatternId)
+    surf_fg = get_fill_pattern_name(ovr.SurfaceForegroundPatternId)
+    surf_bg = get_fill_pattern_name(ovr.SurfaceBackgroundPatternId)
+    cut_fg  = get_fill_pattern_name(ovr.CutForegroundPatternId)
+    cut_bg  = get_fill_pattern_name(ovr.CutBackgroundPatternId)
+
+    desc = "[{0}]\nProj: {1}, Wt:{2}, Pat:{3}\nCut: {4}, Wt:{5}, Pat:{6}\nSurface Fg:{7}, Bg:{8} | Cut Fg:{9}, Bg:{10}\nTransparency:{11}% | Halftone:{12}".format(
+        f.Name,
+        proj_color,
+        ovr.ProjectionLineWeight,
+        proj_pattern,
+        cut_color,
+        ovr.CutLineWeight,
+        cut_pattern,
+        surf_fg,
+        surf_bg,
+        cut_fg,
+        cut_bg,
+        ovr.Transparency,
+        ovr.Halftone
+    )
+
+
+    items.append(desc)
+    filter_map[f.Name] = (fid, ovr)
+
+# Select filters
+selected_descs = forms.SelectFromList.show(
+    items, multiselect=True, title="Select Filters from Active View (with overrides)"
+)
+if not selected_descs:
     sys.exit()
 
-selected_filters = [viewfilters[viewfilternames.index(name)] for name in selected_names]
+selected_filters = [desc.split("\n")[0].strip("[]") for desc in selected_descs]
 
-# Pick target templates
-target_templates = forms.select_viewtemplates(title='Select View Templates to Apply Filters To',
-                                              button_name='Select Templates',
-                                              multiple=True)
-if not target_templates:
+# Select view templates
+templates = forms.select_viewtemplates(
+    title='Select View Templates to Apply Filter To',
+    button_name='Select Templates',
+    multiple=True
+)
+if not templates:
     sys.exit()
 
-# Apply overrides
-t = Transaction(doc, 'Copy View Filters to Templates')
+# Apply overrides in a single transaction
+t = DB.Transaction(doc, 'Apply View Filters to Templates')
 t.Start()
-for vf in selected_filters:
-    try:
-        ogs = active_view.GetFilterOverrides(vf.Id)
-        override = clone_override(ogs)
-
-        for template in target_templates:
-            try:
-                if not template.IsFilterApplied(vf.Id):
-                    template.AddFilter(vf.Id)
-                template.SetFilterOverrides(vf.Id, override)
-                print("Applied filter '{0}' to template '{1}'".format(vf.Name, template.Name))
-            except Exception as e:
-                print("Failed filter '{0}' on template '{1}': {2}".format(vf.Name, template.Name, str(e)))
-    except Exception as e:
-        print("Could not process filter '{0}': {1}".format(vf.Name, str(e)))
+for fname in selected_filters:
+    fid, existing_override = filter_map[fname]
+    for template in templates:
+        if not template.IsFilterApplied(fid):
+            template.AddFilter(fid)
+        template.SetFilterOverrides(fid, copy_overrides(existing_override))
 t.Commit()
+forms.alert("Filters successfully applied!", title="Done")
