@@ -568,7 +568,7 @@ class ScheduleSheetList(object):
                 except Exception:
                     continue
 
-        sorted_keys = sorted(ordered_sheets_dict.keys(), reverse=True)
+        sorted_keys = sorted(ordered_sheets_dict.keys())
         return [ordered_sheets_dict[x] for x in sorted_keys]
 
     def _get_ordered_schedule_sheets(self, doc):
@@ -1649,4 +1649,5 @@ if __shiftclick__:  #pylint: disable=E0602
             cleanup_sheetnumbers(open_doc)
 else:
     PrintSheetsWindow('PrintSheets.xaml').ShowDialog()
+
 
