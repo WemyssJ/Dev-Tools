@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 __title__   = "Apply Filters to Templates (Optimized)"
-__doc__     = """Version = 1.5
-Date    = 08.19.2025
+__doc__     = """Version = 1.6
+Date    = 08.20.2025
 Optimized version with caching and minimal API calls.
+Only shows templates currently in use by at least one view.
 """
 
 import sys
@@ -132,7 +133,6 @@ for fid in applied_filters:
         ovr.Halftone
     )
 
-
     items.append(desc)
     filter_map[f.Name] = (fid, ovr)
 
@@ -145,11 +145,26 @@ if not selected_descs:
 
 selected_filters = [desc.split("\n")[0].strip("[]") for desc in selected_descs]
 
-# Select view templates
-templates = forms.select_viewtemplates(
-    title='Select View Templates to Apply Filter To',
-    button_name='Select Templates',
-    multiple=True
+# Collect only view templates that are actually assigned to views
+all_views = DB.FilteredElementCollector(doc).OfClass(DB.View).ToElements()
+template_ids_in_use = set()
+
+for v in all_views:
+    tid = v.ViewTemplateId
+    if tid and tid != DB.ElementId.InvalidElementId:
+        template_ids_in_use.add(tid)
+
+used_templates = [doc.GetElement(tid) for tid in template_ids_in_use]
+
+if not used_templates:
+    forms.alert("No view templates are currently in use.", exitscript=True)
+
+# Let user pick only from in-use templates
+templates = forms.SelectFromList.show(
+    used_templates,
+    multiselect=True,
+    title='Select In-Use View Templates',
+    name_attr='Name'
 )
 if not templates:
     sys.exit()
