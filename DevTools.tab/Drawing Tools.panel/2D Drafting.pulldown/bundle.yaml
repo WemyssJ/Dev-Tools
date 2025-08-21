@@ -1,11 +1,11 @@
 highlight: updated
 
 layout:
-  - Flip Grid Ends
-  - Flip Level Ends
-  - -----
-  - Dim Grids
-  - Dim Levels
-  - -----
   - Pick Detail Elements
   - Pick Model Elements
+  - -----
+  - Flip Grid Ends
+  - Flip Level Ends
+    - -----
+  - Dim Grids
+  - Dim Levels
