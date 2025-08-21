@@ -62,12 +62,14 @@ tooltip:
       - v1.1.21: Startup improved - legwork for 1 maintainable toolbar
       - v1.2beta: System overhaul, final testing before release
       - v1.2beta2: WIP tools added, access updated
+      - v1.2beta3: Tooltips revised, Tools moved from WIP
   
       Current Version:
-      - v1.2beta3: Tooltips revised, Tools moved from WIP
+      - v1.2beta4: Filter WIP and Printer improved
       
       
 context: zero-doc
 
 author: pyRevit
+
 
