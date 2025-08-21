@@ -1,4 +1,4 @@
-Highlight: New
+highlight: new
 
 engine: 
   clean: true
@@ -8,3 +8,4 @@ tooltip:
   en_us: Copy Filters from current template to another
 authors: >-
   Tay Othman and Joe Wemyss
+
