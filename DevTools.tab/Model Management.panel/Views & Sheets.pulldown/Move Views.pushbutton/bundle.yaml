@@ -1,7 +1,7 @@
 title:
   ru: Переместить видовые экраны (модель, узел) на другие листы
   fr_fr: Déplacer les fenêtres sélectionnées vers les feuilles sélectionnées
-  en_us: Move Viewports (Model, Detail) To Other Sheets
+  en_us: Move Viewports To Other Sheets
   de_de: Verschiebe platzierte Ansichten auf andere Pläne
 tooltip:
   ru: >-
@@ -26,4 +26,5 @@ tooltip:
 
 context: active-sheet 
 Author: pyRevit & Joe Wemyss
+
 
