@@ -1,11 +1,12 @@
 highlight: new
 
 layout:
-  - FindReplace - Views
-  - FindReplace_Sheets
-  - -----
-  - Move Views 
   - Align Viewports
+  - Move Views 
   - Snap Viewport Title
   - -----
   - Batch Sheet Maker
+  - -----
+  - FindReplace - Views
+  - FindReplace_Sheets
+
