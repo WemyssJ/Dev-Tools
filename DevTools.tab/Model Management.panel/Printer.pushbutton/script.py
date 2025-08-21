@@ -1650,4 +1650,3 @@ if __shiftclick__:  #pylint: disable=E0602
 else:
     PrintSheetsWindow('PrintSheets.xaml').ShowDialog()
 
-
