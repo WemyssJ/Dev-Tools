@@ -11,6 +11,7 @@ from pyrevit import revit, script, forms
 from collections import defaultdict
 
 doc = revit.doc
+uidoc = revit.uidoc
 output = script.get_output()
 
 # Collect all Structural Foundations
@@ -45,7 +46,7 @@ if not piles:
 class InputWindow(Window):
     def __init__(self, categories):
         self.Title = "Number Piles"
-        self.Height = 230
+        self.Height = 280
         self.Width = 300
 
         self.stack = StackPanel()
@@ -78,6 +79,18 @@ class InputWindow(Window):
         self.cat_combo.SelectedIndex = 0
         self.stack.Children.Add(self.cat_combo)
 
+        # NEW: numbering method
+        self.method_label = TextBlock()
+        self.method_label.Text = "Numbering Method:"
+        self.stack.Children.Add(self.method_label)
+
+        self.method_combo = ComboBox()
+        self.method_combo.Width = 260
+        self.method_combo.Items.Add("By World Co-ordinates")
+        self.method_combo.Items.Add("By View")
+        self.method_combo.SelectedIndex = 0
+        self.stack.Children.Add(self.method_combo)
+
         self.ok_button = Button()
         self.ok_button.Content = "OK"
         self.ok_button.Width = 60
@@ -90,12 +103,14 @@ class InputWindow(Window):
         self.prefix = None
         self.padding = None
         self.category = None
+        self.method = None
 
     def on_ok(self, sender, args):
         try:
             self.prefix = self.prefix_box.Text.strip()
             self.padding = int(self.pad_box.Text.strip())
             self.category = self.cat_combo.SelectedItem
+            self.method = self.method_combo.SelectedItem
             self.Close()
         except:
             forms.alert("Padding must be an integer.")
@@ -109,6 +124,7 @@ if not form.prefix or not form.padding:
 prefix = form.prefix
 padding = form.padding
 selected_category = form.category
+method = form.method
 
 # Filter piles by category
 filtered_piles = []
@@ -140,19 +156,37 @@ def get_point(el):
     loc = el.Location
     if isinstance(loc, LocationPoint):
         pt = loc.Point
-        return XYZ(pt.X, pt.Y, 0)  # Force Z = 0
+        return XYZ(pt.X, pt.Y, 0)
     else:
-        # Try to approximate from bounding box if no LocationPoint
         bb = el.get_BoundingBox(None)
         if bb:
             center_x = (bb.Min.X + bb.Max.X) / 2
             center_y = (bb.Min.Y + bb.Max.Y) / 2
-            return XYZ(center_x, center_y, 0)  # Force Z = 0
+            return XYZ(center_x, center_y, 0)
     return XYZ(0, 0, 0)
 
+def get_view_point(el):
+    """Transform world XYZ into current view coordinates (approx)."""
+    pt = get_point(el)
+    view = uidoc.ActiveView
+    try:
+        transform = view.CropBox.Transform
+        inv = transform.Inverse
+        relpt = inv.OfPoint(pt)
+        return XYZ(relpt.X, relpt.Y, 0)
+    except:
+        return pt  # fallback if transform not available
+
+# Unified sorting key
+def pile_sort_key(el):
+    if method == "By World Co-ordinates":
+        pt = get_point(el)
+    else:  # By View
+        pt = get_view_point(el)
+    return (-pt.Y, pt.X)
 
 # Bounding box intersection (Z ignored)
-def bbox_intersects(pile, cap, tolerance=0.05):  # ~15mm tolerance
+def bbox_intersects(pile, cap, tolerance=0.05):
     pile_bb = pile.get_BoundingBox(None)
     cap_bb = cap.get_BoundingBox(None)
     if not pile_bb or not cap_bb:
@@ -160,17 +194,13 @@ def bbox_intersects(pile, cap, tolerance=0.05):  # ~15mm tolerance
     return (
         (pile_bb.Max.X + tolerance >= cap_bb.Min.X and pile_bb.Min.X - tolerance <= cap_bb.Max.X) and
         (pile_bb.Max.Y + tolerance >= cap_bb.Min.Y and pile_bb.Min.Y - tolerance <= cap_bb.Max.Y)
-        # Z axis ignored
     )
 
 # Map pile to cap using bounding box overlap
 pile_to_cap = {}
 for pile in filtered_piles:
     mark_param = pile.LookupParameter("Mark")
-    if mark_param:
-        pile_name = mark_param.AsString()
-    else:
-        pile_name = str(pile.Id)
+    pile_name = mark_param.AsString() if mark_param else str(pile.Id)
     matched = False
     for cap in pile_caps:
         if bbox_intersects(pile, cap):
@@ -181,8 +211,8 @@ for pile in filtered_piles:
     if not matched:
         output.print_md("Pile '{0}' did **not** match any cap.".format(pile_name))
 
-# Sort pile caps by Y descending, X ascending
-pile_caps_sorted = sorted(pile_caps, key=lambda cap: (-get_point(cap).Y, get_point(cap).X))
+# Sort pile caps
+pile_caps_sorted = sorted(pile_caps, key=pile_sort_key)
 
 # Group piles by their cap ID
 cap_to_piles = defaultdict(list)
@@ -195,46 +225,39 @@ for pile in filtered_piles:
     else:
         unassociated_piles.append(pile)
 
-# Sort piles within each cap top-left to top-right (Y desc, X asc)
+# Sort piles within each cap
 for cap_id, piles_list in cap_to_piles.items():
-    piles_list.sort(key=lambda p: (-get_point(p).Y, get_point(p).X))
+    piles_list.sort(key=pile_sort_key)
 
-# Sort unassociated piles similarly
-unassociated_piles.sort(key=lambda p: (-get_point(p).Y, get_point(p).X))
+# Sort unassociated piles
+unassociated_piles.sort(key=pile_sort_key)
 
-# Group unassociated piles between caps by Y position
-between_groups = defaultdict(list)  # key = cap index, value = list of piles
-
+# Group unassociated piles between caps by Y
+between_groups = defaultdict(list)
 cap_ys = [get_point(cap).Y for cap in pile_caps_sorted]
 
 for pile in unassociated_piles:
     p_y = get_point(pile).Y
     assigned = False
     for i in range(len(cap_ys) - 1):
-        upper_y = cap_ys[i]      # higher Y
-        lower_y = cap_ys[i + 1]  # lower Y
+        upper_y = cap_ys[i]
+        lower_y = cap_ys[i + 1]
         if lower_y <= p_y <= upper_y:
             between_groups[i].append(pile)
             assigned = True
             break
     if not assigned:
-        pass  # handled below
+        pass
 
-# Separate unassociated piles outside cap Y ranges into top and bottom groups
+# Separate unassociated piles outside cap ranges
 top_unassociated = []
 bottom_unassociated = []
-
 highest_cap_y = cap_ys[0] if cap_ys else None
 lowest_cap_y = cap_ys[-1] if cap_ys else None
 
 for pile in unassociated_piles:
     p_y = get_point(pile).Y
-    # Skip piles already assigned to between_groups
-    in_between = False
-    for piles_list in between_groups.values():
-        if pile in piles_list:
-            in_between = True
-            break
+    in_between = any(pile in lst for lst in between_groups.values())
     if in_between:
         continue
     if highest_cap_y is not None and p_y > highest_cap_y:
@@ -244,13 +267,11 @@ for pile in unassociated_piles:
     else:
         output.print_md("Pile ID {0} outside expected Y ranges, skipping numbering.".format(pile.Id))
 
-# Sort piles in each between group by Y desc, X asc
+# Sort remaining groups
 for key in between_groups:
-    between_groups[key].sort(key=lambda p: (-get_point(p).Y, get_point(p).X))
-
-# Sort top and bottom unassociated piles by Y desc, X asc
-top_unassociated.sort(key=lambda p: (-get_point(p).Y, get_point(p).X))
-bottom_unassociated.sort(key=lambda p: (-get_point(p).Y, get_point(p).X))
+    between_groups[key].sort(key=pile_sort_key)
+top_unassociated.sort(key=pile_sort_key)
+bottom_unassociated.sort(key=pile_sort_key)
 
 # Start transaction and number piles
 output.print_md("Starting transaction...")
@@ -259,51 +280,36 @@ t.Start()
 
 try:
     i = 1
-
-    # Number unassociated piles above highest cap first (top_unassociated)
     for pile in top_unassociated:
         mark = prefix + str(i).zfill(padding)
         param = pile.LookupParameter("Mark")
         if param and not param.IsReadOnly:
             param.Set(mark)
-        else:
-            output.print_md("Could not set Mark on Pile ID {0}".format(pile.Id))
         i += 1
 
     num_caps = len(pile_caps_sorted)
     for idx, cap in enumerate(pile_caps_sorted):
         cap_id = cap.Id
-        # Number piles under this cap
-        piles_list = cap_to_piles.get(cap_id, [])
-        for pile in piles_list:
+        for pile in cap_to_piles.get(cap_id, []):
             mark = prefix + str(i).zfill(padding)
             param = pile.LookupParameter("Mark")
             if param and not param.IsReadOnly:
                 param.Set(mark)
-            else:
-                output.print_md("Could not set Mark on Pile ID {0}".format(pile.Id))
             i += 1
 
-        # Number piles between this cap and the next cap, if not last cap
         if idx < num_caps - 1:
-            between_piles = between_groups.get(idx, [])
-            for pile in between_piles:
+            for pile in between_groups.get(idx, []):
                 mark = prefix + str(i).zfill(padding)
                 param = pile.LookupParameter("Mark")
                 if param and not param.IsReadOnly:
                     param.Set(mark)
-                else:
-                    output.print_md("Could not set Mark on Pile ID {0}".format(pile.Id))
                 i += 1
 
-    # Number unassociated piles below lowest cap last (bottom_unassociated)
     for pile in bottom_unassociated:
         mark = prefix + str(i).zfill(padding)
         param = pile.LookupParameter("Mark")
         if param and not param.IsReadOnly:
             param.Set(mark)
-        else:
-            output.print_md("Could not set Mark on Pile ID {0}".format(pile.Id))
         i += 1
 
 except Exception as e:
