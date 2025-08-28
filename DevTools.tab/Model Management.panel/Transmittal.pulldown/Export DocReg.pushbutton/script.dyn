@@ -3126,7 +3126,7 @@
       ],
       "Replication": "Disabled",
       "Description": "Allows you to select a file on the system and returns its file path",
-      "HintPath": "C:\\Users\\wemyssj\\AppData\\Roaming\\pyRevit\\Extensions\\DevTools.extension\\DevTools.tab\\Model Management.panel\\File Issue.pulldown\\Export DocReg.pushbutton\\icon.png",
+      "HintPath": "C:\\Users\\wemyssj\\AppData\\Roaming\\pyRevit\\Extensions\\DevTools.extension\\DevTools.tab\\Model Management.panel\\Transmittal.pulldown\\Export DocReg.pushbutton\\icon.png",
       "InputValue": ".\\icon.png"
     },
     {
@@ -3218,7 +3218,7 @@
     },
     {
       "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
-      "WatchWidth": 50.0,
+      "WatchWidth": 58.0,
       "WatchHeight": 38.0,
       "Id": "a1f1141b0bec467ba946c96fe9cbf435",
       "NodeType": "ExtensionNode",
@@ -3769,6 +3769,73 @@
       ],
       "Replication": "Auto",
       "Description": "Attempts to send data to the clipboard."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Logic.RefactoredIf, CoreNodeModels",
+      "Id": "3b2d9a00b58f4f61991f8253d21ddf4a",
+      "NodeType": "ExtensionNode",
+      "Inputs": [
+        {
+          "Id": "006c4e8d03494275aace7e96916e829c",
+          "Name": "test",
+          "Description": "Boolean test",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "98e799f17b054834a26498b03b8dd366",
+          "Name": "true",
+          "Description": "Returned if test is true",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "a9cd283324bd44e6afff383f51a20ee2",
+          "Name": "false",
+          "Description": "Returned if test is false",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "0671a2e2dee54ba6afc47f3541bc76bd",
+          "Name": "result",
+          "Description": "Result block produced",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Auto",
+      "Description": "Returns the result of either True or False input depending on what boolean value is toggled in the test input. Supports recursion which requires that only a single branch be executed. It's critical that that both True and False branches are isolated and do not interact with each other!"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "Id": "bfb06bdcf94c44f78b4bf0b96d231da3",
+      "NodeType": "StringInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "850fab90f4f2494296005be2d76a6f25",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Creates a string",
+      "InputValue": "PM.Sheet.Title.Number.Project"
     }
   ],
   "Connectors": [
@@ -4002,8 +4069,8 @@
     },
     {
       "Start": "2c675c7425774e5fbb492bc4627a1aea",
-      "End": "908e1ff0a3e6495e9f4d389b7f43fa87",
-      "Id": "6786b4da8b30451a9b0c756b9373a8fb",
+      "End": "98e799f17b054834a26498b03b8dd366",
+      "Id": "0e630e8873a14a69a11161c82376928b",
       "IsHidden": "False"
     },
     {
@@ -4106,6 +4173,12 @@
       "Start": "d8e9514fb9a3424aab9eddec70c6b016",
       "End": "b4e0363a93854f5ea36fb1e656efa647",
       "Id": "c2358ee91d144b6cb4420f2e5d0a94c1",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "d8e9514fb9a3424aab9eddec70c6b016",
+      "End": "006c4e8d03494275aace7e96916e829c",
+      "Id": "5240ea9e4f724e3c955c93ebf1fc18d8",
       "IsHidden": "False"
     },
     {
@@ -4575,6 +4648,18 @@
       "End": "6f14a33a2c014d59a75781e47f66afad",
       "Id": "824f817f1d3b41ca89245f5f64f82ef4",
       "IsHidden": "False"
+    },
+    {
+      "Start": "0671a2e2dee54ba6afc47f3541bc76bd",
+      "End": "908e1ff0a3e6495e9f4d389b7f43fa87",
+      "Id": "52aa0faa149f4476876fbf534c2d5f9c",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "850fab90f4f2494296005be2d76a6f25",
+      "End": "a9cd283324bd44e6afff383f51a20ee2",
+      "Id": "9cdbaa2e8e3049bfb5c9b8568c4654f3",
+      "IsHidden": "False"
     }
   ],
   "Dependencies": [
@@ -5025,8 +5110,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -2900.0570010952506,
-        "Y": 450.40740816067313
+        "X": -3063.8327782003976,
+        "Y": 445.28941512613727
       },
       {
         "Id": "ae7ec7efbbc44c8a8d8b473d89d14ffa",
@@ -5035,7 +5120,7 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -2439.408416814761,
+        "X": -2464.6213036460326,
         "Y": 446.66894628356374
       },
       {
@@ -5045,8 +5130,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -2428.7777839240407,
-        "Y": 572.50046960399118
+        "X": -2679.8426235473485,
+        "Y": 602.90844529645051
       },
       {
         "Id": "69864461517c4fabbdac6095a704fffb",
@@ -5055,8 +5140,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -2228.187420517821,
-        "Y": 489.93723272161014
+        "X": -2187.2434762415342,
+        "Y": 491.64323039978882
       },
       {
         "Id": "1068b3a2c3074626a3f1547ef7e2c465",
@@ -5075,8 +5160,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -1952.4652969046908,
-        "Y": 553.46853808253911
+        "X": -1993.9924046267852,
+        "Y": 694.36408213964455
       },
       {
         "Id": "df3c5eed10dd454fae2c18a6348ca618",
@@ -5155,8 +5240,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -1089.3854997556255,
-        "Y": 707.38225521846073
+        "X": -1068.0988612725394,
+        "Y": 747.29470237424721
       },
       {
         "Id": "3bf1fb91dd53448e8a36d42d5d3bd4db",
@@ -5165,8 +5250,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -1224.8402188892769,
-        "Y": 781.69635712745571
+        "X": -1324.6213367787429,
+        "Y": 765.73137826514119
       },
       {
         "Id": "801db80788004bd8b019535cb453a2b0",
@@ -5365,8 +5450,8 @@
         "IsSetAsOutput": false,
         "Excluded": false,
         "ShowGeometry": true,
-        "X": -957.832781065321,
-        "Y": 2703.5300213813143
+        "X": -905.79366854945613,
+        "Y": 2705.6115858819489
       },
       {
         "Id": "8225f2d567bb4533bf94027a97794959",
@@ -5837,6 +5922,26 @@
         "ShowGeometry": true,
         "X": 3685.4666622222553,
         "Y": 167.01260773948445
+      },
+      {
+        "Id": "3b2d9a00b58f4f61991f8253d21ddf4a",
+        "Name": "If",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": -2447.4747215393145,
+        "Y": 824.43802002450059
+      },
+      {
+        "Id": "bfb06bdcf94c44f78b4bf0b96d231da3",
+        "Name": "String",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": -2709.67185312172,
+        "Y": 908.7278776464783
       }
     ],
     "Annotations": [
@@ -5997,14 +6102,14 @@
           "df3c5eed10dd454fae2c18a6348ca618"
         ],
         "HasNestedGroups": false,
-        "Left": -2910.0570010952506,
-        "Top": 373.66894628356374,
-        "Width": 1556.5256885016418,
-        "Height": 330.83152332042744,
+        "Left": -3073.8327782003976,
+        "Top": 372.28941512613727,
+        "Width": 1720.3014656067887,
+        "Height": 454.07466701350728,
         "FontSize": 36.0,
         "GroupStyleId": "00000000-0000-0000-0000-000000000000",
-        "InitialTop": 446.66894628356374,
-        "InitialHeight": 270.83152332042744,
+        "InitialTop": 445.28941512613727,
+        "InitialHeight": 394.07466701350728,
         "TextblockHeight": 63.0,
         "Background": "#FFC1D676"
       },
@@ -6029,11 +6134,11 @@
         "Left": -1363.6491894712503,
         "Top": 444.46798279285872,
         "Width": 1951.3078892931449,
-        "Height": 494.46555442273382,
+        "Height": 499.82671958138849,
         "FontSize": 36.0,
         "GroupStyleId": "00000000-0000-0000-0000-000000000000",
         "InitialTop": 517.46798279285872,
-        "InitialHeight": 409.228374334597,
+        "InitialHeight": 404.46555442273382,
         "TextblockHeight": 63.0,
         "Background": "#FFC1D676"
       },
@@ -6075,13 +6180,13 @@
         ],
         "HasNestedGroups": false,
         "Left": -1770.430997630509,
-        "Top": 2630.5300213813143,
+        "Top": 2631.5805426071843,
         "Width": 1221.8644499343459,
-        "Height": 963.01120952836982,
+        "Height": 961.96068830249988,
         "FontSize": 36.0,
         "GroupStyleId": "00000000-0000-0000-0000-000000000000",
-        "InitialTop": 2703.5300213813143,
-        "InitialHeight": 899.27424017513977,
+        "InitialTop": 2704.5805426071843,
+        "InitialHeight": 898.22371894926982,
         "TextblockHeight": 63.0,
         "Background": "#FFC1D676"
       },
@@ -6202,8 +6307,8 @@
         "Background": "#FFFFAA45"
       }
     ],
-    "X": 199.85833036293729,
-    "Y": 85.100206597068052,
-    "Zoom": 0.20619920903329325
+    "X": 757.83019303625406,
+    "Y": 525.240189455696,
+    "Zoom": 0.094794542612068572
   }
 }
