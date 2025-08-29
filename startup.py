@@ -2,7 +2,7 @@
 """
 Checks GitHub for update.
 Clones a panel to the Modify tab when a document is opened.
-Shows a popup listing DevTools panels on startup.
+Shows a popup listing CDY-ProTools panels on startup.
 Hides the "Other" panel for unauthorized users.
 """
 
@@ -35,7 +35,7 @@ script_logger = logger.get_logger('switchback_api')
 # --- Check for updates ---
 try:
     if core.update_needed():
-        forms.toaster.send_toast("New update for DevTools extension available: {}".format(core.get_git_version()))
+        forms.toaster.send_toast("New update for CDY-ProTools extension available: {}".format(core.get_git_version()))
 except Exception:
     pass
 
@@ -84,9 +84,9 @@ def Hidden_Panel():
     if not ribbon:
         return
 
-    # Hide "Developer" panel in "DevTools" tab if unauthorized
+    # Hide "Developer" panel in "CDY-ProTools" tab if unauthorized
     for tab in ribbon.Tabs:
-        if tab.Title == "DevTools" and tab.IsVisible:
+        if tab.Title == "CDY-ProTools" and tab.IsVisible:
             for panel in tab.Panels:
                 if panel.Source and panel.Source.Title == HiddenPanel:
                     if revit_username not in authorized_users:
@@ -120,14 +120,14 @@ def debug_list_panels_ui():
         return
 
     for tab in ribbon.Tabs:
-        if tab.Title == "DevTools":
-            msg = "DevTools tab found, Visible={}\n\nPanels:\n".format(tab.IsVisible)
+        if tab.Title == "CDY-ProTools":
+            msg = "CDY-ProTools tab found, Visible={}\n\nPanels:\n".format(tab.IsVisible)
             for panel in tab.Panels:
                 title = panel.Source.Title if panel.Source else "<No Source>"
                 msg += " - '{}' Visible={}\n".format(title, panel.IsVisible)
             script_logger.info(msg)
             return
-    script_logger.info("DevTools tab not found")
+    script_logger.info("CDY-ProTools tab not found")
 
 
 def on_idling(sender, args):
