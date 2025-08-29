@@ -63,14 +63,16 @@ tooltip:
       - v1.2.01: (beta1) System overhaul, final testing before release
       - v1.2.02: (beta2) WIP tools added, access updated
       - v1.2.03: (beta3) Tooltips revised, Tools moved from WIP
+      - v1.2.04: (beta4) Filter WIP and Printer improved
   
       Current Version:
-      - v1.2.04: (beta4) Filter WIP and Printer improved
+      - v1.2.10: CDY-ProTools OverHaul
       
       
 context: zero-doc
 
 author: pyRevit
+
 
 
 
