@@ -1,0 +1,12 @@
+layout:
+  - Views & Sheets
+  - -----
+  - Revision
+  - Transmittal
+  - Printer
+
+background:
+  panel: 'fefbff'
+  title: 'fef3ff'
+  slideout: 
+
