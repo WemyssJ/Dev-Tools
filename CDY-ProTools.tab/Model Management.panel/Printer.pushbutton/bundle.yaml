@@ -1,0 +1,23 @@
+highlight: Updated
+
+tooltip:
+  en_us: |-
+    PDF Print sheets and DWG export to: Desktop\CDY-ProTools Print Folder
+    
+    Note:
+    When using the `Combine into one file` option
+    in Revit 2022 and earlier,
+    the tool adds non-printable character u'\u200e'
+    (Left-To-Right Mark) at the start of the sheet names
+    to push Revit's interenal printing engine to sort
+    the sheets correctly per the drawing index order. 
+
+    Make sure your drawings indices consider this
+    when filtering for sheet numbers.
+
+    Shift-Click:
+    Shift-Clicking the tool will remove all
+    non-printable characters from the sheet numbers,
+    in case an error in the tool causes these characters
+    to remain.
+

@@ -1,0 +1,16 @@
+layout:
+  - Reload
+  - -----
+  - Test Button
+  - WIP Tools
+  - ">>>>>"
+  - Settings
+  - Extensions
+  - Icons8
+  - Mute
+
+background:
+  panel: 'f5f5f5'
+  title: 'ededed'
+  slideout: 
+

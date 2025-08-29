@@ -1,0 +1,6 @@
+highlight: new
+
+title:
+  en_us: SpellChecker [WIP]
+tooltip: |
+  Spell checks all TEXT notes (not paramters), in project

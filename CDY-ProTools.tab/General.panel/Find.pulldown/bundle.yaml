@@ -1,0 +1,12 @@
+highlight: new
+
+layout:
+  - ACC or BIM360 Location
+  - CentralModelLocation
+  - ModelLocation
+  - -----
+  - DWG
+  - -----
+  - Find Sheet
+  - Find View
+  - Find ParentView

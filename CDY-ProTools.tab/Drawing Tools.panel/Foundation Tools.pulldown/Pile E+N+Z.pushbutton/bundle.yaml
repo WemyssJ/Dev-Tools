@@ -1,0 +1,12 @@
+higlight: updated
+title:
+  en_us: Pile E+N+Z
+tooltip: 
+  en_us: |- 
+    Acquire co-ordinates from SURVEY POINT for all STRUCTURAL FOUNDATIONS with the TYPE NAME "Pile". Parameters "Co-ord Y (N/S)", "Co-ord X (E/W)" and "Co-ord Z (Elev)" must be Preloaded.
+    Version History:
+      Updated from Dynamo to Python to greatly improve speed.
+authors: >-
+  Joe Wemyss, James Scrivens
+
+

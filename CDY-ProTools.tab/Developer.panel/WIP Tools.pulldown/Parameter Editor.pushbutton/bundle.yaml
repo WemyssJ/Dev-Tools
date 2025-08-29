@@ -1,0 +1,11 @@
+highlight: new
+
+engine: 
+  clean: true
+title:
+  en_us: Parameter Editor
+tooltip: 
+  en_us: Opens dialog window, allowing user to change "String" parameters. Can be used to implement multi line text.
+authors: >-
+  Joe Wemyss
+
