@@ -10,7 +10,7 @@ To Install:
 4.	Copy "extensions.json" from 'Installation Files' and paste to (overwriting existing file): %AppData%\pyRevit-Master\extensions
 5.	Copy "Dynamo Revit" Folder from 'Installation Files' and paste to (overwriting existing file): %AppData%\Dynamo.
 6.	Copy “pyRevit_config”, 'Installation Files' and paste to (overwriting existing file): %AppData%\pyRevit.
-7.	Within Revit, navigate to pyRevit within the ribbon. On the left hand side click the pyRevit drop down > Extensions and install extension "DevTools". Save to default location on C:\ Drive
+7.	Within Revit, navigate to pyRevit within the ribbon. On the left hand side click the pyRevit drop down > Extensions and install extension "BIMTools". Save to default location on C:\ Drive
 8. You now have access to CDY-ProTools.
 
 WIP:
