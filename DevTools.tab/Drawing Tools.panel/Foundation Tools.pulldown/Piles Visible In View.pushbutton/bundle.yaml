@@ -1,8 +1,0 @@
-engine: 
-  clean: true
-title:
-  en_us: Piles Visible In View
-tooltip: 
-  en_us: Checks if all piles are Visible in current Structural Plan.
-authors: >-
-  Joe Wemyss, James Scrivens

@@ -1,1 +1,0 @@
-Revit changed how it handles Analytical Model in 2023+, tool is redundant

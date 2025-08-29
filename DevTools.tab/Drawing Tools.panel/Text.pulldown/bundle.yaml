@@ -1,7 +1,0 @@
-highlight: new
-
-layout:
-   - Symbols
-   - Sentencecase
-   - UPPERCASE
-   - lowercase
