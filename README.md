@@ -11,4 +11,8 @@ To Install:
 5.	Copy "Dynamo Revit" Folder from 'Installation Files' and paste to (overwriting existing file): %AppData%\Dynamo.
 6.	Copy “pyRevit_config”, 'Installation Files' and paste to (overwriting existing file): %AppData%\pyRevit.
 7.	Within Revit, navigate to pyRevit within the ribbon. On the left hand side click the pyRevit drop down > Extensions and install extension "DevTools". Save to default location on C:\ Drive
-8. You now have access to DevTools. The WIP version of CDY-ProTools.
+8. You now have access to CDY-ProTools.
+
+WIP:
+1. Fully migrate from Dynamo -> Python
+2. Standardise tools to allow other companies to benefit from the toolbar.
