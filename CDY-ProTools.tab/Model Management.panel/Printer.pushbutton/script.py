@@ -385,7 +385,12 @@ class EditNamingFormatsWindow(forms.WPFWindow):
                 builtin=True
             ),
             NamingFormat(
-                name='Aldi: BS1192:2007+A2:2016',
+                name='Aldi: BS1192:2007+A2:2016 (Old Template)',
+                template='{proj_number}-{sheet_param:PM.Sheet.Title.Creator.Originator}-{sheet_param:PM.Sheet.Title.View.Zone}-{sheet_param:PM.Sheet.Title.View.Level}-{sheet_param:PM.Sheet.Title.View.Type}-{sheet_param:PM.Sheet.Title.Creator.Role}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf',
+                builtin=True
+            ),
+            NamingFormat(
+                name='Aldi: BS1192:2007+A2:2016 (New Template)',
                 template='{proj_param:PM.Sheet.Title.Number.Project}-{sheet_param:PM.Sheet.Title.Creator.Originator}-{sheet_param:PM.Sheet.Title.View.Zone}-{sheet_param:PM.Sheet.Title.View.Level}-{sheet_param:PM.Sheet.Title.View.Type}-{sheet_param:PM.Sheet.Title.Creator.Role}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf',
                 builtin=True
             ),
@@ -1649,5 +1654,6 @@ if __shiftclick__:  #pylint: disable=E0602
             cleanup_sheetnumbers(open_doc)
 else:
     PrintSheetsWindow('PrintSheets.xaml').ShowDialog()
+
 
 
