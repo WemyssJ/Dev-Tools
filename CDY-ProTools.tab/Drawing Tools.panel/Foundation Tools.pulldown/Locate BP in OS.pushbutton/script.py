@@ -28,7 +28,7 @@ def get_param_value(elem, name):
             return param.AsString()
     return None
 
-def os_grid_ref(easting, northing, digits=10):
+def os_grid_ref(easting, northing, digits=12):
     if not (0 <= easting < 700000 and 0 <= northing < 1300000):
         return ""
 
@@ -43,13 +43,18 @@ def os_grid_ref(easting, northing, digits=10):
         return ""
 
     letters = grid_letters[l1] + grid_letters[l2]
-    e_remainder = int(round(easting)) % 100000
-    n_remainder = int(round(northing)) % 100000
+
+    e_remainder = easting % 100000
+    n_remainder = northing % 100000
     digits_per_coord = digits // 2
-    e_str = str(e_remainder).zfill(5)[:digits_per_coord]
-    n_str = str(n_remainder).zfill(5)[:digits_per_coord]
+
+    # Scale to required precision
+    scale = 10 ** (5 - digits_per_coord)
+    e_str = str(int(round(e_remainder / scale))).zfill(digits_per_coord)
+    n_str = str(int(round(n_remainder / scale))).zfill(digits_per_coord)
 
     return "{}{}{}".format(letters, e_str, n_str)
+
 
 # Get Project Base Point
 pbp = None
@@ -80,12 +85,13 @@ grid_ref = os_grid_ref(ew_m, ns_m, digits=10)
 
 # Prepare output table
 table_data = [[
-    "{0:.5f}".format(ns_m),
-    "{0:.5f}".format(ew_m),
-    "{0:.3f}".format(elev_m) if elev_m is not None else "N/A",
-    grid_ref,
+    "{0:.12f}".format(ns_m),
+    "{0:.12f}".format(ew_m),
+    "{0:.12f}".format(elev_m) if elev_m is not None else "N/A",
+    os_grid_ref(ew_m, ns_m, digits=12),
     "{0} deg".format(angle_deg) if angle_deg is not None else "N/A"
 ]]
+
 
 output.print_table(
     table_data=table_data,
