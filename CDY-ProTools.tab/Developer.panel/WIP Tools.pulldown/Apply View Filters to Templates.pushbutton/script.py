@@ -45,6 +45,8 @@ def get_line_pattern_preview(pid):
     if pid in line_pattern_cache:
         return line_pattern_cache[pid]
     lpe = doc.GetElement(pid)
+    if not lpe:
+        return "None"  # <-- safeguard
     preview = ""
     try:
         for seg in lpe.GetLinePattern().Segments:
@@ -57,7 +59,7 @@ def get_line_pattern_preview(pid):
             elif seg.SegmentType == LinePatternSegmentType.Solid:
                 preview += "─"
     except:
-        preview = lpe.Name
+        preview = lpe.Name if lpe else "None"
     line_pattern_cache[pid] = preview.strip()
     return line_pattern_cache[pid]
 
