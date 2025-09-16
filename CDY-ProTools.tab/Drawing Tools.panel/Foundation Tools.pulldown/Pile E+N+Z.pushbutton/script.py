@@ -2,9 +2,6 @@ from Autodesk.Revit.DB import *
 from pyrevit import revit, script
 import math
 import re
-from pyrevit import script
-
-
 
 doc = revit.doc
 output = script.get_output()
@@ -70,7 +67,7 @@ for pile in foundations:
         continue
 
     family_name = family_name_param.AsString()
-    if "Pile" not in family_name:
+    if not family_name or "pile" not in family_name.lower():
         continue
 
     loc = pile.Location
@@ -131,15 +128,17 @@ def sort_key(item):
     match = re.search(r'(\d+)', mark)
     return (re.sub(r'\d+', '', mark), int(match.group(1)) if match else 0)
 
-log_data.sort(key=sort_key)
-
-# Output table of coordinates
-output.print_table(
-    table_data=log_data,
-    title="Pile Coordinates Log",
-    columns=[
-        "Pile Mark",
-        "Internal X (ft)", "Internal Y (ft)", "Internal Z (ft)",
-        "Co-ord X (E/W) (mm)", "Co-ord Y (N/S) (mm)", "Co-ord Z (Elev) (mm)"
-    ]
-)
+# --- Output results ---
+if not log_data:
+    output.print_md("No piles found in the model.")
+else:
+    log_data.sort(key=sort_key)
+    output.print_table(
+        table_data=log_data,
+        title="Pile Coordinates Log",
+        columns=[
+            "Pile Mark",
+            "Internal X (ft)", "Internal Y (ft)", "Internal Z (ft)",
+            "Co-ord X (E/W) (mm)", "Co-ord Y (N/S) (mm)", "Co-ord Z (Elev) (mm)"
+        ]
+    )
