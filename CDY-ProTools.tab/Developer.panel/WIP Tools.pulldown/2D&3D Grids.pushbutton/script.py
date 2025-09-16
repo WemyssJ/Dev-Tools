@@ -25,8 +25,8 @@ class GridSelectionFilter(ISelectionFilter):
 class GridExtentsWindow(Window):
     def __init__(self):
         self.Title = "Grid Extents Options"
-        self.Width = 250
-        self.Height = 150
+        self.Width = 280
+        self.Height = 180
         self.ResizeMode = 0  # No resize
         self.WindowStartupLocation = WindowStartupLocation.CenterScreen
 
@@ -45,15 +45,27 @@ class GridExtentsWindow(Window):
         self.cb3d.Margin = Thickness(5)
         panel.Children.Add(self.cb3d)
 
-        # Mutually exclusive
+        self.cbBubbles = CheckBox()
+        self.cbBubbles.Content = "Keep extents, bubbles both ends"
+        self.cbBubbles.Margin = Thickness(5)
+        panel.Children.Add(self.cbBubbles)
+
+        # Mutually exclusive logic
         def on_cb2d(sender, args):
             if self.cb2d.IsChecked:
                 self.cb3d.IsChecked = False
+                self.cbBubbles.IsChecked = False
         def on_cb3d(sender, args):
             if self.cb3d.IsChecked:
                 self.cb2d.IsChecked = False
+                self.cbBubbles.IsChecked = False
+        def on_cbBubbles(sender, args):
+            if self.cbBubbles.IsChecked:
+                self.cb2d.IsChecked = False
+                self.cb3d.IsChecked = False
         self.cb2d.Checked += on_cb2d
         self.cb3d.Checked += on_cb3d
+        self.cbBubbles.Checked += on_cbBubbles
 
         # Buttons
         btn_panel = StackPanel()
@@ -83,6 +95,8 @@ class GridExtentsWindow(Window):
             self.result = "2D"
         elif self.cb3d.IsChecked:
             self.result = "3D"
+        elif self.cbBubbles.IsChecked:
+            self.result = "Bubbles"
         else:
             self.result = None
         self.Close()
@@ -123,17 +137,16 @@ if win.result is None:
     sys.exit()
 
 force_to_2d = (win.result == "2D")
+force_to_3d = (win.result == "3D")
+force_bubbles = (win.result == "Bubbles")
 
 # Process grids
 changed = 0
-t = Transaction(doc, "Set Grid Extents")
+t = Transaction(doc, "Set Grid Extents/Bubbles")
 t.Start()
 
 for g in grids:
     try:
-        if not g.CanBeVisibleInView(view):
-            continue
-
         if force_to_2d:
             # Force to 2D
             g.SetDatumExtentType(DatumEnds.End0, view, DatumExtentType.ViewSpecific)
@@ -152,10 +165,20 @@ for g in grids:
                             pass
             except:
                 pass
-        else:
+
+        elif force_to_3d:
             # Force to 3D
             g.SetDatumExtentType(DatumEnds.End0, view, DatumExtentType.Model)
             g.SetDatumExtentType(DatumEnds.End1, view, DatumExtentType.Model)
+
+        elif force_bubbles:
+            # Make extents view-specific so bubbles can be controlled
+            g.SetDatumExtentType(DatumEnds.End0, view, DatumExtentType.ViewSpecific)
+            g.SetDatumExtentType(DatumEnds.End1, view, DatumExtentType.ViewSpecific)
+
+            # Turn bubbles on at both ends
+            g.ShowBubbleInView(DatumEnds.End0, view)
+            g.ShowBubbleInView(DatumEnds.End1, view)
 
         changed += 1
 
@@ -167,7 +190,11 @@ t.Commit()
 # Report
 if force_to_2d:
     msg = "Processed {0} grids.\nAll set to 2D (ViewSpecific).".format(changed)
-else:
+elif force_to_3d:
     msg = "Processed {0} grids.\nAll set to 3D (Model).".format(changed)
+elif force_bubbles:
+    msg = "Processed {0} grids.\nBubbles turned ON at both ends.".format(changed)
+else:
+    msg = "No changes applied."
 
 TaskDialog.Show("Grid Extents", msg)
