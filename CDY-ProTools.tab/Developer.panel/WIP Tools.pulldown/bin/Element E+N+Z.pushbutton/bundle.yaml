@@ -1,6 +1,0 @@
-title:
-  en_us: Element E+N+Z
-tooltip: 
-  en_us: Acquire co-ordinates from SURVEY POINT. Parameters "Co-ord Y (N/S)", "Co-ord X (E/W)" and "Co-ord Z (Elev)" must be Preloaded. Change Filtering within Dynamo (Select Category and Identifier, preset to Structural Columns with TypeName starting with KP)
-authors: >-
-  Joe Wemyss, James Scrivens

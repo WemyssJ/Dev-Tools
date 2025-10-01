@@ -1,9 +1,0 @@
-engine: 
-  clean: true
-title:
-  en_us: Pin Grid&Level
-tooltip: 
-  en_us: Pins all Grids and Levels.
-authors: >-
-  Joe Wemyss
-

@@ -1,9 +1,0 @@
-engine: 
-  clean: true
-title:
-  en_us: Apply Filters to Templates
-tooltip: 
-  en_us: Copy Filters from current template to another
-authors: >-
-  Tay Othman and Joe Wemyss
-
