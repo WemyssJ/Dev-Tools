@@ -65,15 +65,18 @@ tooltip:
       - v1.2.03: (beta3) Tooltips revised, Tools moved from WIP
       - v1.2.04: (beta4) Filter WIP and Printer improved
       - v1.2.10: CDY-ProTools OverHaul
+      - v1.2.11: Pile E+N+Z Improved.
   
       Current Version:
-      - v1.2.11: Pile E+N+Z Improved.
+      - v1.2.12: WIP tool updates
+
       
       
       
 context: zero-doc
 
 author: pyRevit
+
 
 
 
