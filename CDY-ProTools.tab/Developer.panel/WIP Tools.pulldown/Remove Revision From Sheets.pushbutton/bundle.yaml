@@ -4,5 +4,4 @@ tooltip:
   en_us: >-
     Select a revision from the list of revisions and this script will remove
     that revision from all sheets if it has not been "clouded" on the sheet.
-    SHIFTCLICK - Unsafe mode. Can remove all except revisions that have been "clouded" and "issued"
-
+    Shift Click to remove limitations (dangerous). Currently has issues revmoving "clouded" revisions.
