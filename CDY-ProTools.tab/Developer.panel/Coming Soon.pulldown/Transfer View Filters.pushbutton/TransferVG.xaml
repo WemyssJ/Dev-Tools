@@ -28,17 +28,19 @@
 
             <ListView.View>
                 <GridView>
-                    <GridViewColumn Header="Name" Width="180" DisplayMemberBinding="{Binding Name}"/>
+                    <!-- Name -->
+                    <GridViewColumn Header="Name" Width="200" DisplayMemberBinding="{Binding Name}"/>
 
                     <!-- Projection Line -->
-                    <GridViewColumn Header="Projection Line" Width="200">
+                    <GridViewColumn Header="Projection Line" Width="180">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <Border Width="30" Height="16" BorderBrush="Gray" BorderThickness="1" Background="{Binding ProjBrush}" Margin="2"/>
-                                    <TextBlock Text="{Binding ProjPattern}" Margin="5,0,0,0"/>
-                                    <TextBlock Text="{Binding ProjWeight}" Margin="5,0,0,0"/>
-                                </StackPanel>
+                                <Canvas Width="80" Height="16">
+                                    <Line X1="0" Y1="8" X2="80" Y2="8"
+                                          Stroke="{Binding ProjBrush}"
+                                          StrokeThickness="{Binding ProjWeight}"
+                                          StrokeDashArray="{Binding ProjDashArray}"/>
+                                </Canvas>
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
@@ -68,14 +70,15 @@
                     </GridViewColumn>
 
                     <!-- Cut Line -->
-                    <GridViewColumn Header="Cut Line" Width="200">
+                    <GridViewColumn Header="Cut Line" Width="180">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <Border Width="30" Height="16" BorderBrush="Gray" BorderThickness="1" Background="{Binding CutBrush}" Margin="2"/>
-                                    <TextBlock Text="{Binding CutPattern}" Margin="5,0,0,0"/>
-                                    <TextBlock Text="{Binding CutWeight}" Margin="5,0,0,0"/>
-                                </StackPanel>
+                                <Canvas Width="80" Height="16">
+                                    <Line X1="0" Y1="8" X2="80" Y2="8"
+                                          Stroke="{Binding CutBrush}"
+                                          StrokeThickness="{Binding CutWeight}"
+                                          StrokeDashArray="{Binding CutDashArray}"/>
+                                </Canvas>
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>

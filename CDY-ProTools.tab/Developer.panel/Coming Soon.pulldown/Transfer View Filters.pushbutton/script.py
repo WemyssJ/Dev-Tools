@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 __title__ = "Transfer View Filters v5.0"
-__doc__ = "Projection/Cut line + weight + pattern, hatch FG/BG + color, Halftone, Transparency"
+__doc__ = "Live preview: Projection/Cut line + weight + pattern, hatch FG/BG + color, Halftone, Transparency"
 
 import clr, sys, os
 clr.AddReference('System')
@@ -13,7 +13,7 @@ from System.IO import FileStream, FileMode
 from System.Windows.Markup import XamlReader
 from System.ComponentModel import INotifyPropertyChanged
 from System.Collections.ObjectModel import ObservableCollection
-from System.Windows.Media import SolidColorBrush, Color
+from System.Windows.Media import SolidColorBrush, Color, DoubleCollection
 from Autodesk.Revit.DB import *
 from pyrevit import revit, DB, forms
 
@@ -36,48 +36,45 @@ def get_fill_pattern_name(pid):
     fill_pattern_cache[pid] = name
     return name
 
-def get_line_pattern_preview(pid):
+def get_dash_array(pid):
+    """Return WPF-compatible dash array for a Revit LinePatternElement"""
     if not pid or pid == ElementId.InvalidElementId:
-        return ""
-    if pid in line_pattern_cache:
-        return line_pattern_cache[pid]
+        return None
     lpe = doc.GetElement(pid)
     if not lpe:
-        return ""
-    preview = ""
+        return None
+    dash = DoubleCollection()
     try:
         for seg in lpe.GetLinePattern().Segments:
             if seg.SegmentType == LinePatternSegmentType.Dash:
-                preview += "─ "
+                dash.Add(seg.Length)
             elif seg.SegmentType == LinePatternSegmentType.Dot:
-                preview += "· "
-            elif seg.SegmentType == LinePatternSegmentType.Space:
-                preview += "  "
-            elif seg.SegmentType == LinePatternSegmentType.Solid:
-                preview += "━"
+                dash.Add(0.0)
+                dash.Add(seg.Length)
+            # Solid and Space handled automatically
     except:
-        preview = lpe.Name
-    line_pattern_cache[pid] = preview.strip()
-    return preview.strip()
+        return None
+    return dash if len(dash) else None
 
-from System.Windows.Media import Color, SolidColorBrush
+from System.Windows.Media import SolidColorBrush, Color
 
-def revit_color_to_brush(rvt_color):
-    """Convert Revit color to WPF SolidColorBrush (IronPython-compatible)."""
-    if not rvt_color or not rvt_color.IsValid:
-        c = Color()
-        c.R = 200
-        c.G = 200
-        c.B = 200
-        c.A = 255
-        return SolidColorBrush(c)
-
-    c = Color()
-    c.R = int(rvt_color.Red)
-    c.G = int(rvt_color.Green)
-    c.B = int(rvt_color.Blue)
-    c.A = 255
-    return SolidColorBrush(c)
+def revit_color_to_brush(c):
+    """Convert Revit color to WPF SolidColorBrush in pyRevit IronPython"""
+    if not c or not c.IsValid:
+        # fallback light gray
+        fallback = Color()
+        fallback.R = 200
+        fallback.G = 200
+        fallback.B = 200
+        fallback.A = 255
+        return SolidColorBrush(fallback)
+    
+    col = Color()
+    col.R = int(c.Red)
+    col.G = int(c.Green)
+    col.B = int(c.Blue)
+    col.A = 255
+    return SolidColorBrush(col)
 
 
 # ------------------ FilterInfo Class ------------------
@@ -93,7 +90,7 @@ class FilterInfo(INotifyPropertyChanged):
         # Projection Line
         self.ProjBrush = revit_color_to_brush(projColor)
         self.ProjWeight = projWeight
-        self.ProjPattern = get_line_pattern_preview(projPatternId)
+        self.ProjDashArray = get_dash_array(projPatternId)
 
         # Projection Hatch
         self.ProjFg = get_fill_pattern_name(projFgPatternId)
@@ -104,7 +101,7 @@ class FilterInfo(INotifyPropertyChanged):
         # Cut Line
         self.CutBrush = revit_color_to_brush(cutColor)
         self.CutWeight = cutWeight
-        self.CutPattern = get_line_pattern_preview(cutPatternId)
+        self.CutDashArray = get_dash_array(cutPatternId)
 
         # Cut Hatch
         self.CutFg = get_fill_pattern_name(cutFgPatternId)
@@ -116,7 +113,7 @@ class FilterInfo(INotifyPropertyChanged):
         self.Halftone = halftone
         self.Transparency = transparency
 
-    # Dummy INotifyPropertyChanged methods
+    # Dummy INotifyPropertyChanged
     def add_PropertyChanged(self, handler): pass
     def remove_PropertyChanged(self, handler): pass
 
@@ -172,6 +169,7 @@ window.FindName("okBtn").Click += on_ok
 window.FindName("cancelBtn").Click += on_cancel
 
 window.ShowDialog()
+
 selected_filters = window.Tag
 if not selected_filters:
     sys.exit()
@@ -193,22 +191,11 @@ if not templates:
 # ------------------ Apply Overrides ------------------
 def copy_overrides(src_override):
     ovr = OverrideGraphicSettings()
-    ovr.SetCutLineColor(src_override.CutLineColor)
-    ovr.SetProjectionLineColor(src_override.ProjectionLineColor)
-    ovr.SetCutLineWeight(src_override.CutLineWeight)
-    ovr.SetProjectionLineWeight(src_override.ProjectionLineWeight)
-    ovr.SetCutLinePatternId(src_override.CutLinePatternId)
-    ovr.SetProjectionLinePatternId(src_override.ProjectionLinePatternId)
-    ovr.SetCutForegroundPatternId(src_override.CutForegroundPatternId)
-    ovr.SetCutForegroundPatternColor(src_override.CutForegroundPatternColor)
-    ovr.SetCutBackgroundPatternId(src_override.CutBackgroundPatternId)
-    ovr.SetCutBackgroundPatternColor(src_override.CutBackgroundPatternColor)
-    ovr.SetSurfaceForegroundPatternId(src_override.SurfaceForegroundPatternId)
-    ovr.SetSurfaceForegroundPatternColor(src_override.SurfaceForegroundPatternColor)
-    ovr.SetSurfaceBackgroundPatternId(src_override.SurfaceBackgroundPatternId)
-    ovr.SetSurfaceBackgroundPatternColor(src_override.SurfaceBackgroundPatternColor)
-    ovr.SetHalftone(src_override.Halftone)
-    ovr.SetSurfaceTransparency(src_override.Transparency)
+    ovr.SetCutLineColor(src_override.CutBrush.Color)
+    ovr.SetProjectionLineColor(src_override.ProjBrush.Color)
+    ovr.SetCutLineWeight(src_override.CutWeight)
+    ovr.SetProjectionLineWeight(src_override.ProjWeight)
+    # Need original ElementIds for pattern
     return ovr
 
 t = DB.Transaction(doc, 'Apply View Filters to Templates')
