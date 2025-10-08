@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-__title__ = "Transfer View Filters v5.0"
+__title__ = "Transfer View Filters v5.2"
 __doc__ = "Live preview: Projection/Cut line + weight + pattern, hatch FG/BG + color, Halftone, Transparency"
 
 import clr, sys, os
@@ -28,12 +28,22 @@ fill_pattern_cache = {}
 # ------------------ Helpers ------------------
 def get_fill_pattern_name(pid):
     if not pid or pid == ElementId.InvalidElementId:
-        return "None"
+        return "No Override"
     if pid in fill_pattern_cache:
         return fill_pattern_cache[pid]
     el = doc.GetElement(pid)
-    name = el.Name if el else "None"
+    name = el.Name if el else "No Override"
     fill_pattern_cache[pid] = name
+    return name
+
+def get_line_pattern_name(pid):
+    if not pid or pid == ElementId.InvalidElementId:
+        return "No Override"
+    if pid in line_pattern_cache:
+        return line_pattern_cache[pid]
+    el = doc.GetElement(pid)
+    name = el.Name if el else "No Override"
+    line_pattern_cache[pid] = name
     return name
 
 def get_dash_array(pid):
@@ -51,7 +61,6 @@ def get_dash_array(pid):
             elif seg.SegmentType == LinePatternSegmentType.Dot:
                 dash.Add(0.0)
                 dash.Add(seg.Length)
-            # Solid and Space handled automatically
     except:
         return None
     return dash if len(dash) else None
@@ -59,23 +68,13 @@ def get_dash_array(pid):
 from System.Windows.Media import SolidColorBrush, Color
 
 def revit_color_to_brush(c):
-    """Convert Revit color to WPF SolidColorBrush in pyRevit IronPython"""
+    """Convert a Revit color to a WPF SolidColorBrush in IronPython."""
     if not c or not c.IsValid:
         # fallback light gray
-        fallback = Color()
-        fallback.R = 200
-        fallback.G = 200
-        fallback.B = 200
-        fallback.A = 255
-        return SolidColorBrush(fallback)
-    
-    col = Color()
-    col.R = int(c.Red)
-    col.G = int(c.Green)
-    col.B = int(c.Blue)
-    col.A = 255
+        col = Color.FromArgb(255, 200, 200, 200)
+    else:
+        col = Color.FromArgb(255, int(c.Red), int(c.Green), int(c.Blue))
     return SolidColorBrush(col)
-
 
 # ------------------ FilterInfo Class ------------------
 class FilterInfo(INotifyPropertyChanged):
@@ -89,8 +88,9 @@ class FilterInfo(INotifyPropertyChanged):
 
         # Projection Line
         self.ProjBrush = revit_color_to_brush(projColor)
-        self.ProjWeight = projWeight
+        self.ProjWeight = projWeight if projWeight > 0 else 1
         self.ProjDashArray = get_dash_array(projPatternId)
+        self.ProjPatternText = get_line_pattern_name(projPatternId)
 
         # Projection Hatch
         self.ProjFg = get_fill_pattern_name(projFgPatternId)
@@ -100,8 +100,9 @@ class FilterInfo(INotifyPropertyChanged):
 
         # Cut Line
         self.CutBrush = revit_color_to_brush(cutColor)
-        self.CutWeight = cutWeight
+        self.CutWeight = cutWeight if cutWeight > 0 else 1
         self.CutDashArray = get_dash_array(cutPatternId)
+        self.CutPatternText = get_line_pattern_name(cutPatternId)
 
         # Cut Hatch
         self.CutFg = get_fill_pattern_name(cutFgPatternId)
@@ -191,11 +192,39 @@ if not templates:
 # ------------------ Apply Overrides ------------------
 def copy_overrides(src_override):
     ovr = OverrideGraphicSettings()
-    ovr.SetCutLineColor(src_override.CutBrush.Color)
-    ovr.SetProjectionLineColor(src_override.ProjBrush.Color)
-    ovr.SetCutLineWeight(src_override.CutWeight)
-    ovr.SetProjectionLineWeight(src_override.ProjWeight)
-    # Need original ElementIds for pattern
+
+    # Projection line
+    try:
+        ovr.SetProjectionLineColor(src_override.ProjectionLineColor)
+        ovr.SetProjectionLineWeight(src_override.ProjectionLineWeight)
+        ovr.SetProjectionLinePatternId(src_override.ProjectionLinePatternId)
+    except:
+        pass
+
+    # Cut line
+    try:
+        ovr.SetCutLineColor(src_override.CutLineColor)
+        ovr.SetCutLineWeight(src_override.CutLineWeight)
+        ovr.SetCutLinePatternId(src_override.CutLinePatternId)
+    except:
+        pass
+
+    # Surface hatch
+    try:
+        ovr.SetSurfaceForegroundPatternColor(src_override.SurfaceForegroundPatternColor)
+        ovr.SetSurfaceForegroundPatternId(src_override.SurfaceForegroundPatternId)
+        ovr.SetSurfaceBackgroundPatternColor(src_override.SurfaceBackgroundPatternColor)
+        ovr.SetSurfaceBackgroundPatternId(src_override.SurfaceBackgroundPatternId)
+    except:
+        pass
+
+    # Halftone / Transparency
+    try:
+        ovr.SetHalftone(src_override.Halftone)
+        ovr.SetSurfaceTransparency(src_override.Transparency)
+    except:
+        pass
+
     return ovr
 
 t = DB.Transaction(doc, 'Apply View Filters to Templates')

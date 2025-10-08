@@ -1,16 +1,38 @@
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Select Filters" Height="550" Width="1000"
+        Title="Select Filters" Height="550" Width="1560"
         WindowStartupLocation="CenterScreen"
         Background="White" Foreground="Black"
         ResizeMode="CanResize">
 
     <DockPanel Margin="10">
 
+        <!-- Buttons -->
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button Name="okBtn" Width="80" Height="26" Margin="5" Content="OK"/>
+            <Button Name="cancelBtn" Width="80" Height="26" Margin="5" Content="Cancel"/>
+        </StackPanel>
+
+        <!-- Super-header row -->
+        <Grid DockPanel.Dock="Top" Height="25">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="250"/>
+                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="150"/>
+                <ColumnDefinition Width="150"/>
+                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="150"/>
+                <ColumnDefinition Width="150"/>
+                <ColumnDefinition Width="80"/>
+                <ColumnDefinition Width="120"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="1" Grid.ColumnSpan="3" Text="Projection" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+            <TextBlock Grid.Column="4" Grid.ColumnSpan="3" Text="Cut" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold"/>
+        </Grid>
+
         <!-- Filters List -->
-        <ListView Name="filterList" DockPanel.Dock="Top" Height="450"
-                  SelectionMode="Extended" AlternationCount="2"
-                  BorderThickness="1" BorderBrush="#CCC">
+        <ListView Name="filterList" DockPanel.Dock="Top" SelectionMode="Extended" AlternationCount="2" BorderThickness="1" BorderBrush="#CCC">
             <ListView.Resources>
                 <Style TargetType="ListViewItem">
                     <Setter Property="Background" Value="White"/>
@@ -28,25 +50,27 @@
 
             <ListView.View>
                 <GridView>
-                    <!-- Name -->
-                    <GridViewColumn Header="Name" Width="200" DisplayMemberBinding="{Binding Name}"/>
+                    <GridViewColumn Header="Name" Width="250" DisplayMemberBinding="{Binding Name}"/>
 
                     <!-- Projection Line -->
-                    <GridViewColumn Header="Projection Line" Width="180">
+                    <GridViewColumn Header="Line" Width="200">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
-                                <Canvas Width="80" Height="16">
-                                    <Line X1="0" Y1="8" X2="80" Y2="8"
-                                          Stroke="{Binding ProjBrush}"
-                                          StrokeThickness="{Binding ProjWeight}"
-                                          StrokeDashArray="{Binding ProjDashArray}"/>
-                                </Canvas>
+                                <StackPanel Orientation="Horizontal">
+                                    <Canvas Width="80" Height="16">
+                                        <Line X1="0" Y1="8" X2="80" Y2="8"
+                                              Stroke="{Binding ProjBrush}"
+                                              StrokeThickness="{Binding ProjWeight}"
+                                              StrokeDashArray="{Binding ProjDashArray}"/>
+                                    </Canvas>
+                                    <TextBlock Text="{Binding ProjPatternText}" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
 
-                    <!-- Projection Hatch Foreground -->
-                    <GridViewColumn Header="Proj Hatch FG" Width="150">
+                    <!-- Projection Hatch FG -->
+                    <GridViewColumn Header="Hatch FG" Width="150">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
@@ -57,8 +81,8 @@
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
 
-                    <!-- Projection Hatch Background -->
-                    <GridViewColumn Header="Proj Hatch BG" Width="150">
+                    <!-- Projection Hatch BG -->
+                    <GridViewColumn Header="Hatch BG" Width="150">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
@@ -70,21 +94,24 @@
                     </GridViewColumn>
 
                     <!-- Cut Line -->
-                    <GridViewColumn Header="Cut Line" Width="180">
+                    <GridViewColumn Header="Line" Width="200">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
-                                <Canvas Width="80" Height="16">
-                                    <Line X1="0" Y1="8" X2="80" Y2="8"
-                                          Stroke="{Binding CutBrush}"
-                                          StrokeThickness="{Binding CutWeight}"
-                                          StrokeDashArray="{Binding CutDashArray}"/>
-                                </Canvas>
+                                <StackPanel Orientation="Horizontal">
+                                    <Canvas Width="80" Height="16">
+                                        <Line X1="0" Y1="8" X2="80" Y2="8"
+                                              Stroke="{Binding CutBrush}"
+                                              StrokeThickness="{Binding CutWeight}"
+                                              StrokeDashArray="{Binding CutDashArray}"/>
+                                    </Canvas>
+                                    <TextBlock Text="{Binding CutPatternText}" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
 
-                    <!-- Cut Hatch Foreground -->
-                    <GridViewColumn Header="Cut Hatch FG" Width="150">
+                    <!-- Cut Hatch FG -->
+                    <GridViewColumn Header="Hatch FG" Width="150">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
@@ -95,8 +122,8 @@
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
 
-                    <!-- Cut Hatch Background -->
-                    <GridViewColumn Header="Cut Hatch BG" Width="150">
+                    <!-- Cut Hatch BG -->
+                    <GridViewColumn Header="Hatch BG" Width="150">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
@@ -108,7 +135,7 @@
                     </GridViewColumn>
 
                     <!-- Halftone -->
-                    <GridViewColumn Header="Halftone" Width="60">
+                    <GridViewColumn Header="Halftone" Width="80">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <CheckBox IsChecked="{Binding Halftone}" IsEnabled="False" HorizontalAlignment="Center"/>
@@ -117,16 +144,16 @@
                     </GridViewColumn>
 
                     <!-- Transparency -->
-                    <GridViewColumn Header="Transparency %" Width="80" DisplayMemberBinding="{Binding Transparency}"/>
+                    <GridViewColumn Header="Transparency %" Width="120">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Transparency}" HorizontalAlignment="Center"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+
                 </GridView>
             </ListView.View>
         </ListView>
-
-        <!-- Buttons -->
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-            <Button Name="okBtn" Width="80" Height="26" Margin="5" Content="OK"/>
-            <Button Name="cancelBtn" Width="80" Height="26" Margin="5" Content="Cancel"/>
-        </StackPanel>
-
     </DockPanel>
 </Window>
