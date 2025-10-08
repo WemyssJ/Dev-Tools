@@ -1,15 +1,20 @@
 # -*- coding: utf-8 -*-
 """
 Align Text Notes (Left / Centre / Right)
-Sets justification for selected TextNotes or all notes in the active view.
-Fast, no moving/alignment of boxes.
+Pretty modern WPF version with buttons
 """
 
-from Autodesk.Revit.DB import *
+from Autodesk.Revit.DB import TextNote, HorizontalTextAlignment, FilteredElementCollector, Transaction
 from pyrevit import revit, forms
+import clr, os
 
 doc = revit.doc
 uidoc = revit.uidoc
+
+clr.AddReference('PresentationFramework')
+clr.AddReference('PresentationCore')
+clr.AddReference('WindowsBase')
+from System.Windows import Window
 
 # -------------------- Gather TextNotes --------------------
 sel_ids = list(uidoc.Selection.GetElementIds())
@@ -26,38 +31,45 @@ else:
     if not textnotes:
         forms.alert("No Text Notes found in this view.", exitscript=True)
 
-# -------------------- WPF / PyRevit selection --------------------
-alignment_choice = forms.CommandSwitchWindow.show(
-    {
-        "Left": "Left justification (UK writing style)",
-        "Centre": "Centre justification",
-        "Right": "Right justification",
-    },
-    message="Select text justification:"
-)
-if not alignment_choice:
-    forms.alert("No justification selected.", exitscript=True)
+# -------------------- Load WPF UI --------------------
+HERE = os.path.dirname(__file__)
+XAMLFILE = os.path.join(HERE, "AlignTextNotes.xaml")
+dlg = forms.WPFWindow(XAMLFILE)
+
+# Buttons
+left_btn = dlg.leftBtn
+centre_btn = dlg.centreBtn
+right_btn = dlg.rightBtn
+cancel_btn = dlg.cancelBtn
 
 alignment_map = {
     "Left": HorizontalTextAlignment.Left,
     "Centre": HorizontalTextAlignment.Center,
     "Right": HorizontalTextAlignment.Right,
 }
-chosen_alignment = alignment_map[alignment_choice]
 
-# -------------------- Transaction --------------------
-t = Transaction(doc, "Set TextNote Justification ({})".format(alignment_choice))
-t.Start()
+# -------------------- Handlers --------------------
+def apply_alignment(alignment_name):
+    chosen_alignment = alignment_map[alignment_name]
 
-count = 0
-for tn in textnotes:
-    try:
-        tn.HorizontalAlignment = chosen_alignment
-        count += 1
-    except Exception as e:
-        print("Failed on TextNote ID {}: {}".format(tn.Id.IntegerValue, e))
+    t = Transaction(doc, "Set TextNote Justification ({})".format(alignment_name))
+    t.Start()
+    count = 0
+    for tn in textnotes:
+        try:
+            tn.HorizontalAlignment = chosen_alignment
+            count += 1
+        except Exception as e:
+            print("Failed on TextNote ID {}: {}".format(tn.Id.IntegerValue, e))
+    t.Commit()
 
-t.Commit()
+    forms.alert("Adjusted justification for {} text note(s) to {}.".format(count, alignment_name.lower()))
+    dlg.Close()
 
-# -------------------- Report --------------------
-forms.alert("Adjusted justification for {} text note(s) to {}.".format(count, alignment_choice.lower()))
+left_btn.Click += lambda s, a: apply_alignment("Left")
+centre_btn.Click += lambda s, a: apply_alignment("Centre")
+right_btn.Click += lambda s, a: apply_alignment("Right")
+cancel_btn.Click += lambda s, a: dlg.Close()
+
+# -------------------- Show Dialog --------------------
+dlg.ShowDialog()
