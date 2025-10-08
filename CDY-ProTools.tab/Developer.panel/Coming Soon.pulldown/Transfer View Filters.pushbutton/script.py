@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-__title__ = "Transfer View Filters v5.2"
-__doc__ = "Live preview: Projection/Cut line + weight + pattern, hatch FG/BG + color, Halftone, Transparency"
+__title__ = "Transfer View Filters v5.6"
+__doc__ = "Live preview: Projection/Cut line + weight + pattern, hatch FG/BG + color, Halftone, Transparency, Enable, Visibility"
 
 import clr, sys, os
 clr.AddReference('System')
@@ -65,26 +65,55 @@ def get_dash_array(pid):
         return None
     return dash if len(dash) else None
 
-from System.Windows.Media import SolidColorBrush, Color
 
+# ✅ Your version preserved exactly
 def revit_color_to_brush(c):
-    """Convert a Revit color to a WPF SolidColorBrush in IronPython."""
-    if not c or not c.IsValid:
-        # fallback light gray
-        col = Color.FromArgb(255, 200, 200, 200)
-    else:
-        col = Color.FromArgb(255, int(c.Red), int(c.Green), int(c.Blue))
-    return SolidColorBrush(col)
+    """Convert a Revit color to a WPF SolidColorBrush safely"""
+    from System.Windows.Media import Color as MediaColor, SolidColorBrush
+    try:
+        if not c or not c.IsValid:
+            return SolidColorBrush(MediaColor.FromRgb(200, 200, 200))
+        return SolidColorBrush(MediaColor.FromRgb(int(c.Red), int(c.Green), int(c.Blue)))
+    except:
+        return SolidColorBrush(MediaColor.FromRgb(200, 200, 200))
+
+
+# ------------------ Robust Enabled/Visible helpers ------------------
+def get_filter_enabled(view, fid):
+    try:
+        if hasattr(view, "GetIsFilterEnabled"):
+            return view.GetIsFilterEnabled(fid)
+        elif hasattr(view, "GetFilterEnabled"):
+            return view.GetFilterEnabled(fid)
+        else:
+            return True
+    except:
+        return True
+
+def get_filter_visible(view, fid):
+    try:
+        if hasattr(view, "GetFilterVisibility"):
+            return view.GetFilterVisibility(fid)
+        elif hasattr(view, "GetFilterVisible"):
+            return view.GetFilterVisible(fid)
+        else:
+            return True
+    except:
+        return True
+
 
 # ------------------ FilterInfo Class ------------------
 class FilterInfo(INotifyPropertyChanged):
-    def __init__(self, name, projColor, projWeight, projPatternId,
+    def __init__(self, name, enabled, visible,
+                 projColor, projWeight, projPatternId,
                  projFgPatternId, projFgColor, projBgPatternId, projBgColor,
                  cutColor, cutWeight, cutPatternId,
                  cutFgPatternId, cutFgColor, cutBgPatternId, cutBgColor,
                  halftone, transparency):
 
         self.Name = name
+        self.Enabled = True if enabled else False
+        self.Visible = True if visible else False
 
         # Projection Line
         self.ProjBrush = revit_color_to_brush(projColor)
@@ -114,9 +143,9 @@ class FilterInfo(INotifyPropertyChanged):
         self.Halftone = halftone
         self.Transparency = transparency
 
-    # Dummy INotifyPropertyChanged
     def add_PropertyChanged(self, handler): pass
     def remove_PropertyChanged(self, handler): pass
+
 
 # ------------------ Collect Filters ------------------
 try:
@@ -133,9 +162,11 @@ filter_data = ObservableCollection[FilterInfo]()
 for fid in applied_filters:
     f = doc.GetElement(fid)
     ovr = active_view.GetFilterOverrides(fid)
+    enabled = get_filter_enabled(active_view, fid)
+    visible = get_filter_visible(active_view, fid)
 
     item = FilterInfo(
-        f.Name,
+        f.Name, enabled, visible,
         ovr.ProjectionLineColor, ovr.ProjectionLineWeight, ovr.ProjectionLinePatternId,
         ovr.SurfaceForegroundPatternId, ovr.SurfaceForegroundPatternColor,
         ovr.SurfaceBackgroundPatternId, ovr.SurfaceBackgroundPatternColor,
@@ -148,6 +179,7 @@ for fid in applied_filters:
 
     filter_data.Add(item)
     filter_map[f.Name] = (fid, ovr)
+
 
 # ------------------ Load XAML ------------------
 xaml_path = os.path.join(os.path.dirname(__file__), "TransferVG.xaml")
@@ -189,8 +221,10 @@ templates = forms.SelectFromList.show(
 if not templates:
     sys.exit()
 
-# ------------------ Apply Overrides ------------------
-def copy_overrides(src_override):
+
+# ------------------ Copy Overrides Function ------------------
+def copy_overrides(fid, src_view, dest_view):
+    src_override = src_view.GetFilterOverrides(fid)
     ovr = OverrideGraphicSettings()
 
     # Projection line
@@ -198,16 +232,14 @@ def copy_overrides(src_override):
         ovr.SetProjectionLineColor(src_override.ProjectionLineColor)
         ovr.SetProjectionLineWeight(src_override.ProjectionLineWeight)
         ovr.SetProjectionLinePatternId(src_override.ProjectionLinePatternId)
-    except:
-        pass
+    except: pass
 
     # Cut line
     try:
         ovr.SetCutLineColor(src_override.CutLineColor)
         ovr.SetCutLineWeight(src_override.CutLineWeight)
         ovr.SetCutLinePatternId(src_override.CutLinePatternId)
-    except:
-        pass
+    except: pass
 
     # Surface hatch
     try:
@@ -215,18 +247,34 @@ def copy_overrides(src_override):
         ovr.SetSurfaceForegroundPatternId(src_override.SurfaceForegroundPatternId)
         ovr.SetSurfaceBackgroundPatternColor(src_override.SurfaceBackgroundPatternColor)
         ovr.SetSurfaceBackgroundPatternId(src_override.SurfaceBackgroundPatternId)
-    except:
-        pass
+    except: pass
 
     # Halftone / Transparency
     try:
         ovr.SetHalftone(src_override.Halftone)
         ovr.SetSurfaceTransparency(src_override.Transparency)
+    except: pass
+
+    # --- Enable + Visibility transfer ---
+    try:
+        enabled = get_filter_enabled(src_view, fid)
+        visible = get_filter_visible(src_view, fid)
+        if hasattr(dest_view, "SetIsFilterEnabled"):
+            dest_view.SetIsFilterEnabled(fid, enabled)
+        elif hasattr(dest_view, "SetFilterEnabled"):
+            dest_view.SetFilterEnabled(fid, enabled)
+
+        if hasattr(dest_view, "SetFilterVisibility"):
+            dest_view.SetFilterVisibility(fid, visible)
+        elif hasattr(dest_view, "SetFilterVisible"):
+            dest_view.SetFilterVisible(fid, visible)
     except:
         pass
 
     return ovr
 
+
+# ------------------ Apply to Selected Templates ------------------
 t = DB.Transaction(doc, 'Apply View Filters to Templates')
 t.Start()
 for fname in selected_filters:
@@ -234,7 +282,8 @@ for fname in selected_filters:
     for template in templates:
         if not template.IsFilterApplied(fid):
             template.AddFilter(fid)
-        template.SetFilterOverrides(fid, copy_overrides(existing_override))
+        new_override = copy_overrides(fid, active_view, template)
+        template.SetFilterOverrides(fid, new_override)
 t.Commit()
 
-forms.alert("Filters successfully applied!", title="Done")
+forms.alert("Filters successfully applied, including Enable + Visibility states!", title="Done")
