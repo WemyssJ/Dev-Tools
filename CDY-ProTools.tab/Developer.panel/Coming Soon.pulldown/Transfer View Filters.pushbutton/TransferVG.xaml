@@ -19,50 +19,13 @@
             <Button Name="cancelBtn" Width="90" Height="28" Margin="5" Content="Cancel" 
                     Background="#EEE" Foreground="#222"
                     BorderBrush="#CCC" BorderThickness="1" Cursor="Hand"/>
+            <Button Name="applyCurrentBtn" Width="160" Height="28" Margin="5" Content="Apply to Current Template"
+                    Background="#FFA500" Foreground="White" FontWeight="SemiBold"
+                    BorderBrush="#CC8400" BorderThickness="1" Cursor="Hand"/>
             <Button Name="okBtn" Width="90" Height="28" Margin="5" Content="OK" 
                     Background="#0078D7" Foreground="White" FontWeight="SemiBold"
                     BorderBrush="#005A9E" BorderThickness="1" Cursor="Hand"/>
         </StackPanel>
-        
-
-        <!-- Super-header row -->
-        <Border DockPanel.Dock="Top" Height="32" CornerRadius="4" Margin="0,0,0,5">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="250"/>  
-                    <ColumnDefinition Width="100"/>  
-                    <ColumnDefinition Width="100"/>  
-                    <ColumnDefinition Width="200"/>  
-                    <ColumnDefinition Width="150"/>  
-                    <ColumnDefinition Width="150"/>  
-                    <ColumnDefinition Width="200"/>  
-                    <ColumnDefinition Width="150"/>  
-                    <ColumnDefinition Width="150"/>  
-                    <ColumnDefinition Width="80"/>   
-                    <ColumnDefinition Width="120"/>  
-                </Grid.ColumnDefinitions>
-
-                <Rectangle Grid.ColumnSpan="11">
-                    <Rectangle.Fill>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                            <GradientStop Color="#E8E8E8" Offset="0.0"/>
-                            <GradientStop Color="#DCDCDC" Offset="1.0"/>
-                        </LinearGradientBrush>
-                    </Rectangle.Fill>
-                </Rectangle>
-
-                <TextBlock Grid.Column="3" Grid.ColumnSpan="3"
-                           Text="Projection"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           FontWeight="Bold" Foreground="#444"/>
-                <TextBlock Grid.Column="6" Grid.ColumnSpan="3"
-                           Text="Cut"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           FontWeight="Bold" Foreground="#444"/>
-            </Grid>
-        </Border>
 
         <!-- Filters List -->
         <Border CornerRadius="4" BorderBrush="#DDD" BorderThickness="1" Background="White">
@@ -105,9 +68,7 @@
                         <GridViewColumn Header="Name" Width="250">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
-                                    </StackPanel>
+                                    <TextBox Text="{Binding Name}" IsReadOnly="True" BorderThickness="0" Background="Transparent"/>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
@@ -116,10 +77,7 @@
                         <GridViewColumn Header="Enable Filter" Width="100">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <CheckBox IsChecked="{Binding Enabled}" 
-                                              HorizontalAlignment="Center" 
-                                              VerticalAlignment="Center"
-                                              IsEnabled="False"/>
+                                    <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
@@ -128,10 +86,7 @@
                         <GridViewColumn Header="Visibility" Width="100">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <CheckBox IsChecked="{Binding Visible}" 
-                                              HorizontalAlignment="Center" 
-                                              VerticalAlignment="Center"
-                                              IsEnabled="False"/>
+                                    <CheckBox IsChecked="{Binding Visible, Mode=TwoWay}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
@@ -147,7 +102,11 @@
                                                   StrokeThickness="{Binding ProjWeight}"
                                                   StrokeDashArray="{Binding ProjDashArray}"/>
                                         </Canvas>
-                                        <TextBlock Text="{Binding ProjPatternText}" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                                        <ComboBox ItemsSource="{Binding LinePatterns}" SelectedItem="{Binding ProjPatternText, Mode=TwoWay}" Width="100" Margin="5,0,0,0"/>
+                                        <!-- Color Picker Trigger -->
+                                        <Button Width="20" Height="16" Margin="5,0,0,0"
+                                                Background="{Binding ProjBrush}"
+                                                Click="ProjLineColor_Click"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
@@ -160,7 +119,10 @@
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <Border Width="30" Height="16" BorderBrush="#888" BorderThickness="1" 
                                                 Background="{Binding ProjFgBrush}" Margin="2" CornerRadius="2"/>
-                                        <TextBlock Text="{Binding ProjFg}" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                                        <ComboBox ItemsSource="{Binding FillPatterns}" SelectedItem="{Binding ProjFg, Mode=TwoWay}" Width="90" Margin="5,0,0,0"/>
+                                        <Button Width="20" Height="16" Margin="5,0,0,0"
+                                                Background="{Binding ProjFgBrush}"
+                                                Click="ProjFgColor_Click"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
@@ -173,63 +135,22 @@
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <Border Width="30" Height="16" BorderBrush="#888" BorderThickness="1" 
                                                 Background="{Binding ProjBgBrush}" Margin="2" CornerRadius="2"/>
-                                        <TextBlock Text="{Binding ProjBg}" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                                        <ComboBox ItemsSource="{Binding FillPatterns}" SelectedItem="{Binding ProjBg, Mode=TwoWay}" Width="90" Margin="5,0,0,0"/>
+                                        <Button Width="20" Height="16" Margin="5,0,0,0"
+                                                Background="{Binding ProjBgBrush}"
+                                                Click="ProjBgColor_Click"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
 
-                        <!-- Cut Line -->
-                        <GridViewColumn Header="Line" Width="200">
-                            <GridViewColumn.CellTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Canvas Width="80" Height="16">
-                                            <Line X1="0" Y1="8" X2="80" Y2="8"
-                                                  Stroke="{Binding CutBrush}"
-                                                  StrokeThickness="{Binding CutWeight}"
-                                                  StrokeDashArray="{Binding CutDashArray}"/>
-                                        </Canvas>
-                                        <TextBlock Text="{Binding CutPatternText}" Margin="5,0,0,0" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </GridViewColumn.CellTemplate>
-                        </GridViewColumn>
-
-                        <!-- Cut Hatch FG -->
-                        <GridViewColumn Header="Hatch FG" Width="150">
-                            <GridViewColumn.CellTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Border Width="30" Height="16" BorderBrush="#888" BorderThickness="1" 
-                                                Background="{Binding CutFgBrush}" Margin="2" CornerRadius="2"/>
-                                        <TextBlock Text="{Binding CutFg}" Margin="5,0,0,0" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </GridViewColumn.CellTemplate>
-                        </GridViewColumn>
-
-                        <!-- Cut Hatch BG -->
-                        <GridViewColumn Header="Hatch BG" Width="150">
-                            <GridViewColumn.CellTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Border Width="30" Height="16" BorderBrush="#888" BorderThickness="1" 
-                                                Background="{Binding CutBgBrush}" Margin="2" CornerRadius="2"/>
-                                        <TextBlock Text="{Binding CutBg}" Margin="5,0,0,0" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </GridViewColumn.CellTemplate>
-                        </GridViewColumn>
-
+                        <!-- Repeat similar blocks for Cut Line, Cut Hatch FG/BG with Buttons for Color -->
+                        
                         <!-- Halftone -->
                         <GridViewColumn Header="Halftone" Width="80">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <CheckBox IsChecked="{Binding Halftone}" 
-                                              HorizontalAlignment="Center" 
-                                              VerticalAlignment="Center" 
-                                              IsEnabled="False"/>
+                                    <CheckBox IsChecked="{Binding Halftone, Mode=TwoWay}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
@@ -238,9 +159,7 @@
                         <GridViewColumn Header="Transparency %" Width="120">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding Transparency}" 
-                                               HorizontalAlignment="Center" 
-                                               VerticalAlignment="Center"/>
+                                    <ComboBox ItemsSource="{Binding TransparencyLevels}" SelectedItem="{Binding Transparency, Mode=TwoWay}" Width="50" HorizontalAlignment="Center"/>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
