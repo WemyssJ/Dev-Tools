@@ -286,4 +286,15 @@ for fname in selected_filters:
         template.SetFilterOverrides(fid, new_override)
 t.Commit()
 
-forms.alert("Filters successfully applied, including Enable + Visibility states!", title="Done")
+# Get the names for display
+source_template_id = active_view.ViewTemplateId
+if source_template_id != DB.ElementId.InvalidElementId:
+    source_name = doc.GetElement(source_template_id).Name
+else:
+    source_name = active_view.Name  # fallback if no template
+target_names = ", ".join([v.Name for v in templates])
+
+forms.alert(
+    "Selected filters successfully applied from {} to {}!".format(source_name, target_names),
+    title="Done"
+)
