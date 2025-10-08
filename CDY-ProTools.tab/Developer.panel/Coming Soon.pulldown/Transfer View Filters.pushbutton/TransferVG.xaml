@@ -1,0 +1,89 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Select Filters" Height="500" Width="880"
+        WindowStartupLocation="CenterScreen"
+        Background="White" Foreground="Black"
+        ResizeMode="CanResize">
+
+    <DockPanel Margin="10">
+
+        <!-- Filters List -->
+        <ListView Name="filterList" DockPanel.Dock="Top" Height="400"
+                  SelectionMode="Extended" AlternationCount="2"
+                  BorderThickness="1" BorderBrush="#CCC">
+            <ListView.Resources>
+                <!-- Alternating row background -->
+                <Style TargetType="ListViewItem">
+                    <Setter Property="Background" Value="White"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Style.Triggers>
+                        <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                            <Setter Property="Background" Value="#F7F7F7"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Background" Value="#ADD8E6"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </ListView.Resources>
+
+            <ListView.View>
+                <GridView>
+                    <!-- Filter Name -->
+                    <GridViewColumn Header="Name" Width="200" DisplayMemberBinding="{Binding Name}"/>
+
+                    <!-- Projection / Surface -->
+                    <GridViewColumn Header="Projection Color" Width="60">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border Width="30" Height="16" BorderBrush="Gray" BorderThickness="1" Background="{Binding ProjBrush}">
+                                    <Border.ToolTip>
+                                        <TextBlock Text="{Binding ProjColorText, TargetNullValue='Invalid'}"/>
+                                    </Border.ToolTip>
+                                </Border>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+
+                    <GridViewColumn Header="Proj Pattern" Width="100" DisplayMemberBinding="{Binding ProjPattern}"/>
+                    <GridViewColumn Header="Proj Fill" Width="100" DisplayMemberBinding="{Binding SurfFg}"/>
+
+                    <!-- Cut Group -->
+                    <GridViewColumn Header="Cut Color" Width="60">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border Width="30" Height="16" BorderBrush="Gray" BorderThickness="1" Background="{Binding CutBrush}">
+                                    <Border.ToolTip>
+                                        <TextBlock Text="{Binding CutColorText, TargetNullValue='Invalid'}"/>
+                                    </Border.ToolTip>
+                                </Border>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+
+                    <GridViewColumn Header="Cut Pattern" Width="100" DisplayMemberBinding="{Binding CutPattern}"/>
+                    <GridViewColumn Header="Cut Fill" Width="100" DisplayMemberBinding="{Binding CutFg}"/>
+
+                    <!-- Transparency -->
+                    <GridViewColumn Header="Transparency %" Width="80" DisplayMemberBinding="{Binding Transparency}"/>
+
+                    <!-- Halftone -->
+                    <GridViewColumn Header="Halftone" Width="60">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding Halftone}" IsEnabled="False" HorizontalAlignment="Center"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                </GridView>
+            </ListView.View>
+        </ListView>
+
+        <!-- Buttons -->
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button Name="okBtn" Width="80" Height="26" Margin="5" Content="OK"/>
+            <Button Name="cancelBtn" Width="80" Height="26" Margin="5" Content="Cancel"/>
+        </StackPanel>
+
+    </DockPanel>
+</Window>

@@ -1,52 +1,49 @@
 # -*- coding: utf-8 -*-
-__title__   = "Transfer View Filters"
-__doc__     = """Version = 1.6
-Date    = 08.20.2025
-Optimized version with caching and minimal API calls.
-Only shows templates currently in use by at least one view.
-"""
+__title__ = "Transfer View Filters v2.3"
+__doc__ = "White/light theme, working color previews & RGB tooltips, multi-select, Revit 2024"
 
-import sys
-import clr
+import clr, sys, os
 clr.AddReference('System')
+clr.AddReference('PresentationFramework')
+clr.AddReference('WindowsBase')
+clr.AddReference('PresentationCore')
 clr.AddReference('RevitAPI')
 
+from System.IO import FileStream, FileMode
+from System.Windows.Markup import XamlReader
+from System.ComponentModel import INotifyPropertyChanged
+from System.Collections.ObjectModel import ObservableCollection
+from System.Windows.Media import SolidColorBrush, Color, Colors
 from Autodesk.Revit.DB import *
 from pyrevit import revit, DB, forms
 
-#============================================ VARIABLES
+# ------------------ Document & View ------------------
 doc = __revit__.ActiveUIDocument.Document
 active_view = __revit__.ActiveUIDocument.ActiveView
 
-#============================================ CACHES
+# ------------------ Caches ------------------
 line_pattern_cache = {}
 fill_pattern_cache = {}
-color_cache = {}
 
-#============================================ HELPERS
-
-def color_to_rgb_square(c):
-    """Cache Revit Color objects to avoid repeated processing."""
-    if not c or not c.IsValid:
-        return "⬜ None"
-    key = (c.Red, c.Green, c.Blue)
-    if key in color_cache:
-        return color_cache[key]
-    rgbval = "({0}, {1}, {2})".format(c.Red, c.Green, c.Blue)
-    swatch = u"\u2588\u2588 " + rgbval
-    color_cache[key] = swatch
-    return swatch
-
-
-def get_line_pattern_preview(pid):
-    """Cache LinePatternElement previews."""
+# ------------------ Helpers ------------------
+def get_fill_pattern_name(pid):
     if not pid or pid == ElementId.InvalidElementId:
         return "None"
+    if pid in fill_pattern_cache:
+        return fill_pattern_cache[pid]
+    el = doc.GetElement(pid)
+    name = el.Name if el else "None"
+    fill_pattern_cache[pid] = name
+    return name
+
+def get_line_pattern_preview(pid):
+    if not pid or pid == ElementId.InvalidElementId:
+        return ""
     if pid in line_pattern_cache:
         return line_pattern_cache[pid]
     lpe = doc.GetElement(pid)
     if not lpe:
-        return "None"  # <-- safeguard
+        return ""
     preview = ""
     try:
         for seg in lpe.GetLinePattern().Segments:
@@ -59,23 +56,132 @@ def get_line_pattern_preview(pid):
             elif seg.SegmentType == LinePatternSegmentType.Solid:
                 preview += "─"
     except:
-        preview = lpe.Name if lpe else "None"
+        preview = lpe.Name
     line_pattern_cache[pid] = preview.strip()
-    return line_pattern_cache[pid]
+    return preview.strip()
 
-def get_fill_pattern_name(pid):
-    """Cache FillPatternElement names."""
-    if not pid or pid == ElementId.InvalidElementId:
-        return "None"
-    if pid in fill_pattern_cache:
-        return fill_pattern_cache[pid]
-    el = doc.GetElement(pid)
-    name = el.Name if el else "None"
-    fill_pattern_cache[pid] = name
-    return name
+from System.Windows.Media import SolidColorBrush, Color, Colors
 
+def revit_color_to_brush(c):
+    if not c or not c.IsValid:
+        return SolidColorBrush(Colors.LightGray)
+    r = max(0, min(255, int(c.Red)))
+    g = max(0, min(255, int(c.Green)))
+    b = max(0, min(255, int(c.Blue)))
+    # Correct WPF Color creation
+    wpf_color = Color.FromRgb(r, g, b)
+    return SolidColorBrush(wpf_color)
+
+def revit_color_to_text(c):
+    if not c or not c.IsValid:
+        return "Invalid"
+    return "R:{} G:{} B:{}".format(int(c.Red), int(c.Green), int(c.Blue))
+
+# ------------------ Data Class ------------------
+class FilterInfo(INotifyPropertyChanged):
+    def __init__(self, name, projColor, cutColor, projPattern, cutPattern, surfFg, cutFg, transparency, halftone):
+        self.Name = name
+        self._projBrush = revit_color_to_brush(projColor)
+        self._cutBrush = revit_color_to_brush(cutColor)
+        self._projColorText = revit_color_to_text(projColor)
+        self._cutColorText = revit_color_to_text(cutColor)
+        self.ProjPattern = projPattern
+        self.CutPattern = cutPattern
+        self.SurfFg = surfFg
+        self.CutFg = cutFg
+        self.Transparency = transparency
+        self.Halftone = halftone
+
+    @property
+    def ProjBrush(self):
+        return self._projBrush
+
+    @property
+    def CutBrush(self):
+        return self._cutBrush
+
+    @property
+    def ProjColorText(self):
+        return self._projColorText
+
+    @property
+    def CutColorText(self):
+        return self._cutColorText
+
+    def add_PropertyChanged(self, handler): pass
+    def remove_PropertyChanged(self, handler): pass
+
+# ------------------ Collect Filters ------------------
+try:
+    applied_filters = active_view.GetFilters()
+except:
+    forms.alert("Active view does not support VG overrides. Open a Plan, Section, or 3D view.", exitscript=True)
+
+if not applied_filters:
+    forms.alert("No filters applied to the active view.", exitscript=True)
+
+filter_map = {}
+filter_data = ObservableCollection[FilterInfo]()
+
+for fid in applied_filters:
+    f = doc.GetElement(fid)
+    ovr = active_view.GetFilterOverrides(fid)
+    item = FilterInfo(
+        f.Name,
+        ovr.ProjectionLineColor,
+        ovr.CutLineColor,
+        get_line_pattern_preview(ovr.ProjectionLinePatternId),
+        get_line_pattern_preview(ovr.CutLinePatternId),
+        get_fill_pattern_name(ovr.SurfaceForegroundPatternId),
+        get_fill_pattern_name(ovr.CutForegroundPatternId),
+        ovr.Transparency,
+        ovr.Halftone
+    )
+    filter_data.Add(item)
+    filter_map[f.Name] = (fid, ovr)
+
+# ------------------ Load XAML ------------------
+xaml_path = os.path.join(os.path.dirname(__file__), "TransferVG.XAML")
+with FileStream(xaml_path, FileMode.Open) as fs:
+    window = XamlReader.Load(fs)
+
+window.FindName("filterList").ItemsSource = filter_data
+
+# ------------------ Button Handlers ------------------
+def on_ok(sender, args):
+    selected = [i.Name for i in window.FindName("filterList").SelectedItems]
+    window.Tag = selected
+    window.Close()
+
+def on_cancel(sender, args):
+    window.Tag = None
+    window.Close()
+
+window.FindName("okBtn").Click += on_ok
+window.FindName("cancelBtn").Click += on_cancel
+
+window.ShowDialog()
+
+selected_filters = window.Tag
+if not selected_filters:
+    sys.exit()
+
+# ------------------ Collect View Templates ------------------
+all_views = DB.FilteredElementCollector(doc).OfClass(DB.View).ToElements()
+template_ids_in_use = {v.ViewTemplateId for v in all_views if v.ViewTemplateId != DB.ElementId.InvalidElementId}
+used_templates = [doc.GetElement(tid) for tid in template_ids_in_use]
+
+if not used_templates:
+    forms.alert("No view templates currently in use.", exitscript=True)
+
+templates = forms.SelectFromList.show(
+    used_templates, multiselect=True, title='Select In-Use View Templates', name_attr='Name'
+)
+if not templates:
+    sys.exit()
+
+# ------------------ Apply Overrides ------------------
 def copy_overrides(src_override):
-    """Build a new OverrideGraphicSettings object from existing one."""
     ovr = OverrideGraphicSettings()
     ovr.SetCutLineColor(src_override.CutLineColor)
     ovr.SetProjectionLineColor(src_override.ProjectionLineColor)
@@ -95,83 +201,6 @@ def copy_overrides(src_override):
     ovr.SetSurfaceTransparency(src_override.Transparency)
     return ovr
 
-#============================================ MAIN
-
-# Get applied filters
-applied_filters = active_view.GetFilters()
-if not applied_filters:
-    forms.alert("No filters are applied to the active view.", exitscript=True)
-
-filter_map = {}
-items = []
-
-for fid in applied_filters:
-    f = doc.GetElement(fid)
-    ovr = active_view.GetFilterOverrides(fid)
-    
-    # Use cached helpers
-    proj_color = color_to_rgb_square(ovr.ProjectionLineColor)
-    cut_color  = color_to_rgb_square(ovr.CutLineColor)
-    proj_pattern = get_line_pattern_preview(ovr.ProjectionLinePatternId)
-    cut_pattern  = get_line_pattern_preview(ovr.CutLinePatternId)
-    surf_fg = get_fill_pattern_name(ovr.SurfaceForegroundPatternId)
-    surf_bg = get_fill_pattern_name(ovr.SurfaceBackgroundPatternId)
-    cut_fg  = get_fill_pattern_name(ovr.CutForegroundPatternId)
-    cut_bg  = get_fill_pattern_name(ovr.CutBackgroundPatternId)
-
-    desc = "[{0}]\nProj: {1}, Wt:{2}, Pat:{3}\nCut: {4}, Wt:{5}, Pat:{6}\nSurface Fg:{7}, Bg:{8} | Cut Fg:{9}, Bg:{10}\nTransparency:{11}% | Halftone:{12}".format(
-        f.Name,
-        proj_color,
-        ovr.ProjectionLineWeight,
-        proj_pattern,
-        cut_color,
-        ovr.CutLineWeight,
-        cut_pattern,
-        surf_fg,
-        surf_bg,
-        cut_fg,
-        cut_bg,
-        ovr.Transparency,
-        ovr.Halftone
-    )
-
-    items.append(desc)
-    filter_map[f.Name] = (fid, ovr)
-
-# Select filters
-selected_descs = forms.SelectFromList.show(
-    items, multiselect=True, title="Select Filters from Active View (with overrides)"
-)
-if not selected_descs:
-    sys.exit()
-
-selected_filters = [desc.split("\n")[0].strip("[]") for desc in selected_descs]
-
-# Collect only view templates that are actually assigned to views
-all_views = DB.FilteredElementCollector(doc).OfClass(DB.View).ToElements()
-template_ids_in_use = set()
-
-for v in all_views:
-    tid = v.ViewTemplateId
-    if tid and tid != DB.ElementId.InvalidElementId:
-        template_ids_in_use.add(tid)
-
-used_templates = [doc.GetElement(tid) for tid in template_ids_in_use]
-
-if not used_templates:
-    forms.alert("No view templates are currently in use.", exitscript=True)
-
-# Let user pick only from in-use templates
-templates = forms.SelectFromList.show(
-    used_templates,
-    multiselect=True,
-    title='Select In-Use View Templates',
-    name_attr='Name'
-)
-if not templates:
-    sys.exit()
-
-# Apply overrides in a single transaction
 t = DB.Transaction(doc, 'Apply View Filters to Templates')
 t.Start()
 for fname in selected_filters:
@@ -181,4 +210,5 @@ for fname in selected_filters:
             template.AddFilter(fid)
         template.SetFilterOverrides(fid, copy_overrides(existing_override))
 t.Commit()
+
 forms.alert("Filters successfully applied!", title="Done")
