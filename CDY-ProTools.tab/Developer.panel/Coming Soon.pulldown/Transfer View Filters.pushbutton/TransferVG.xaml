@@ -28,16 +28,16 @@
 
             <ListView.View>
                 <GridView>
-                    <!-- Name -->
-                    <GridViewColumn Header="Name" Width="200" DisplayMemberBinding="{Binding Name}"/>
+                    <GridViewColumn Header="Name" Width="180" DisplayMemberBinding="{Binding Name}"/>
 
                     <!-- Projection Line -->
-                    <GridViewColumn Header="Projection Line" Width="180">
+                    <GridViewColumn Header="Projection Line" Width="200">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
                                     <Border Width="30" Height="16" BorderBrush="Gray" BorderThickness="1" Background="{Binding ProjBrush}" Margin="2"/>
-                                    <TextBlock Text="{Binding ProjLineText}" Margin="5,0,0,0"/>
+                                    <TextBlock Text="{Binding ProjPattern}" Margin="5,0,0,0"/>
+                                    <TextBlock Text="{Binding ProjWeight}" Margin="5,0,0,0"/>
                                 </StackPanel>
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
@@ -68,12 +68,13 @@
                     </GridViewColumn>
 
                     <!-- Cut Line -->
-                    <GridViewColumn Header="Cut Line" Width="180">
+                    <GridViewColumn Header="Cut Line" Width="200">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
                                     <Border Width="30" Height="16" BorderBrush="Gray" BorderThickness="1" Background="{Binding CutBrush}" Margin="2"/>
-                                    <TextBlock Text="{Binding CutLineText}" Margin="5,0,0,0"/>
+                                    <TextBlock Text="{Binding CutPattern}" Margin="5,0,0,0"/>
+                                    <TextBlock Text="{Binding CutWeight}" Margin="5,0,0,0"/>
                                 </StackPanel>
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>

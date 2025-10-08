@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-__title__ = "Transfer View Filters v2.3"
-__doc__ = "White/light theme, working color previews & RGB tooltips, multi-select, Revit 2024"
+__title__ = "Transfer View Filters v5.0"
+__doc__ = "Projection/Cut line + weight + pattern, hatch FG/BG + color, Halftone, Transparency"
 
 import clr, sys, os
 clr.AddReference('System')
@@ -13,7 +13,7 @@ from System.IO import FileStream, FileMode
 from System.Windows.Markup import XamlReader
 from System.ComponentModel import INotifyPropertyChanged
 from System.Collections.ObjectModel import ObservableCollection
-from System.Windows.Media import SolidColorBrush, Color, Colors
+from System.Windows.Media import SolidColorBrush, Color
 from Autodesk.Revit.DB import *
 from pyrevit import revit, DB, forms
 
@@ -48,66 +48,75 @@ def get_line_pattern_preview(pid):
     try:
         for seg in lpe.GetLinePattern().Segments:
             if seg.SegmentType == LinePatternSegmentType.Dash:
-                preview += "- "
+                preview += "─ "
             elif seg.SegmentType == LinePatternSegmentType.Dot:
                 preview += "· "
             elif seg.SegmentType == LinePatternSegmentType.Space:
                 preview += "  "
             elif seg.SegmentType == LinePatternSegmentType.Solid:
-                preview += "─"
+                preview += "━"
     except:
         preview = lpe.Name
     line_pattern_cache[pid] = preview.strip()
     return preview.strip()
 
-from System.Windows.Media import SolidColorBrush, Color, Colors
+from System.Windows.Media import Color, SolidColorBrush
 
-def revit_color_to_brush(c):
-    if not c or not c.IsValid:
-        return SolidColorBrush(Colors.LightGray)
-    r = max(0, min(255, int(c.Red)))
-    g = max(0, min(255, int(c.Green)))
-    b = max(0, min(255, int(c.Blue)))
-    # Correct WPF Color creation
-    wpf_color = Color.FromRgb(r, g, b)
-    return SolidColorBrush(wpf_color)
+def revit_color_to_brush(rvt_color):
+    """Convert Revit color to WPF SolidColorBrush (IronPython-compatible)."""
+    if not rvt_color or not rvt_color.IsValid:
+        c = Color()
+        c.R = 200
+        c.G = 200
+        c.B = 200
+        c.A = 255
+        return SolidColorBrush(c)
 
-def revit_color_to_text(c):
-    if not c or not c.IsValid:
-        return "Invalid"
-    return "R:{} G:{} B:{}".format(int(c.Red), int(c.Green), int(c.Blue))
+    c = Color()
+    c.R = int(rvt_color.Red)
+    c.G = int(rvt_color.Green)
+    c.B = int(rvt_color.Blue)
+    c.A = 255
+    return SolidColorBrush(c)
 
-# ------------------ Data Class ------------------
+
+# ------------------ FilterInfo Class ------------------
 class FilterInfo(INotifyPropertyChanged):
-    def __init__(self, name, projColor, cutColor, projPattern, cutPattern, surfFg, cutFg, transparency, halftone):
+    def __init__(self, name, projColor, projWeight, projPatternId,
+                 projFgPatternId, projFgColor, projBgPatternId, projBgColor,
+                 cutColor, cutWeight, cutPatternId,
+                 cutFgPatternId, cutFgColor, cutBgPatternId, cutBgColor,
+                 halftone, transparency):
+
         self.Name = name
-        self._projBrush = revit_color_to_brush(projColor)
-        self._cutBrush = revit_color_to_brush(cutColor)
-        self._projColorText = revit_color_to_text(projColor)
-        self._cutColorText = revit_color_to_text(cutColor)
-        self.ProjPattern = projPattern
-        self.CutPattern = cutPattern
-        self.SurfFg = surfFg
-        self.CutFg = cutFg
-        self.Transparency = transparency
+
+        # Projection Line
+        self.ProjBrush = revit_color_to_brush(projColor)
+        self.ProjWeight = projWeight
+        self.ProjPattern = get_line_pattern_preview(projPatternId)
+
+        # Projection Hatch
+        self.ProjFg = get_fill_pattern_name(projFgPatternId)
+        self.ProjFgBrush = revit_color_to_brush(projFgColor)
+        self.ProjBg = get_fill_pattern_name(projBgPatternId)
+        self.ProjBgBrush = revit_color_to_brush(projBgColor)
+
+        # Cut Line
+        self.CutBrush = revit_color_to_brush(cutColor)
+        self.CutWeight = cutWeight
+        self.CutPattern = get_line_pattern_preview(cutPatternId)
+
+        # Cut Hatch
+        self.CutFg = get_fill_pattern_name(cutFgPatternId)
+        self.CutFgBrush = revit_color_to_brush(cutFgColor)
+        self.CutBg = get_fill_pattern_name(cutBgPatternId)
+        self.CutBgBrush = revit_color_to_brush(cutBgColor)
+
+        # Halftone / Transparency
         self.Halftone = halftone
+        self.Transparency = transparency
 
-    @property
-    def ProjBrush(self):
-        return self._projBrush
-
-    @property
-    def CutBrush(self):
-        return self._cutBrush
-
-    @property
-    def ProjColorText(self):
-        return self._projColorText
-
-    @property
-    def CutColorText(self):
-        return self._cutColorText
-
+    # Dummy INotifyPropertyChanged methods
     def add_PropertyChanged(self, handler): pass
     def remove_PropertyChanged(self, handler): pass
 
@@ -115,10 +124,10 @@ class FilterInfo(INotifyPropertyChanged):
 try:
     applied_filters = active_view.GetFilters()
 except:
-    forms.alert("Active view does not support VG overrides. Open a Plan, Section, or 3D view.", exitscript=True)
+    forms.alert("This view does not support VG Overrides.", exitscript=True)
 
 if not applied_filters:
-    forms.alert("No filters applied to the active view.", exitscript=True)
+    forms.alert("No filters applied.", exitscript=True)
 
 filter_map = {}
 filter_data = ObservableCollection[FilterInfo]()
@@ -126,28 +135,30 @@ filter_data = ObservableCollection[FilterInfo]()
 for fid in applied_filters:
     f = doc.GetElement(fid)
     ovr = active_view.GetFilterOverrides(fid)
+
     item = FilterInfo(
         f.Name,
-        ovr.ProjectionLineColor,
-        ovr.CutLineColor,
-        get_line_pattern_preview(ovr.ProjectionLinePatternId),
-        get_line_pattern_preview(ovr.CutLinePatternId),
-        get_fill_pattern_name(ovr.SurfaceForegroundPatternId),
-        get_fill_pattern_name(ovr.CutForegroundPatternId),
-        ovr.Transparency,
-        ovr.Halftone
+        ovr.ProjectionLineColor, ovr.ProjectionLineWeight, ovr.ProjectionLinePatternId,
+        ovr.SurfaceForegroundPatternId, ovr.SurfaceForegroundPatternColor,
+        ovr.SurfaceBackgroundPatternId, ovr.SurfaceBackgroundPatternColor,
+        ovr.CutLineColor, ovr.CutLineWeight, ovr.CutLinePatternId,
+        ovr.CutForegroundPatternId, ovr.CutForegroundPatternColor,
+        ovr.CutBackgroundPatternId, ovr.CutBackgroundPatternColor,
+        ovr.Halftone,
+        ovr.Transparency
     )
+
     filter_data.Add(item)
     filter_map[f.Name] = (fid, ovr)
 
 # ------------------ Load XAML ------------------
-xaml_path = os.path.join(os.path.dirname(__file__), "TransferVG.XAML")
-with FileStream(xaml_path, FileMode.Open) as fs:
-    window = XamlReader.Load(fs)
+xaml_path = os.path.join(os.path.dirname(__file__), "TransferVG.xaml")
+with FileStream(xaml_path, FileMode.Open) as f:
+    window = XamlReader.Load(f)
 
 window.FindName("filterList").ItemsSource = filter_data
 
-# ------------------ Button Handlers ------------------
+# ------------------ Buttons ------------------
 def on_ok(sender, args):
     selected = [i.Name for i in window.FindName("filterList").SelectedItems]
     window.Tag = selected
@@ -161,12 +172,11 @@ window.FindName("okBtn").Click += on_ok
 window.FindName("cancelBtn").Click += on_cancel
 
 window.ShowDialog()
-
 selected_filters = window.Tag
 if not selected_filters:
     sys.exit()
 
-# ------------------ Collect View Templates ------------------
+# ------------------ Select Target Templates ------------------
 all_views = DB.FilteredElementCollector(doc).OfClass(DB.View).ToElements()
 template_ids_in_use = {v.ViewTemplateId for v in all_views if v.ViewTemplateId != DB.ElementId.InvalidElementId}
 used_templates = [doc.GetElement(tid) for tid in template_ids_in_use]
