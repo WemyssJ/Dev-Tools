@@ -1,20 +1,60 @@
-import clr
+# -*- coding: utf-8 -*-
+import clr, os
 clr.AddReference('RevitAPI')
 clr.AddReference('RevitServices')
 clr.AddReference('PresentationFramework')
+clr.AddReference('PresentationCore')
+clr.AddReference('WindowsBase')
 
 from Autodesk.Revit.DB import *
 from RevitServices.Persistence import DocumentManager
-from System.Windows import Window, Thickness, HorizontalAlignment
-from System.Windows.Controls import StackPanel, TextBlock, TextBox, Button, ComboBox
+from System.Windows import Window
+from System.Windows.Markup import XamlReader
 from pyrevit import revit, script, forms
+from System.Windows.Media.Imaging import BitmapImage, BitmapCacheOption
+from System import Uri
 from collections import defaultdict
 
 doc = revit.doc
 uidoc = revit.uidoc
 output = script.get_output()
 
+# ---------------------------------------------------------------
+# Load external XAML layout
+# ---------------------------------------------------------------
+xaml_path = script.get_bundle_file('NumberPiles.xaml')
+with open(xaml_path, 'r') as f:
+    xaml_str = f.read()
+window = XamlReader.Parse(xaml_str)
+
+# Automatically find icon.png in the same folder as the current script
+icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
+
+# Optional: fallback in case the file doesn’t exist
+if not os.path.exists(icon_path):
+    print("⚠️ icon.png not found in script folder.")
+
+# Assign to Image control
+bmp = BitmapImage()
+bmp.BeginInit()
+bmp.UriSource = Uri(icon_path)
+bmp.CacheOption = BitmapCacheOption.OnLoad
+bmp.EndInit()
+window.FindName("headerIcon").Source = bmp
+
+# ---------------------------------------------------------------
+# Get control references by name
+# ---------------------------------------------------------------
+prefix_box = window.FindName("prefixBox")
+pad_box = window.FindName("padBox")
+cat_combo = window.FindName("catCombo")
+method_combo = window.FindName("methodCombo")
+ok_btn = window.FindName("okBtn")
+cancel_btn = window.FindName("cancelBtn")
+
+# ---------------------------------------------------------------
 # Collect all Structural Foundations
+# ---------------------------------------------------------------
 collector = FilteredElementCollector(doc) \
     .OfCategory(BuiltInCategory.OST_StructuralFoundation) \
     .WhereElementIsNotElementType()
@@ -58,90 +98,51 @@ if not piles:
     forms.alert("No New Construction pile foundations found.")
     script.exit()
 
-# --- UI window class ---
-class InputWindow(Window):
-    def __init__(self, categories):
-        self.Title = "Number Piles"
-        self.Height = 280
-        self.Width = 300
+# ---------------------------------------------------------------
+# Populate combo boxes
+# ---------------------------------------------------------------
+for cat in sorted_categories:
+    cat_combo.Items.Add(cat)
+cat_combo.SelectedIndex = 0
 
-        self.stack = StackPanel()
-        self.stack.Margin = Thickness(10)
+# Method combo already populated in XAML, so no change needed
 
-        self.prefix_label = TextBlock()
-        self.prefix_label.Text = "Prefix (e.g. P):"
-        self.stack.Children.Add(self.prefix_label)
+# ---------------------------------------------------------------
+# Capture form data
+# ---------------------------------------------------------------
+form_data = {"prefix": None, "padding": None, "category": None, "method": None}
 
-        self.prefix_box = TextBox()
-        self.prefix_box.Text = "P"
-        self.stack.Children.Add(self.prefix_box)
+def on_ok(sender, args):
+    try:
+        form_data["prefix"] = prefix_box.Text.strip()
+        form_data["padding"] = int(pad_box.Text.strip())
+        form_data["category"] = cat_combo.SelectedItem
+        selected_item = method_combo.SelectedItem
+        form_data["method"] = selected_item.Content if hasattr(selected_item, "Content") else selected_item
+        window.Close()
+    except:
+        forms.alert("Padding must be an integer.")
 
-        self.pad_label = TextBlock()
-        self.pad_label.Text = "Padding (e.g. 3 for 001):"
-        self.stack.Children.Add(self.pad_label)
+def on_cancel(sender, args):
+    window.Close()
+    script.exit("User cancelled.")
 
-        self.pad_box = TextBox()
-        self.pad_box.Text = "3"
-        self.stack.Children.Add(self.pad_box)
+ok_btn.Click += on_ok
+cancel_btn.Click += on_cancel
 
-        self.cat_label = TextBlock()
-        self.cat_label.Text = "Pile Category:"
-        self.stack.Children.Add(self.cat_label)
+window.ShowDialog()
 
-        self.cat_combo = ComboBox()
-        self.cat_combo.Width = 260
-        for cat in categories:
-            self.cat_combo.Items.Add(cat)
-        self.cat_combo.SelectedIndex = 0
-        self.stack.Children.Add(self.cat_combo)
-
-        self.method_label = TextBlock()
-        self.method_label.Text = "Numbering Method:"
-        self.stack.Children.Add(self.method_label)
-
-        self.method_combo = ComboBox()
-        self.method_combo.Width = 260
-        self.method_combo.Items.Add("By View")
-        self.method_combo.Items.Add("By World Co-ordinates")
-        self.method_combo.SelectedIndex = 0
-        self.stack.Children.Add(self.method_combo)
-
-        self.ok_button = Button()
-        self.ok_button.Content = "OK"
-        self.ok_button.Width = 60
-        self.ok_button.HorizontalAlignment = HorizontalAlignment.Right
-        self.ok_button.Click += self.on_ok
-        self.stack.Children.Add(self.ok_button)
-
-        self.Content = self.stack
-
-        self.prefix = None
-        self.padding = None
-        self.category = None
-        self.method = None
-
-    def on_ok(self, sender, args):
-        try:
-            self.prefix = self.prefix_box.Text.strip()
-            self.padding = int(self.pad_box.Text.strip())
-            self.category = self.cat_combo.SelectedItem
-            self.method = self.method_combo.SelectedItem
-            self.Close()
-        except:
-            forms.alert("Padding must be an integer.")
-
-form = InputWindow(sorted_categories)
-form.ShowDialog()
-
-if not form.prefix or not form.padding:
+if not form_data["prefix"] or not form_data["padding"]:
     script.exit("Cancelled or invalid input.")
 
-prefix = form.prefix
-padding = form.padding
-selected_category = form.category
-method = form.method
+prefix = form_data["prefix"]
+padding = form_data["padding"]
+selected_category = form_data["category"]
+method = form_data["method"]
 
+# ---------------------------------------------------------------
 # Filter piles by category (case-insensitive)
+# ---------------------------------------------------------------
 filtered_piles = []
 for el in piles:
     param = el.LookupParameter("Pile Category")
@@ -153,7 +154,9 @@ if not filtered_piles:
     forms.alert("No piles found for selected category '{0}'.".format(selected_category))
     script.exit()
 
+# ---------------------------------------------------------------
 # Collect pile caps by Description = "Pile Cap" (type parameter)
+# ---------------------------------------------------------------
 pile_caps = []
 for el in collector:
     type_id = el.GetTypeId()
@@ -162,7 +165,9 @@ for el in collector:
     if desc_param and desc_param.AsString() == "Pile Cap":
         pile_caps.append(el)
 
-# Get XYZ location
+# ---------------------------------------------------------------
+# Helper functions
+# ---------------------------------------------------------------
 def get_point(el):
     loc = el.Location
     if isinstance(loc, LocationPoint):
@@ -187,10 +192,9 @@ def get_view_point(el):
     except:
         return pt
 
-# --- Stable sort key ignoring Z/levels ---
 def pile_sort_key(el):
     pt = get_point(el) if method == "By World Co-ordinates" else get_view_point(el)
-    return (-round(pt.Y, 3), round(pt.X, 3), el.Id.IntegerValue)  # tie-breaker by unique ID
+    return (-round(pt.Y, 3), round(pt.X, 3), el.Id.IntegerValue)
 
 def bbox_intersects(pile, cap, tolerance=0.1):
     pile_bb = pile.get_BoundingBox(None)
@@ -202,7 +206,9 @@ def bbox_intersects(pile, cap, tolerance=0.1):
         (pile_bb.Max.Y + tolerance >= cap_bb.Min.Y and pile_bb.Min.Y - tolerance <= cap_bb.Max.Y)
     )
 
+# ---------------------------------------------------------------
 # Map piles to caps
+# ---------------------------------------------------------------
 pile_to_cap = {}
 for pile in filtered_piles:
     mark_param = pile.LookupParameter("Mark")
@@ -217,10 +223,10 @@ for pile in filtered_piles:
     if not matched:
         output.print_md("Pile '{0}' did **not** match any cap.".format(pile_name))
 
-# Sort pile caps
+# ---------------------------------------------------------------
+# Sort and group piles
+# ---------------------------------------------------------------
 pile_caps_sorted = sorted(pile_caps, key=pile_sort_key)
-
-# Group piles by cap ID
 cap_to_piles = defaultdict(list)
 unassociated_piles = []
 
@@ -231,14 +237,10 @@ for pile in filtered_piles:
     else:
         unassociated_piles.append(pile)
 
-# Sort piles within each cap
 for piles_list in cap_to_piles.values():
     piles_list.sort(key=pile_sort_key)
 
-# Sort unassociated piles
 unassociated_piles.sort(key=pile_sort_key)
-
-# Group unassociated piles between caps
 between_groups = defaultdict(list)
 cap_ys = [get_point(cap).Y for cap in pile_caps_sorted]
 
@@ -255,7 +257,6 @@ for pile in unassociated_piles:
     if not assigned:
         continue
 
-# Separate unassociated piles outside cap ranges
 top_unassociated = []
 bottom_unassociated = []
 
@@ -264,11 +265,7 @@ lowest_cap_y = cap_ys[-1] if cap_ys else None
 
 for pile in unassociated_piles:
     p_y = get_point(pile).Y
-    in_between = False
-    for lst in between_groups.values():
-        if pile in lst:
-            in_between = True
-            break
+    in_between = any(pile in lst for lst in between_groups.values())
     if in_between:
         continue
     if highest_cap_y is not None and p_y > highest_cap_y:
@@ -276,34 +273,27 @@ for pile in unassociated_piles:
     elif lowest_cap_y is not None and p_y < lowest_cap_y:
         bottom_unassociated.append(pile)
 
-# Leftover piles not assigned anywhere
 leftover_unassociated = []
 for pile in unassociated_piles:
-    if pile not in top_unassociated and pile not in bottom_unassociated:
-        in_between = False
-        for lst in between_groups.values():
-            if pile in lst:
-                in_between = True
-                break
-        if not in_between:
-            leftover_unassociated.append(pile)
-            output.print_md("Leftover pile ID {0}, numbering anyway.".format(pile.Id))
+    if pile not in top_unassociated and pile not in bottom_unassociated and not any(pile in lst for lst in between_groups.values()):
+        leftover_unassociated.append(pile)
+        output.print_md("Leftover pile ID {0}, numbering anyway.".format(pile.Id))
 
-# Sort remaining groups
 for key in between_groups:
     between_groups[key].sort(key=pile_sort_key)
 top_unassociated.sort(key=pile_sort_key)
 bottom_unassociated.sort(key=pile_sort_key)
 leftover_unassociated.sort(key=pile_sort_key)
 
-# Number piles
+# ---------------------------------------------------------------
+# Number piles transaction
+# ---------------------------------------------------------------
 output.print_md("Starting transaction...")
 t = Transaction(doc, "Number piles with cap awareness")
 t.Start()
 
 try:
     i = 1
-    # Top unassociated
     for pile in top_unassociated:
         mark = prefix + str(i).zfill(padding)
         param = pile.LookupParameter("Mark")
@@ -312,7 +302,6 @@ try:
         output.print_md("Numbered pile ID {0} as '{1}'".format(pile.Id, mark))
         i += 1
 
-    # Caps and between
     num_caps = len(pile_caps_sorted)
     for idx in range(num_caps):
         cap = pile_caps_sorted[idx]
@@ -333,22 +322,12 @@ try:
                 output.print_md("Numbered pile ID {0} as '{1}'".format(pile.Id, mark))
                 i += 1
 
-    # Bottom unassociated
-    for pile in bottom_unassociated:
+    for pile in bottom_unassociated + leftover_unassociated:
         mark = prefix + str(i).zfill(padding)
         param = pile.LookupParameter("Mark")
         if param and not param.IsReadOnly:
             param.Set(mark)
         output.print_md("Numbered pile ID {0} as '{1}'".format(pile.Id, mark))
-        i += 1
-
-    # Leftover unassociated
-    for pile in leftover_unassociated:
-        mark = prefix + str(i).zfill(padding)
-        param = pile.LookupParameter("Mark")
-        if param and not param.IsReadOnly:
-            param.Set(mark)
-        output.print_md("Numbered leftover pile ID {0} as '{1}'".format(pile.Id, mark))
         i += 1
 
 except Exception as e:
@@ -360,7 +339,3 @@ finally:
 
 total_numbered = i - 1
 forms.alert("Successfully numbered {0} pile(s).".format(total_numbered), title="Success")
-
-
-
-

@@ -1,6 +1,7 @@
-# grid_extents_wpf_enum_fixed.py (IronPython for pyRevit)
+# -*- coding: utf-8 -*-
 import clr
 import sys
+import os
 
 clr.AddReference("PresentationFramework")
 clr.AddReference("PresentationCore")
@@ -11,111 +12,108 @@ clr.AddReference('RevitAPIUI')
 from Autodesk.Revit.DB import *
 from Autodesk.Revit.UI import TaskDialog
 from Autodesk.Revit.UI.Selection import ISelectionFilter, ObjectType
-from System.Windows import Window, Thickness, WindowStartupLocation
-from System.Windows.Controls import StackPanel, Button, CheckBox, Orientation
+from System.Windows.Markup import XamlReader
+from System.IO import StringReader
+from pyrevit import script
+from System import Uri
+from System.Windows.Media.Imaging import BitmapImage, BitmapCacheOption
 
-# Selection filter to allow only grids
+# -----------------------------
+# Selection filter
+# -----------------------------
 class GridSelectionFilter(ISelectionFilter):
     def AllowElement(self, element):
         return isinstance(element, Grid)
     def AllowReference(self, reference, position):
         return False
 
-# WPF window
-class GridExtentsWindow(Window):
-    def __init__(self):
-        self.Title = "Grid Extents Options"
-        self.Width = 280
-        self.Height = 180
-        self.ResizeMode = 0  # No resize
-        self.WindowStartupLocation = WindowStartupLocation.CenterScreen
-
-        panel = StackPanel()
-        panel.Orientation = Orientation.Vertical
-        panel.Margin = Thickness(10)
-
-        # Checkboxes
-        self.cb2d = CheckBox()
-        self.cb2d.Content = "Set to 2D (ViewSpecific)"
-        self.cb2d.Margin = Thickness(5)
-        panel.Children.Add(self.cb2d)
-
-        self.cb3d = CheckBox()
-        self.cb3d.Content = "Set to 3D (Model)"
-        self.cb3d.Margin = Thickness(5)
-        panel.Children.Add(self.cb3d)
-
-        self.cbBubbles = CheckBox()
-        self.cbBubbles.Content = "Keep extents, bubbles both ends"
-        self.cbBubbles.Margin = Thickness(5)
-        panel.Children.Add(self.cbBubbles)
-
-        # Mutually exclusive logic
-        def on_cb2d(sender, args):
-            if self.cb2d.IsChecked:
-                self.cb3d.IsChecked = False
-                self.cbBubbles.IsChecked = False
-        def on_cb3d(sender, args):
-            if self.cb3d.IsChecked:
-                self.cb2d.IsChecked = False
-                self.cbBubbles.IsChecked = False
-        def on_cbBubbles(sender, args):
-            if self.cbBubbles.IsChecked:
-                self.cb2d.IsChecked = False
-                self.cb3d.IsChecked = False
-        self.cb2d.Checked += on_cb2d
-        self.cb3d.Checked += on_cb3d
-        self.cbBubbles.Checked += on_cbBubbles
-
-        # Buttons
-        btn_panel = StackPanel()
-        btn_panel.Orientation = Orientation.Horizontal
-        btn_panel.Margin = Thickness(5)
-
-        confirm = Button()
-        confirm.Content = "Confirm"
-        confirm.Width = 80
-        confirm.Margin = Thickness(5)
-        confirm.Click += self.on_confirm
-        btn_panel.Children.Add(confirm)
-
-        cancel = Button()
-        cancel.Content = "Cancel"
-        cancel.Width = 80
-        cancel.Margin = Thickness(5)
-        cancel.Click += self.on_cancel
-        btn_panel.Children.Add(cancel)
-
-        panel.Children.Add(btn_panel)
-        self.Content = panel
-        self.result = None
-
-    def on_confirm(self, sender, args):
-        if self.cb2d.IsChecked:
-            self.result = "2D"
-        elif self.cb3d.IsChecked:
-            self.result = "3D"
-        elif self.cbBubbles.IsChecked:
-            self.result = "Bubbles"
-        else:
-            self.result = None
-        self.Close()
-
-    def on_cancel(self, sender, args):
-        self.result = None
-        self.Close()
+# ---------------------------------------------------------------------
+# Load XAML UI
+# ---------------------------------------------------------------------
+xaml_path = script.get_bundle_file('GridManip.xaml')
+with open(xaml_path, 'r') as f:
+    xaml_str = f.read()
+window = XamlReader.Parse(xaml_str)
 
 
-# Main script
+cb2d = window.FindName("cb2d")
+cb3d = window.FindName("cb3d")
+cbBubbles = window.FindName("cbBubbles")
+okBtn = window.FindName("okBtn")
+cancelBtn = window.FindName("cancelBtn")
+headerIcon = window.FindName("headerIcon")
+
+# -----------------------------
+# Load icon.png automatically
+# -----------------------------
+icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
+if os.path.exists(icon_path):
+    bmp = BitmapImage()
+    bmp.BeginInit()
+    bmp.UriSource = Uri(icon_path)
+    bmp.CacheOption = BitmapCacheOption.OnLoad
+    bmp.EndInit()
+    headerIcon.Source = bmp
+else:
+    print("⚠️ icon.png not found in script folder.")
+
+# -----------------------------
+# Checkbox mutual exclusivity
+# -----------------------------
+def on_cb2d(sender, args):
+    if cb2d.IsChecked:
+        cb3d.IsChecked = False
+        cbBubbles.IsChecked = False
+
+def on_cb3d(sender, args):
+    if cb3d.IsChecked:
+        cb2d.IsChecked = False
+        cbBubbles.IsChecked = False
+
+def on_cbBubbles(sender, args):
+    if cbBubbles.IsChecked:
+        cb2d.IsChecked = False
+        cb3d.IsChecked = False
+
+cb2d.Checked += on_cb2d
+cb3d.Checked += on_cb3d
+cbBubbles.Checked += on_cbBubbles
+
+# -----------------------------
+# Result storage variable
+# -----------------------------
+result = None
+
+def on_confirm(sender, args):
+    global result
+    if cb2d.IsChecked:
+        result = "2D"
+    elif cb3d.IsChecked:
+        result = "3D"
+    elif cbBubbles.IsChecked:
+        result = "Bubbles"
+    else:
+        result = None
+    window.Close()
+
+def on_cancel(sender, args):
+    global result
+    result = None
+    window.Close()
+
+okBtn.Click += on_confirm
+cancelBtn.Click += on_cancel
+
+# -----------------------------
+# Grid selection
+# -----------------------------
 uidoc = __revit__.ActiveUIDocument
 doc = uidoc.Document
 view = doc.ActiveView
 
-# Preselected grids
 sel_ids = uidoc.Selection.GetElementIds()
 grids = [doc.GetElement(eid) for eid in sel_ids if isinstance(doc.GetElement(eid), Grid)]
 
-# Post-selection if none
 if not grids:
     try:
         picked_refs = uidoc.Selection.PickObjects(ObjectType.Element, GridSelectionFilter(), "Select grid lines")
@@ -128,19 +126,22 @@ if not grids:
     TaskDialog.Show("Grid Extents", "No Grid elements selected.")
     sys.exit()
 
-# Show WPF form
-win = GridExtentsWindow()
-win.ShowDialog()
+# -----------------------------
+# Show dialog
+# -----------------------------
+window.ShowDialog()
 
-if win.result is None:
+if result is None:
     TaskDialog.Show("Grid Extents", "Operation cancelled.")
     sys.exit()
 
-force_to_2d = (win.result == "2D")
-force_to_3d = (win.result == "3D")
-force_bubbles = (win.result == "Bubbles")
+force_to_2d = (result == "2D")
+force_to_3d = (result == "3D")
+force_bubbles = (result == "Bubbles")
 
-# Process grids
+# -----------------------------
+# Apply changes
+# -----------------------------
 changed = 0
 t = Transaction(doc, "Set Grid Extents/Bubbles")
 t.Start()
@@ -148,11 +149,8 @@ t.Start()
 for g in grids:
     try:
         if force_to_2d:
-            # Force to 2D
             g.SetDatumExtentType(DatumEnds.End0, view, DatumExtentType.ViewSpecific)
             g.SetDatumExtentType(DatumEnds.End1, view, DatumExtentType.ViewSpecific)
-
-            # Copy geometry from model curve
             try:
                 model_curves = g.GetCurvesInView(DatumExtentType.Model, view)
                 if model_curves:
@@ -165,29 +163,23 @@ for g in grids:
                             pass
             except:
                 pass
-
         elif force_to_3d:
-            # Force to 3D
             g.SetDatumExtentType(DatumEnds.End0, view, DatumExtentType.Model)
             g.SetDatumExtentType(DatumEnds.End1, view, DatumExtentType.Model)
-
         elif force_bubbles:
-            # Make extents view-specific so bubbles can be controlled
             g.SetDatumExtentType(DatumEnds.End0, view, DatumExtentType.ViewSpecific)
             g.SetDatumExtentType(DatumEnds.End1, view, DatumExtentType.ViewSpecific)
-
-            # Turn bubbles on at both ends
             g.ShowBubbleInView(DatumEnds.End0, view)
             g.ShowBubbleInView(DatumEnds.End1, view)
-
         changed += 1
-
     except Exception as ex:
         print("Failed for grid {0} : {1}".format(g.Id, ex))
 
 t.Commit()
 
+# -----------------------------
 # Report
+# -----------------------------
 if force_to_2d:
     msg = "Processed {0} grids.\nAll set to 2D (ViewSpecific).".format(changed)
 elif force_to_3d:

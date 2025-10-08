@@ -1,0 +1,49 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Grid Extents Options" Height="280" Width="420"
+        WindowStartupLocation="CenterScreen"
+        Background="#FAFAFA" Foreground="#222"
+        ResizeMode="NoResize"
+        FontFamily="Mona-Sans Light" FontSize="13">
+
+    <DockPanel Margin="10">
+
+        <!-- Header -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="40" Background="#0078D7">
+            <Image Name="headerIcon" Width="24" Height="24" Margin="10,8"/>
+            <TextBlock Text="Grid Extents Options" FontSize="16" FontWeight="Bold"
+                       VerticalAlignment="Center" Foreground="White"/>
+        </StackPanel>
+
+        <!-- Buttons -->
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
+                    HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Button Name="cancelBtn" Width="90" Height="28" Margin="5" Content="Cancel"
+                    Background="#EEE" Foreground="#222"
+                    BorderBrush="#CCC" BorderThickness="1" Cursor="Hand"/>
+            <Button Name="okBtn" Width="90" Height="28" Margin="5" Content="Confirm"
+                    Background="#0078D7" Foreground="White" FontWeight="SemiBold"
+                    BorderBrush="#005A9E" BorderThickness="1" Cursor="Hand"/>
+        </StackPanel>
+
+        <!-- Content -->
+        <Border DockPanel.Dock="Top" Padding="20" Margin="0,10,0,0"
+                Background="White" CornerRadius="6" BorderBrush="#DDD" BorderThickness="1">
+
+            <StackPanel Orientation="Vertical" VerticalAlignment="Center" Margin="0">
+
+                <TextBlock Text="Select an Option:" Margin="0,0,0,15" FontWeight="SemiBold"/>
+
+                <!-- Checkboxes -->
+                <CheckBox Name="cb2d" Content="Set to 2D (ViewSpecific)" Margin="0,0,0,8" FontSize="13"/>
+                <CheckBox Name="cb3d" Content="Set to 3D (Model)" Margin="0,0,0,8" FontSize="13"/>
+                <CheckBox Name="cbBubbles" Content="Keep extents, bubbles both ends" Margin="0,0,0,8" FontSize="13"/>
+
+                <!-- Hint -->
+                <TextBlock Text="Only one option can be selected at a time." FontStyle="Italic"
+                           Foreground="#777" Margin="0,10,0,0"/>
+
+            </StackPanel>
+        </Border>
+    </DockPanel>
+</Window>
