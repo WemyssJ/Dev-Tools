@@ -1,8 +1,0 @@
-engine: 
-  clean: true
-title:
-  en_us: Test Button
-tooltip: 
-  en_us: Drop script.py file in this button to test it.
-authors: >-
-  Joe Wemyss
