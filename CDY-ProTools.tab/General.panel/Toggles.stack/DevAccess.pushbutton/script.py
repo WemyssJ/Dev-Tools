@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-PushButton: (Un)Lock Developer Panel
-- IronPython 2.7 compatible
+CDY-ProTools: Toggle Developer Panel Lock
+- Unlock with password if locked
+- Relock and hide without password if unlocked
 """
 
 import clr
@@ -20,38 +21,12 @@ import os, json
 TAB_NAME = "CDY-ProTools"
 DEV_PANEL_NAME = "Developer"
 PYRVT_TAB_NAME = "pyRevit"
-PASSWORD = "password"  # change this
-XAML_FILE = "DeveloperUnlock.xaml"
+PASSWORD = "password"  # Change this
+XAML_FILE = "DeveloperUnlock.xaml"  # Your existing XAML window
 UNLOCK_FILE = os.path.join(os.getenv("APPDATA"), "CDY-ProTools", "dev_unlock.json")
 # ---------------------------------------- #
 
-# ---------------- File Utilities ---------------- #
-
-def ensure_unlock_file_exists():
-    folder = os.path.dirname(UNLOCK_FILE)
-    if not os.path.exists(folder):
-        os.makedirs(folder)
-    if not os.path.exists(UNLOCK_FILE):
-        f = open(UNLOCK_FILE, "w")
-        json.dump({"unlocked": False, "initialized": False}, f)
-        f.close()
-
-def read_unlock_file():
-    try:
-        f = open(UNLOCK_FILE, "r")
-        data = json.load(f)
-        f.close()
-        return data
-    except:
-        return {"unlocked": False, "initialized": False}
-
-def save_unlock_file(data):
-    f = open(UNLOCK_FILE, "w")
-    json.dump(data, f)
-    f.close()
-
 # ---------------- Ribbon Utilities ---------------- #
-
 def get_ui_elements():
     ribbon = AdWindows.ComponentManager.Ribbon
     if not ribbon:
@@ -67,38 +42,45 @@ def get_ui_elements():
             pyrvt_tab = tab
     return dev_panel, pyrvt_tab
 
-def load_xaml_window(xaml_file):
-    xaml_path = script.get_bundle_file(xaml_file)
-    f = open(xaml_path, 'r')
-    xaml_str = f.read()
-    f.close()
-    return XamlReader.Parse(xaml_str)
+def save_unlock(state):
+    folder = os.path.dirname(UNLOCK_FILE)
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+    with open(UNLOCK_FILE, "w") as f:
+        json.dump({"unlocked": state}, f)
 
-# ---------------- Main ---------------- #
+def is_unlocked():
+    if os.path.exists(UNLOCK_FILE):
+        try:
+            with open(UNLOCK_FILE, "r") as f:
+                return json.load(f).get("unlocked", False)
+        except:
+            return False
+    return False
 
-ensure_unlock_file_exists()
-data = read_unlock_file()
+# ---------------- Main Logic ---------------- #
 dev_panel, pyrvt_tab = get_ui_elements()
-
 if not dev_panel:
-    forms.alert("Developer panel not found in CDY-ProTools tab.", title="Error")
+    forms.alert("Developer panel not found.", title="Error")
     script.exit()
 
-# Currently unlocked? Lock it
-if data.get("unlocked", False):
-    data["unlocked"] = False
-    save_unlock_file(data)
+if is_unlocked():
+    # Currently unlocked → relock immediately
+    save_unlock(False)
     if dev_panel:
+        dev_panel.IsVisible = False
         dev_panel.IsEnabled = False
     if pyrvt_tab:
         pyrvt_tab.IsVisible = False
-    forms.alert("LOCKED", title="CDY-ProTools")
+    forms.alert("Developer panel relocked.", title="CDY-ProTools")
     script.exit()
 
-# --- Unlock (with password) ---
+# Currently locked → prompt for password
 try:
-    win = load_xaml_window(XAML_FILE)
-except Exception, e:
+    xaml_path = script.get_bundle_file(XAML_FILE)
+    with open(xaml_path, 'r') as f:
+        win = XamlReader.Parse(f.read())
+except Exception as e:
     forms.alert("Failed to load password window:\n{}".format(e), title="Error")
     script.exit()
 
@@ -108,14 +90,14 @@ cancelBtn = win.FindName("cancelBtn")
 
 def on_ok(sender, args):
     if password_box.Password == PASSWORD:
-        data["unlocked"] = True
-        data["initialized"] = True
-        save_unlock_file(data)
+        save_unlock(True)
         if dev_panel:
+            dev_panel.IsVisible = True
             dev_panel.IsEnabled = True
         if pyrvt_tab:
             pyrvt_tab.IsVisible = True
         win.Close()
+        forms.alert("Developer panel unlocked.", title="CDY-ProTools")
     else:
         forms.alert("Incorrect password.", title="Access Denied")
 
@@ -127,5 +109,4 @@ cancelBtn.Click += on_cancel
 
 if isinstance(win, Window):
     win.Topmost = True
-
 win.ShowDialog()
