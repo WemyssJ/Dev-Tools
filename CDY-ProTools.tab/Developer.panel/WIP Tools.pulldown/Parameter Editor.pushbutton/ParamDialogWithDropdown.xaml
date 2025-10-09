@@ -1,7 +1,7 @@
 <Window
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="Edit Parameter" Height="375" Width="400"
+    Title="Edit Parameter" Height="500" Width="600"
     WindowStartupLocation="CenterScreen"
     Background="#FAFAFA" Foreground="#222"
     ResizeMode="NoResize"
@@ -44,8 +44,18 @@
                 <!-- Parameter Value TextBox -->
                 <StackPanel Grid.Row="1" Orientation="Vertical">
                     <TextBlock Text="Parameter Value:" FontWeight="SemiBold" Margin="0,0,0,5"/>
-                    <TextBox x:Name="txtParameterValue" AcceptsReturn="True" TextWrapping="Wrap" 
-                             VerticalScrollBarVisibility="Auto" Height="80"/>
+                    <TextBox x:Name="txtParameterValue"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto"
+                             Height="200"
+                             Padding="5"
+                             BorderBrush="#CCC"
+                             BorderThickness="1"
+                             Background="#FFF"
+                             Foreground="#222"
+                             FontFamily="Mona-Sans Light"
+                             FontSize="13"/>
                 </StackPanel>
             </Grid>
         </Border>

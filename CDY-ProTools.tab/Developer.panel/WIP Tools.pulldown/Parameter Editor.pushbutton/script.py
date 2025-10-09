@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-
-from Autodesk.Revit.DB import Transaction, BuiltInParameter
+from Autodesk.Revit.DB import Transaction
 from Autodesk.Revit.UI import TaskDialog
 from pyrevit.forms import WPFWindow
 import os
 
-# Adjust path if needed to point to the XAML file location
+# Path to your XAML
 xaml_path = os.path.join(os.path.dirname(__file__), 'ParamDialogWithDropdown.xaml')
 
 
@@ -14,36 +13,41 @@ class ParamDialog(WPFWindow):
         WPFWindow.__init__(self, xaml_file)
 
         self.writable_params = writable_params
-
-        # Populate dropdown with parameter names
-        self.cmbParameters.ItemsSource = param_names
-        if param_names:
-            self.cmbParameters.SelectedIndex = 0  # default select first
-
-        self.txtParameterValue.Text = initial_value or ""
+        self.param_names = param_names
         self.result = None
 
+        # Populate dropdown
+        self.cmbParameters.ItemsSource = param_names
+        if param_names:
+            self.cmbParameters.SelectedIndex = 0
+
+        # Initialize textbox
+        self.txtParameterValue.Text = initial_value or ""
+
+        # Event bindings
         self.btnOk.Click += self.ok_clicked
         self.btnCancel.Click += self.cancel_clicked
-
-        # Update text box when dropdown selection changes
         self.cmbParameters.SelectionChanged += self.param_changed
 
     def param_changed(self, sender, e):
-        selected_param_name = self.cmbParameters.SelectedItem
-        if not selected_param_name:
+        """Update textbox when dropdown selection changes."""
+        selected_param = self.cmbParameters.SelectedItem
+        if not selected_param:
             return
 
-        # Find the corresponding parameter
-        selected_param = next(
-            (p for p in self.writable_params if p.Definition.Name == selected_param_name), None
-        )
+        # Get values from writable_params for this parameter
+        values = []
+        for p in self.writable_params:
+            if p.Definition.Name == selected_param:
+                values.append(p.AsString() or "")
 
-        if selected_param:
-            current_value = selected_param.AsString() or ""
-            self.txtParameterValue.Text = current_value
+        # Determine if values vary
+        unique_values = list(dict.fromkeys(values))
+        if len(unique_values) == 1:
+            self.txtParameterValue.Text = unique_values[0]
         else:
-            self.txtParameterValue.Text = ""
+            # Show all distinct values separated by newlines
+            self.txtParameterValue.Text = "<Varies>\n" + "\n".join(unique_values)
 
     def ok_clicked(self, sender, e):
         self.result = True
@@ -57,50 +61,84 @@ class ParamDialog(WPFWindow):
 def main():
     uidoc = __revit__.ActiveUIDocument
     doc = uidoc.Document
-
     selection = uidoc.Selection.GetElementIds()
-    if len(selection) != 1:
-        TaskDialog.Show("Error", "Please select exactly one element.")
+
+    if not selection:
+        TaskDialog.Show("Error", "Please select one or more elements.")
         return
 
-    elem = doc.GetElement(selection[0])
+    elems = [doc.GetElement(eid) for eid in selection]
 
-    # Gather all writable string parameters of the selected element
-    param_list = []
+    # Ensure all elements are same category
+    first_elem = elems[0]
+    first_cat = first_elem.Category
+    if any(e.Category.Id != first_cat.Id for e in elems):
+        TaskDialog.Show("Error", "All selected elements must be of the same category/type.")
+        return
+
+    # Gather writable string parameters from the first element only
     writable_params = []
-    for param in elem.Parameters:
-        if param.StorageType.ToString() == "String" and not param.IsReadOnly:
-            param_list.append(param.Definition.Name)
-            writable_params.append(param)
+    for e in elems:
+        for p in e.Parameters:
+            if p.StorageType.ToString() == "String" and not p.IsReadOnly:
+                writable_params.append(p)
 
-    if not param_list:
-        TaskDialog.Show("Error", "No writable string parameters found on the selected element.")
+    if not writable_params:
+        TaskDialog.Show("Error", "No writable string parameters found.")
         return
 
-    # Default to first param value
-    initial_value = writable_params[0].AsString() or ""
+    param_list = [
+        p.Definition.Name for p in first_elem.Parameters
+        if p.StorageType.ToString() == "String" and not p.IsReadOnly
+    ]
 
-    form = ParamDialog(xaml_path, param_list, writable_params, initial_value)
+    # Get initial value for first parameter
+    initial_param_name = param_list[0]
+    initial_values = []
+    for e in elems:
+        p = e.LookupParameter(initial_param_name)
+        if p:
+            initial_values.append(p.AsString() or "")
+
+    # Determine initial textbox value
+    unique_initial_values = list(dict.fromkeys(initial_values))
+    if len(unique_initial_values) == 1:
+        initial_text = unique_initial_values[0]
+    else:
+        initial_text = "<Varies>\n" + "\n".join(unique_initial_values)
+
+    # Show dialog
+    form = ParamDialog(xaml_path, param_list, writable_params, initial_text)
     form.ShowDialog()
 
-    if form.result:
-        new_value = form.txtParameterValue.Text
-        selected_param_name = form.cmbParameters.SelectedItem
+    if not form.result:
+        return
 
-        selected_param = next(
-            (p for p in writable_params if p.Definition.Name == selected_param_name), None
-        )
+    # Get new text
+    new_text = form.txtParameterValue.Text.strip()
+    selected_param_name = form.cmbParameters.SelectedItem
 
-        if selected_param is None:
-            TaskDialog.Show("Error", "Selected parameter not found.")
-            return
+    if not selected_param_name:
+        TaskDialog.Show("Error", "No parameter selected.")
+        return
 
-        t = Transaction(doc, "Set '{}' Parameter".format(selected_param_name))
-        t.Start()
-        selected_param.Set(new_value)
-        t.Commit()
+    # Prevent saving if text contains <Varies>
+    if "<Varies>" in new_text:
+        TaskDialog.Show("Info", "No changes made (contains <Varies>).")
+        return
 
-        TaskDialog.Show("Success", "'{}' parameter updated.".format(selected_param_name))
+    # Apply update in a single transaction for undo
+    t = Transaction(doc, "Set '{}' Parameter on Multiple Elements".format(selected_param_name))
+    t.Start()
+    updated_count = 0
+    for e in elems:
+        p = e.LookupParameter(selected_param_name)
+        if p and not p.IsReadOnly:
+            p.Set(new_text)
+            updated_count += 1
+    t.Commit()
+
+    TaskDialog.Show("Success", "'{}' updated on {} element(s).".format(selected_param_name, updated_count))
 
 
 if __name__ == "__main__":
