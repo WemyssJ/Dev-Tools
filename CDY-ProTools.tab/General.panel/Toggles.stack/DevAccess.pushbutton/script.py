@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 PushButton: (Un)Lock Developer Panel
+- IronPython 2.7 compatible
 """
 
 import clr
@@ -24,38 +25,37 @@ XAML_FILE = "DeveloperUnlock.xaml"
 UNLOCK_FILE = os.path.join(os.getenv("APPDATA"), "CDY-ProTools", "dev_unlock.json")
 # ---------------------------------------- #
 
-# --- Ensure unlock file exists ---
-folder = os.path.dirname(UNLOCK_FILE)
-if not os.path.exists(folder):
-    os.makedirs(folder)
-if not os.path.exists(UNLOCK_FILE):
-    f = open(UNLOCK_FILE, "w")
-    json.dump({"unlocked": False}, f)
-    f.close()
+# ---------------- File Utilities ---------------- #
 
+def ensure_unlock_file_exists():
+    folder = os.path.dirname(UNLOCK_FILE)
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+    if not os.path.exists(UNLOCK_FILE):
+        f = open(UNLOCK_FILE, "w")
+        json.dump({"unlocked": False, "initialized": False}, f)
+        f.close()
 
-def is_unlocked():
+def read_unlock_file():
     try:
         f = open(UNLOCK_FILE, "r")
         data = json.load(f)
         f.close()
-        return data.get("unlocked", False)
-    except Exception:
-        return False
+        return data
+    except:
+        return {"unlocked": False, "initialized": False}
 
-
-def save_unlock(state):
+def save_unlock_file(data):
     f = open(UNLOCK_FILE, "w")
-    json.dump({"unlocked": state}, f)
+    json.dump(data, f)
     f.close()
 
+# ---------------- Ribbon Utilities ---------------- #
 
 def get_ui_elements():
-    """Get Developer panel and pyRevit tab from the ribbon."""
     ribbon = AdWindows.ComponentManager.Ribbon
     if not ribbon:
         return None, None
-
     dev_panel, pyrvt_tab = None, None
     for tab in ribbon.Tabs:
         if tab.Title == TAB_NAME:
@@ -67,30 +67,29 @@ def get_ui_elements():
             pyrvt_tab = tab
     return dev_panel, pyrvt_tab
 
-
 def load_xaml_window(xaml_file):
-    """Loads the XAML file as a WPF window."""
     xaml_path = script.get_bundle_file(xaml_file)
     f = open(xaml_path, 'r')
     xaml_str = f.read()
     f.close()
     return XamlReader.Parse(xaml_str)
 
+# ---------------- Main ---------------- #
 
-# ---------------- MAIN ---------------- #
-
+ensure_unlock_file_exists()
+data = read_unlock_file()
 dev_panel, pyrvt_tab = get_ui_elements()
 
 if not dev_panel:
     forms.alert("Developer panel not found in CDY-ProTools tab.", title="Error")
     script.exit()
 
-unlocked = is_unlocked()
-
-if unlocked:
-    # --- Relock ---
-    save_unlock(False)
-    dev_panel.IsEnabled = False
+# Currently unlocked? Lock it
+if data.get("unlocked", False):
+    data["unlocked"] = False
+    save_unlock_file(data)
+    if dev_panel:
+        dev_panel.IsEnabled = False
     if pyrvt_tab:
         pyrvt_tab.IsVisible = False
     forms.alert("LOCKED", title="CDY-ProTools")
@@ -107,21 +106,21 @@ password_box = win.FindName("passwordBox")
 okBtn = win.FindName("okBtn")
 cancelBtn = win.FindName("cancelBtn")
 
-
 def on_ok(sender, args):
     if password_box.Password == PASSWORD:
-        save_unlock(True)
-        dev_panel.IsEnabled = True
+        data["unlocked"] = True
+        data["initialized"] = True
+        save_unlock_file(data)
+        if dev_panel:
+            dev_panel.IsEnabled = True
         if pyrvt_tab:
             pyrvt_tab.IsVisible = True
         win.Close()
     else:
         forms.alert("Incorrect password.", title="Access Denied")
 
-
 def on_cancel(sender, args):
     win.Close()
-
 
 okBtn.Click += on_ok
 cancelBtn.Click += on_cancel
