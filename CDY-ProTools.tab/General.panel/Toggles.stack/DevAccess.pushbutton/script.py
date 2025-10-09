@@ -24,10 +24,16 @@ XAML_FILE = "DeveloperUnlock.xaml"
 UNLOCK_FILE = os.path.join(os.getenv("APPDATA"), "CDY-ProTools", "dev_unlock.json")
 # ---------------------------------------- #
 
+# --- Ensure unlock file exists ---
+folder = os.path.dirname(UNLOCK_FILE)
+if not os.path.exists(folder):
+    os.makedirs(folder)
+if not os.path.exists(UNLOCK_FILE):
+    with open(UNLOCK_FILE, "w") as f:
+        json.dump({"unlocked": False}, f)
+
 
 def is_unlocked():
-    if not os.path.exists(UNLOCK_FILE):
-        return False
     try:
         with open(UNLOCK_FILE, "r") as f:
             return json.load(f).get("unlocked", False)
@@ -35,24 +41,13 @@ def is_unlocked():
         return False
 
 
-def save_unlock(state):
-    folder = os.path.dirname(UNLOCK_FILE)
-    if not os.path.exists(folder):
-        os.makedirs(folder)
+def save_unlock(state: bool):
     with open(UNLOCK_FILE, "w") as f:
         json.dump({"unlocked": state}, f)
 
 
-def load_xaml_window(xaml_file):
-    """Loads the XAML file as a WPF window."""
-    xaml_path = script.get_bundle_file(xaml_file)
-    with open(xaml_path, 'r') as f:
-        xaml_str = f.read()
-    return XamlReader.Parse(xaml_str)
-
-
 def get_ui_elements():
-    """Gets Developer panel and pyRevit tab from the ribbon."""
+    """Get Developer panel and pyRevit tab from the ribbon."""
     ribbon = AdWindows.ComponentManager.Ribbon
     if not ribbon:
         return None, None
@@ -69,6 +64,15 @@ def get_ui_elements():
     return dev_panel, pyrvt_tab
 
 
+def load_xaml_window(xaml_file):
+    """Loads the XAML file as a WPF window."""
+    from pyrevit import script
+    xaml_path = script.get_bundle_file(xaml_file)
+    with open(xaml_path, 'r') as f:
+        xaml_str = f.read()
+    return XamlReader.Parse(xaml_str)
+
+
 # ---------------- MAIN ---------------- #
 
 dev_panel, pyrvt_tab = get_ui_elements()
@@ -80,14 +84,13 @@ if not dev_panel:
 unlocked = is_unlocked()
 
 if unlocked:
-    # Relock
+    # --- Relock ---
     save_unlock(False)
     dev_panel.IsEnabled = False
     if pyrvt_tab:
         pyrvt_tab.IsVisible = False
     forms.alert("LOCKED", title="CDY-ProTools")
     script.exit()
-
 
 # --- Unlock (with password) ---
 try:
