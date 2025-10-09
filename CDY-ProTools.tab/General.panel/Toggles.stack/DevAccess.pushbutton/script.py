@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-CDY-ProTools: Toggle Developer Panel Lock
-- Unlock with password if locked
-- Relock and hide without password if unlocked
+DevAccess = WIP and potentially unstable/dangerous tools. 
 """
 
 import clr
