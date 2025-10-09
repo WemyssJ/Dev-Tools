@@ -65,12 +65,12 @@ def get_ui_elements(ribbon):
             pyrvt_tab = tab
     return dev_panel, pyrvt_tab
 
-def force_lock_panel(dev_panel, pyrvt_tab, max_attempts=10, delay=0.3):
-    """Force the Developer panel disabled and pyRevit hidden repeatedly until Revit accepts it."""
-    for i in range(max_attempts):
+def enforce_lock(dev_panel, pyrvt_tab, attempts=10, delay=0.3):
+    """Repeatedly force Developer panel disabled and pyRevit hidden."""
+    for i in range(attempts):
         if dev_panel:
             dev_panel.IsEnabled = False
-            dev_panel.IsVisible = True  # always visible, just disabled
+            dev_panel.IsVisible = True  # panel always visible but disabled
         if pyrvt_tab:
             pyrvt_tab.IsVisible = False
         time.sleep(delay)
@@ -88,8 +88,8 @@ dev_panel, pyrvt_tab = get_ui_elements(ribbon)
 
 # First launch: force lock
 if not data.get("initialized", False):
-    force_lock_panel(dev_panel, pyrvt_tab)
-    # Mark as initialized so subsequent launches behave normally
+    enforce_lock(dev_panel, pyrvt_tab)
+    # Mark initialized so subsequent launches behave normally
     data["initialized"] = True
     save_unlock_file(data)
 else:
