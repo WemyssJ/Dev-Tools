@@ -75,7 +75,7 @@ except Exception:
 
 
 def Hidden_Panel():
-    authorized_users = ["joewemyss", "JamesScrivens", "andrewowen", "jackmitchell-pardoe", "mattcursons"]
+    authorized_users = ["joewemyss", "JamesScrivens", "davebarronVXKZF", "jackmitchell-pardoe", "andrewowen"]
 
     ribbon = AdWindows.ComponentManager.Ribbon
     HiddenPanel = "Developer"
