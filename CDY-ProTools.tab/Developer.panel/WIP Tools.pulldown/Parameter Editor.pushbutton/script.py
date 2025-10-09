@@ -10,8 +10,10 @@ xaml_path = os.path.join(os.path.dirname(__file__), 'ParamDialogWithDropdown.xam
 
 
 class ParamDialog(WPFWindow):
-    def __init__(self, xaml_file, param_names, initial_value):
+    def __init__(self, xaml_file, param_names, writable_params, initial_value):
         WPFWindow.__init__(self, xaml_file)
+
+        self.writable_params = writable_params
 
         # Populate dropdown with parameter names
         self.cmbParameters.ItemsSource = param_names
@@ -28,9 +30,20 @@ class ParamDialog(WPFWindow):
         self.cmbParameters.SelectionChanged += self.param_changed
 
     def param_changed(self, sender, e):
-        selected_param = self.cmbParameters.SelectedItem
-        # Clear the textbox when user changes the param selection
-        self.txtParameterValue.Text = ""
+        selected_param_name = self.cmbParameters.SelectedItem
+        if not selected_param_name:
+            return
+
+        # Find the corresponding parameter
+        selected_param = next(
+            (p for p in self.writable_params if p.Definition.Name == selected_param_name), None
+        )
+
+        if selected_param:
+            current_value = selected_param.AsString() or ""
+            self.txtParameterValue.Text = current_value
+        else:
+            self.txtParameterValue.Text = ""
 
     def ok_clicked(self, sender, e):
         self.result = True
@@ -56,7 +69,6 @@ def main():
     param_list = []
     writable_params = []
     for param in elem.Parameters:
-        # Filter only writable parameters of type string
         if param.StorageType.ToString() == "String" and not param.IsReadOnly:
             param_list.append(param.Definition.Name)
             writable_params.append(param)
@@ -68,15 +80,16 @@ def main():
     # Default to first param value
     initial_value = writable_params[0].AsString() or ""
 
-    form = ParamDialog(xaml_path, param_list, initial_value)
+    form = ParamDialog(xaml_path, param_list, writable_params, initial_value)
     form.ShowDialog()
 
     if form.result:
         new_value = form.txtParameterValue.Text
         selected_param_name = form.cmbParameters.SelectedItem
 
-        # Find the selected parameter object by name
-        selected_param = next((p for p in writable_params if p.Definition.Name == selected_param_name), None)
+        selected_param = next(
+            (p for p in writable_params if p.Definition.Name == selected_param_name), None
+        )
 
         if selected_param is None:
             TaskDialog.Show("Error", "Selected parameter not found.")
