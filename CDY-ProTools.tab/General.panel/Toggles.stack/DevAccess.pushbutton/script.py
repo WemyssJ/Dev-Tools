@@ -29,21 +29,25 @@ folder = os.path.dirname(UNLOCK_FILE)
 if not os.path.exists(folder):
     os.makedirs(folder)
 if not os.path.exists(UNLOCK_FILE):
-    with open(UNLOCK_FILE, "w") as f:
-        json.dump({"unlocked": False}, f)
+    f = open(UNLOCK_FILE, "w")
+    json.dump({"unlocked": False}, f)
+    f.close()
 
 
 def is_unlocked():
     try:
-        with open(UNLOCK_FILE, "r") as f:
-            return json.load(f).get("unlocked", False)
+        f = open(UNLOCK_FILE, "r")
+        data = json.load(f)
+        f.close()
+        return data.get("unlocked", False)
     except Exception:
         return False
 
 
-def save_unlock(state: bool):
-    with open(UNLOCK_FILE, "w") as f:
-        json.dump({"unlocked": state}, f)
+def save_unlock(state):
+    f = open(UNLOCK_FILE, "w")
+    json.dump({"unlocked": state}, f)
+    f.close()
 
 
 def get_ui_elements():
@@ -66,10 +70,10 @@ def get_ui_elements():
 
 def load_xaml_window(xaml_file):
     """Loads the XAML file as a WPF window."""
-    from pyrevit import script
     xaml_path = script.get_bundle_file(xaml_file)
-    with open(xaml_path, 'r') as f:
-        xaml_str = f.read()
+    f = open(xaml_path, 'r')
+    xaml_str = f.read()
+    f.close()
     return XamlReader.Parse(xaml_str)
 
 
@@ -95,7 +99,7 @@ if unlocked:
 # --- Unlock (with password) ---
 try:
     win = load_xaml_window(XAML_FILE)
-except Exception as e:
+except Exception, e:
     forms.alert("Failed to load password window:\n{}".format(e), title="Error")
     script.exit()
 
