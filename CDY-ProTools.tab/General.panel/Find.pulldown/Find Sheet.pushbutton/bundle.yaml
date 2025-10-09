@@ -1,0 +1,12 @@
+context:
+    not_any:
+    - active-sheet
+    - active-legend
+    - active-schedule
+    - active-3d-view
+    - doc-family
+
+title: Find Sheet
+
+tooltip: From a view, takes you to the sheet this view is on.
+Author: Gavin Crump
