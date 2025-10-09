@@ -2,6 +2,7 @@
 """
 CDY-ProTools Startup: Developer Panel lock state
 - Ensures Developer panel and pyRevit tab are locked on first launch
+- Handles ribbon timing issues in IronPython / Revit
 """
 
 import clr
@@ -44,6 +45,7 @@ def save_unlock_file(data):
 # ---------------- Ribbon Utilities ---------------- #
 
 def wait_for_ribbon(max_attempts=20, delay=0.5):
+    """Wait until the ribbon is initialized with tabs."""
     for i in range(max_attempts):
         ribbon = AdWindows.ComponentManager.Ribbon
         if ribbon and ribbon.Tabs.Count > 0:
@@ -63,10 +65,21 @@ def get_ui_elements(ribbon):
             pyrvt_tab = tab
     return dev_panel, pyrvt_tab
 
+def force_lock_panel(dev_panel, pyrvt_tab, max_attempts=10, delay=0.3):
+    """Force the Developer panel disabled and pyRevit hidden repeatedly until Revit accepts it."""
+    for i in range(max_attempts):
+        if dev_panel:
+            dev_panel.IsEnabled = False
+            dev_panel.IsVisible = True  # always visible, just disabled
+        if pyrvt_tab:
+            pyrvt_tab.IsVisible = False
+        time.sleep(delay)
+
 # ---------------- Main Logic ---------------- #
 
 ensure_unlock_file_exists()
 data = read_unlock_file()
+
 ribbon = wait_for_ribbon()
 if not ribbon:
     script.exit()
@@ -75,15 +88,12 @@ dev_panel, pyrvt_tab = get_ui_elements(ribbon)
 
 # First launch: force lock
 if not data.get("initialized", False):
-    if dev_panel:
-        dev_panel.IsEnabled = False
-        dev_panel.IsVisible = True
-    if pyrvt_tab:
-        pyrvt_tab.IsVisible = False
+    force_lock_panel(dev_panel, pyrvt_tab)
+    # Mark as initialized so subsequent launches behave normally
     data["initialized"] = True
     save_unlock_file(data)
 else:
-    # Normal behavior
+    # Normal behavior: respect unlocked state
     unlocked = data.get("unlocked", False)
     if dev_panel:
         dev_panel.IsEnabled = unlocked
