@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 CDY-ProTools Startup: Developer Panel lock state
-- Enables/disables Developer panel and pyRevit tab on Revit launch
+- Ensures Developer panel and pyRevit tab are correctly locked/unlocked on Revit launch
 """
 
 import clr
@@ -15,33 +15,32 @@ PYRVT_TAB_NAME = "pyRevit"
 UNLOCK_FILE = os.path.join(os.getenv("APPDATA"), "CDY-ProTools", "dev_unlock.json")
 
 
-def is_unlocked():
-    """Return True if developer panel is unlocked (file may not exist)."""
+def ensure_unlock_file_exists():
+    """Create the unlock file with default locked state if missing."""
+    folder = os.path.dirname(UNLOCK_FILE)
+    if not os.path.exists(folder):
+        os.makedirs(folder)
     if not os.path.exists(UNLOCK_FILE):
-        # Ensure file exists for first-time startup
-        folder = os.path.dirname(UNLOCK_FILE)
-        if not os.path.exists(folder):
-            os.makedirs(folder)
         with open(UNLOCK_FILE, "w") as f:
             json.dump({"unlocked": False}, f)
-        return False
+
+
+def is_unlocked():
+    """Return True if developer panel is unlocked."""
     try:
         with open(UNLOCK_FILE, "r") as f:
-            data = json.load(f)
-        return data.get("unlocked", False)
+            return json.load(f).get("unlocked", False)
     except Exception:
         return False
 
 
 def update_dev_panel_state():
-    """Apply lock state to UI panels."""
+    """Apply lock state to Developer panel and pyRevit tab."""
     ribbon = AdWindows.ComponentManager.Ribbon
     if not ribbon:
         return
 
-    dev_panel = None
-    pyrvt_tab = None
-
+    dev_panel, pyrvt_tab = None, None
     for tab in ribbon.Tabs:
         if tab.Title == TAB_NAME:
             for panel in tab.Panels:
@@ -53,15 +52,18 @@ def update_dev_panel_state():
 
     unlocked = is_unlocked()
 
-    # Apply Developer panel state
+    # Developer panel: visible but enabled only if unlocked
     if dev_panel:
         dev_panel.IsEnabled = unlocked
-        dev_panel.IsVisible = True  # panel is always visible, just disabled if locked
+        dev_panel.IsVisible = True
 
-    # Hide pyRevit tab when locked
+    # pyRevit tab: visible only if unlocked
     if pyrvt_tab:
-        pyrvt_tab.IsVisible = unlocked  # visible only when unlocked
+        pyrvt_tab.IsVisible = unlocked
 
 
-# Execute on load
+# --- Ensure file exists before touching UI ---
+ensure_unlock_file_exists()
+
+# --- Apply panel/tab state ---
 update_dev_panel_state()
