@@ -1,5 +1,7 @@
 Collection of homemade Revit productivity tools + expansion of other pyRevit addins, all combined into one toolbar (with Structural Engineering bias). 
 
+DevAccess = WIP, potentially unstable/dangerous tools. Password = **password**.
+
 /////////////
 
 To Install:
