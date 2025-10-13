@@ -70,7 +70,7 @@ if is_unlocked():
         dev_panel.IsEnabled = False
     if pyrvt_tab:
         pyrvt_tab.IsVisible = False
-    forms.alert("Developer panel relocked.", title="CDY-ProTools")
+    forms.alert("Developer panel Locked.", title="CDY-ProTools")
     script.exit()
 
 # Currently locked → prompt for password
