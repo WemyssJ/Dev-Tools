@@ -1,11 +1,12 @@
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Link Options" Height="300" Width="380"
+        Title="Link Options" Height="250" Width="400"
         WindowStartupLocation="CenterScreen"
         Background="#FAFAFA" Foreground="#222"
         ResizeMode="NoResize" FontFamily="Mona-Sans Light" FontSize="13">
 
     <DockPanel Margin="10">
+
         <!-- Header -->
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="40" Background="#0078D7">
             <TextBlock Text="Link Options" FontSize="16" FontWeight="Bold"
@@ -17,20 +18,25 @@
                     HorizontalAlignment="Right" Margin="0,15,0,0">
             <Button Name="cancelBtn" Width="90" Height="28" Margin="5" Content="Cancel"
                     Background="#EEE" Foreground="#222" BorderBrush="#CCC" BorderThickness="1" Cursor="Hand"/>
-            <Button Name="okBtn" Width="90" Height="28" Margin="5" Content="Confirm"
-                    Background="#0078D7" Foreground="White" FontWeight="SemiBold"
-                    BorderBrush="#005A9E" BorderThickness="1" Cursor="Hand"/>
         </StackPanel>
 
-        <!-- Content -->
-        <Border DockPanel.Dock="Top" Padding="20" Margin="0,10,0,0"
-                Background="White" CornerRadius="6" BorderBrush="#DDD" BorderThickness="1">
+        <!-- Action Buttons -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Vertical" HorizontalAlignment="Center" Margin="0,20,0,0">
+            <TextBlock Text="Select an Action:" FontWeight="SemiBold" Margin="0,0,0,15" FontSize="14"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
 
-            <StackPanel Orientation="Vertical" VerticalAlignment="Center" Margin="0">
-                <TextBlock Text="Select an Action:" Margin="0,0,0,15" FontWeight="SemiBold"/>
-                <RadioButton Name="rbOpenDWG" Content="Open DWG in AutoCAD" Margin="0,0,0,8" FontSize="13" IsChecked="True"/>
-                <RadioButton Name="rbReloadLinks" Content="Reload selected Revit/CAD links" Margin="0,0,0,8" FontSize="13"/>
+                <Button Name="btnOpenDWG" Width="150" Height="40" Margin="5"
+                        Content="Open DWG in AutoCAD"
+                        Background="#E1F5FE" Foreground="#0078D7" FontWeight="SemiBold"
+                        BorderBrush="#81D4FA" BorderThickness="1" Cursor="Hand"/>
+
+                <Button Name="btnReloadLinks" Width="150" Height="40" Margin="5"
+                        Content="Reload selected links"
+                        Background="#FFF3E0" Foreground="#FB8C00" FontWeight="SemiBold"
+                        BorderBrush="#FFB74D" BorderThickness="1" Cursor="Hand"/>
+
             </StackPanel>
-        </Border>
+        </StackPanel>
+
     </DockPanel>
 </Window>

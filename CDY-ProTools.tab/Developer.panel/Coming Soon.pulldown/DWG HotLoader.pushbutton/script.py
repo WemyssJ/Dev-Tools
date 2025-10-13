@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-# Link Options – Safe DWG Opener + Reload Selected Links
-# pylint: disable=import-error,invalid-name,broad-except,superfluous-parens
+# Link Options – colourful one-click buttons
 
 import os
 import subprocess
@@ -14,38 +13,33 @@ uidoc = __revit__.ActiveUIDocument
 doc = uidoc.Document
 
 # --------------------------
-# Load WPF UI
+# Load WPF UI from separate file
 # --------------------------
 script_dir = os.path.dirname(__file__)
 xaml_path = os.path.join(script_dir, "LinkOptions.xaml")
+if not os.path.exists(xaml_path):
+    forms.alert("Could not find LinkOptions.xaml in script folder.", exitscript=True)
+
 window = forms.WPFWindow(xaml_path)
-window.result = None
 
 # --------------------------
-# Event Handlers
+# Helper Functions
 # --------------------------
-def on_ok(sender, e):
-    if window.rbOpenDWG.IsChecked:
-        window.result = "open_dwg"
-    elif window.rbReloadLinks.IsChecked:
-        window.result = "reload_links"
-    window.Close()
+def pick_single_element(prompt="Select an element"):
+    """Prompt user to pick one element; hides WPF window for selection."""
+    try:
+        window.Hide()
+        ref = uidoc.Selection.PickObject(ObjectType.Element, prompt)
+        if ref:
+            return doc.GetElement(ref.ElementId)
+    except:
+        # User cancelled — reopen window
+        TaskDialog.Show("Cancelled", "Selection cancelled.")
+        window.Show()
+        return None
+    return None
 
-def on_cancel(sender, e):
-    window.result = None
-    window.Close()
-
-window.okBtn.Click += on_ok
-window.cancelBtn.Click += on_cancel
-
-# Show window modally and safely
-window.show_dialog()
-
-# --------------------------
-# After window closes → run user choice
-# --------------------------
 def open_dwg_safe(path):
-    """Safely open DWG using AutoCAD or default program."""
     if path and os.path.exists(path):
         try:
             subprocess.Popen(['acad.exe', path])
@@ -55,47 +49,50 @@ def open_dwg_safe(path):
     else:
         TaskDialog.Show("DWG Not Found", "The DWG path does not exist:\n\n{}".format(path))
 
-
-def open_selected_dwg():
-    """Find selected DWG link and open it."""
+# --------------------------
+# Event Handlers
+# --------------------------
+def open_selected_dwg(sender, args):
     sel_ids = uidoc.Selection.GetElementIds()
     elem = None
 
     if sel_ids:
         elem = doc.GetElement(list(sel_ids)[0])
     else:
-        try:
-            ref = uidoc.Selection.PickObject(ObjectType.Element, "Pick a linked DWG")
-            elem = doc.GetElement(ref.ElementId)
-        except:
-            TaskDialog.Show("Cancelled", "Selection cancelled.")
-            return
+        # ✅ If nothing selected, just prompt silently
+        elem = pick_single_element("Pick a linked DWG")
+        if not elem:
+            return  # user cancelled
 
     if not isinstance(elem, ImportInstance):
-        TaskDialog.Show("Error", "Selected element is not a linked DWG (ImportInstance).")
+        forms.alert("Selected element is not a linked DWG (ImportInstance).")
         return
 
     import_symbol = doc.GetElement(elem.GetTypeId())
     efr = ExternalFileUtils.GetExternalFileReference(doc, import_symbol.Id)
     if not efr:
-        TaskDialog.Show("Error", "No external file reference found for this DWG.")
+        forms.alert("No external file reference found for this DWG.")
         return
 
     dwg_path = ModelPathUtils.ConvertModelPathToUserVisiblePath(efr.GetAbsolutePath())
     open_dwg_safe(dwg_path)
 
+    # ✅ Close WPF window after operation completes
+    window.Close()
 
-def reload_links_from_selection():
-    """Reloads selected Revit and CAD links."""
+def reload_links_from_selection(sender, args):
     selection = revit.get_selection()
-    if not selection:
-        forms.alert("No elements selected.")
-        return
+
+    # ✅ If nothing selected, just pick silently
+    if not selection or len(selection) == 0:
+        picked_elem = pick_single_element("Pick a Revit or CAD link to reload")
+        if not picked_elem:
+            return  # user cancelled
+        selection = [picked_elem]
 
     revit_links = []
     cad_links = []
 
-    # Separate selection by type
     for el in selection:
         if isinstance(el, DB.RevitLinkInstance):
             try:
@@ -109,52 +106,54 @@ def reload_links_from_selection():
             if isinstance(type_el, DB.CADLinkType):
                 cad_links.append(revit.db.ExternalRef(type_el, None))
 
+    if not revit_links and not cad_links:
+        forms.alert("No valid Revit or CAD links found in your selection.")
+        return
+
     # Reload Revit links
     if revit_links:
         reload_locally = False
         if doc.IsWorkshared:
             reload_locally = forms.alert(
-                'Do you want to reload links locally, without taking ownership and without affecting other users?\n'
-                'Clicking "No" will reload for all users.',
+                'Reload links locally without affecting other users?',
                 title='Reload locally?',
                 yes=True, no=True
             )
-
         for xref in revit_links:
-            print("Reloading Revit Link: {}".format(xref.name))
-            if reload_locally:
-                try:
+            try:
+                if reload_locally:
                     if not xref.link.LocallyUnloaded:
                         xref.link.UnloadLocally(None)
                     xref.link.RevertLocalUnloadStatus()
-                except Exception as e:
-                    logger.debug('Error while locally reloading linked model: {}'.format(e))
-            else:
-                try:
+                else:
                     xref.reload()
-                except Exception as e:
-                    logger.debug('Error reloading Revit link: {}'.format(e))
+            except Exception as e:
+                logger.debug("Error reloading Revit link: {}".format(e))
 
     # Reload CAD links
     if cad_links:
         with revit.Transaction('Reload CAD Links'):
             for xref in cad_links:
-                print("Reloading CAD Link: {}".format(xref.name))
                 try:
                     xref.reload()
                 except Exception as e:
-                    logger.debug('Error reloading CAD link: {}'.format(e))
+                    logger.debug("Error reloading CAD link: {}".format(e))
 
-    if not revit_links and not cad_links:
-        forms.alert("No Revit or CAD links selected.")
-    else:
-        print("Reload completed.")
+    print("Reload completed.")
+    # ✅ Close WPF window after operation
+    window.Close()
 
+def cancel(sender, args):
+    window.Close()
 
 # --------------------------
-# Execute selected action
+# Connect buttons
 # --------------------------
-if window.result == "open_dwg":
-    open_selected_dwg()
-elif window.result == "reload_links":
-    reload_links_from_selection()
+window.btnOpenDWG.Click += open_selected_dwg
+window.btnReloadLinks.Click += reload_links_from_selection
+window.cancelBtn.Click += cancel
+
+# --------------------------
+# Show Dialog
+# --------------------------
+window.ShowDialog()
