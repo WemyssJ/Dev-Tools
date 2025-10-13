@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-# Link Options Script – Safe DWG opener + Reload Links
-#pylint: disable=import-error,invalid-name,broad-except,superfluous-parens
+# Link Options – Safe DWG Opener + Reload Selected Links
+# pylint: disable=import-error,invalid-name,broad-except,superfluous-parens
 
 import os
-import threading
+import subprocess
 from Autodesk.Revit.DB import *
 from Autodesk.Revit.UI import TaskDialog
-from Autodesk.Revit.DB import ExternalFileUtils, ModelPathUtils
 from Autodesk.Revit.UI.Selection import ObjectType
 from pyrevit import revit, DB, forms, script
 
@@ -15,27 +14,53 @@ uidoc = __revit__.ActiveUIDocument
 doc = uidoc.Document
 
 # --------------------------
-# Load XAML dynamically (same folder as this script)
+# Load WPF UI
 # --------------------------
 script_dir = os.path.dirname(__file__)
 xaml_path = os.path.join(script_dir, "LinkOptions.xaml")
-
 window = forms.WPFWindow(xaml_path)
-window.show()
+window.result = None
 
 # --------------------------
-# Functions
+# Event Handlers
 # --------------------------
-def open_dwg_safe(dwg_path):
-    """Open DWG in default program safely using a background thread."""
-    if dwg_path and os.path.exists(dwg_path):
-        subprocess.Popen(['cmd', '/c', 'start', '', dwg_path], shell=True)
-        TaskDialog.Show("DWG Opened", "DWG successfully opened:\n\n{}".format(dwg_path))
+def on_ok(sender, e):
+    if window.rbOpenDWG.IsChecked:
+        window.result = "open_dwg"
+    elif window.rbReloadLinks.IsChecked:
+        window.result = "reload_links"
+    window.Close()
+
+def on_cancel(sender, e):
+    window.result = None
+    window.Close()
+
+window.okBtn.Click += on_ok
+window.cancelBtn.Click += on_cancel
+
+# Show window modally and safely
+window.show_dialog()
+
+# --------------------------
+# After window closes → run user choice
+# --------------------------
+def open_dwg_safe(path):
+    """Safely open DWG using AutoCAD or default program."""
+    if path and os.path.exists(path):
+        try:
+            subprocess.Popen(['acad.exe', path])
+        except Exception:
+            os.startfile(path)
+        TaskDialog.Show("DWG Opened", "DWG successfully opened:\n\n{}".format(path))
     else:
-        TaskDialog.Show("DWG Not Found", "The DWG path does not exist:\n\n{}".format(dwg_path))
+        TaskDialog.Show("DWG Not Found", "The DWG path does not exist:\n\n{}".format(path))
+
 
 def open_selected_dwg():
+    """Find selected DWG link and open it."""
     sel_ids = uidoc.Selection.GetElementIds()
+    elem = None
+
     if sel_ids:
         elem = doc.GetElement(list(sel_ids)[0])
     else:
@@ -59,7 +84,9 @@ def open_selected_dwg():
     dwg_path = ModelPathUtils.ConvertModelPathToUserVisiblePath(efr.GetAbsolutePath())
     open_dwg_safe(dwg_path)
 
+
 def reload_links_from_selection():
+    """Reloads selected Revit and CAD links."""
     selection = revit.get_selection()
     if not selection:
         forms.alert("No elements selected.")
@@ -68,23 +95,33 @@ def reload_links_from_selection():
     revit_links = []
     cad_links = []
 
+    # Separate selection by type
     for el in selection:
         if isinstance(el, DB.RevitLinkInstance):
-            revit_links.append(revit.db.ExternalRef(el.GetLinkDocument(), None))
+            try:
+                link_doc = el.GetLinkDocument()
+                if link_doc:
+                    revit_links.append(revit.db.ExternalRef(link_doc, None))
+            except Exception as e:
+                logger.debug("Error accessing link doc: {}".format(e))
         elif isinstance(el, DB.ImportInstance):
-            type_el = revit.doc.GetElement(el.GetTypeId())
+            type_el = doc.GetElement(el.GetTypeId())
             if isinstance(type_el, DB.CADLinkType):
                 cad_links.append(revit.db.ExternalRef(type_el, None))
 
+    # Reload Revit links
     if revit_links:
         reload_locally = False
-        if revit.doc.IsWorkshared:
+        if doc.IsWorkshared:
             reload_locally = forms.alert(
-                'Do you want to reload links locally?',
+                'Do you want to reload links locally, without taking ownership and without affecting other users?\n'
+                'Clicking "No" will reload for all users.',
                 title='Reload locally?',
                 yes=True, no=True
             )
+
         for xref in revit_links:
+            print("Reloading Revit Link: {}".format(xref.name))
             if reload_locally:
                 try:
                     if not xref.link.LocallyUnloaded:
@@ -93,30 +130,31 @@ def reload_links_from_selection():
                 except Exception as e:
                     logger.debug('Error while locally reloading linked model: {}'.format(e))
             else:
-                xref.reload()
+                try:
+                    xref.reload()
+                except Exception as e:
+                    logger.debug('Error reloading Revit link: {}'.format(e))
 
+    # Reload CAD links
     if cad_links:
         with revit.Transaction('Reload CAD Links'):
             for xref in cad_links:
-                xref.reload()
+                print("Reloading CAD Link: {}".format(xref.name))
+                try:
+                    xref.reload()
+                except Exception as e:
+                    logger.debug('Error reloading CAD link: {}'.format(e))
 
     if not revit_links and not cad_links:
         forms.alert("No Revit or CAD links selected.")
     else:
         print("Reload completed.")
 
-# --------------------------
-# Event Handlers
-# --------------------------
-def on_ok(sender, e):
-    if window.rbOpenDWG.IsChecked:
-        open_selected_dwg()
-    elif window.rbReloadLinks.IsChecked:
-        reload_links_from_selection()
-    window.close()
 
-def on_cancel(sender, e):
-    window.close()
-
-window.okBtn.Click += on_ok
-window.cancelBtn.Click += on_cancel
+# --------------------------
+# Execute selected action
+# --------------------------
+if window.result == "open_dwg":
+    open_selected_dwg()
+elif window.result == "reload_links":
+    reload_links_from_selection()
