@@ -14,7 +14,7 @@
                        VerticalAlignment="Center" Foreground="White" Margin="10,0"/>
         </StackPanel>
 
-        <!-- Buttons -->
+        <!-- Cancel Button -->
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
                     HorizontalAlignment="Right" Margin="0,15,0,0">
             <Button Name="cancelBtn" Width="90" Height="28" Margin="5" Content="Cancel"
@@ -22,18 +22,21 @@
                     BorderBrush="#CCC" BorderThickness="1" Cursor="Hand"/>
         </StackPanel>
 
-        <!-- Alignment Choices -->
+        <!-- Alignment Buttons -->
         <StackPanel DockPanel.Dock="Top" Orientation="Vertical" Margin="0,20,0,0" HorizontalAlignment="Center">
 
             <TextBlock Text="Select Text Note Alignment:" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,15"/>
 
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" >
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                 <Button Name="leftBtn" Width="80" Height="40" Margin="5" Content="Left"
-                        Background="#E1F5FE" Foreground="#0078D7" FontWeight="SemiBold" BorderBrush="#81D4FA" BorderThickness="1" Cursor="Hand"/>
+                        Background="#E1F5FE" Foreground="#0078D7" FontWeight="SemiBold"
+                        BorderBrush="#81D4FA" BorderThickness="1" Cursor="Hand"/>
                 <Button Name="centreBtn" Width="80" Height="40" Margin="5" Content="Centre"
-                        Background="#FFF3E0" Foreground="#FB8C00" FontWeight="SemiBold" BorderBrush="#FFB74D" BorderThickness="1" Cursor="Hand"/>
+                        Background="#FFF3E0" Foreground="#FB8C00" FontWeight="SemiBold"
+                        BorderBrush="#FFB74D" BorderThickness="1" Cursor="Hand"/>
                 <Button Name="rightBtn" Width="80" Height="40" Margin="5" Content="Right"
-                        Background="#FCE4EC" Foreground="#C2185B" FontWeight="SemiBold" BorderBrush="#F48FB1" BorderThickness="1" Cursor="Hand"/>
+                        Background="#FCE4EC" Foreground="#C2185B" FontWeight="SemiBold"
+                        BorderBrush="#F48FB1" BorderThickness="1" Cursor="Hand"/>
             </StackPanel>
         </StackPanel>
     </DockPanel>
