@@ -26,12 +26,12 @@
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
 
                 <Button Name="btnOpenDWG" Width="150" Height="40" Margin="5"
-                        Content="Open DWG in AutoCAD"
+                        Content="Open DWG"
                         Background="#E1F5FE" Foreground="#0078D7" FontWeight="SemiBold"
                         BorderBrush="#81D4FA" BorderThickness="1" Cursor="Hand"/>
 
                 <Button Name="btnReloadLinks" Width="150" Height="40" Margin="5"
-                        Content="Reload selected links"
+                        Content="Reload DWG"
                         Background="#FFF3E0" Foreground="#FB8C00" FontWeight="SemiBold"
                         BorderBrush="#FFB74D" BorderThickness="1" Cursor="Hand"/>
 
@@ -40,3 +40,4 @@
 
     </DockPanel>
 </Window>
+
