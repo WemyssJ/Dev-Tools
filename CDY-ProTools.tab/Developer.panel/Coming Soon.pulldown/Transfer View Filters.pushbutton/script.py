@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-__title__ = "Transfer View Filters v5.6"
+__title__ = "Transfer View Filters"
 __doc__ = "Live preview: Projection/Cut line + weight + pattern, hatch FG/BG + color, Halftone, Transparency, Enable, Visibility"
 
 import clr, sys, os
@@ -326,3 +326,4 @@ forms.alert(
     "Selected filters successfully applied from {} to {}!".format(source_name, target_names),
     title="Done"
 )
+
