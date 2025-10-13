@@ -35,11 +35,9 @@ with open(xaml_path, 'r') as f:
     xaml_str = f.read()
 window = XamlReader.Parse(xaml_str)
 
-
-cb2d = window.FindName("cb2d")
-cb3d = window.FindName("cb3d")
-cbBubbles = window.FindName("cbBubbles")
-okBtn = window.FindName("okBtn")
+btn2D = window.FindName("btn2D")
+btn3D = window.FindName("btn3D")
+btnBubbles = window.FindName("btnBubbles")
 cancelBtn = window.FindName("cancelBtn")
 headerIcon = window.FindName("headerIcon")
 
@@ -58,42 +56,23 @@ else:
     print("⚠️ icon.png not found in script folder.")
 
 # -----------------------------
-# Checkbox mutual exclusivity
-# -----------------------------
-def on_cb2d(sender, args):
-    if cb2d.IsChecked:
-        cb3d.IsChecked = False
-        cbBubbles.IsChecked = False
-
-def on_cb3d(sender, args):
-    if cb3d.IsChecked:
-        cb2d.IsChecked = False
-        cbBubbles.IsChecked = False
-
-def on_cbBubbles(sender, args):
-    if cbBubbles.IsChecked:
-        cb2d.IsChecked = False
-        cb3d.IsChecked = False
-
-cb2d.Checked += on_cb2d
-cb3d.Checked += on_cb3d
-cbBubbles.Checked += on_cbBubbles
-
-# -----------------------------
 # Result storage variable
 # -----------------------------
 result = None
 
-def on_confirm(sender, args):
+def on_2D(sender, args):
     global result
-    if cb2d.IsChecked:
-        result = "2D"
-    elif cb3d.IsChecked:
-        result = "3D"
-    elif cbBubbles.IsChecked:
-        result = "Bubbles"
-    else:
-        result = None
+    result = "2D"
+    window.Close()
+
+def on_3D(sender, args):
+    global result
+    result = "3D"
+    window.Close()
+
+def on_Bubbles(sender, args):
+    global result
+    result = "Bubbles"
     window.Close()
 
 def on_cancel(sender, args):
@@ -101,7 +80,9 @@ def on_cancel(sender, args):
     result = None
     window.Close()
 
-okBtn.Click += on_confirm
+btn2D.Click += on_2D
+btn3D.Click += on_3D
+btnBubbles.Click += on_Bubbles
 cancelBtn.Click += on_cancel
 
 # -----------------------------
@@ -151,18 +132,6 @@ for g in grids:
         if force_to_2d:
             g.SetDatumExtentType(DatumEnds.End0, view, DatumExtentType.ViewSpecific)
             g.SetDatumExtentType(DatumEnds.End1, view, DatumExtentType.ViewSpecific)
-            try:
-                model_curves = g.GetCurvesInView(DatumExtentType.Model, view)
-                if model_curves:
-                    for c in model_curves:
-                        try:
-                            if g.IsCurveValidInView(DatumExtentType.ViewSpecific, view, c):
-                                g.SetCurveInView(DatumExtentType.ViewSpecific, view, c)
-                                break
-                        except:
-                            pass
-            except:
-                pass
         elif force_to_3d:
             g.SetDatumExtentType(DatumEnds.End0, view, DatumExtentType.Model)
             g.SetDatumExtentType(DatumEnds.End1, view, DatumExtentType.Model)
