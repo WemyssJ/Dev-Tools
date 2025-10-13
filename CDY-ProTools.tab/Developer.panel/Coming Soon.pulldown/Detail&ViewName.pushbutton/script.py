@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 import clr
 import sys
+import os
 import re
 from pyrevit import revit, DB, script
-from System.Windows import Window, Thickness
-from System.Windows.Controls import StackPanel, Button, RadioButton, Orientation
+from pyrevit import forms
+from System.Windows import Window
+from System.Windows.Markup import XamlReader
+from System.IO import FileStream, FileMode
 
 doc = revit.doc
 uidoc = revit.uidoc
@@ -12,72 +15,40 @@ output = script.get_output()
 output.set_title("Viewport Name ↔ Detail Number Copy Tool")
 
 # -----------------------------
-# WPF form to select operation
+# Load XAML
 # -----------------------------
-class OptionWindow(Window):
-    def __init__(self):
-        self.Title = "Select Operation"
-        self.Width = 350
-        self.Height = 150
-        self.ResizeMode = 0  # No resize
-        self.WindowStartupLocation = 0  # Center screen
+script_dir = os.path.dirname(__file__)
+xaml_path = os.path.join(script_dir, "Detail&ViewName.xaml")
+window = forms.WPFWindow(xaml_path)
 
-        panel = StackPanel()
-        panel.Orientation = Orientation.Vertical
-        panel.Margin = Thickness(10)
+# -----------------------------
+# Event Handlers
+# -----------------------------
+def set_view_to_detail(sender, args):
+    window.Tag = "view_to_detail"
+    window.Close()
 
-        self.rb_view_to_detail = RadioButton()
-        self.rb_view_to_detail.Content = "Copy View Name → Detail Number"
-        self.rb_view_to_detail.IsChecked = True
-        self.rb_view_to_detail.Margin = Thickness(5)
-        panel.Children.Add(self.rb_view_to_detail)
+def set_detail_to_view(sender, args):
+    window.Tag = "detail_to_view"
+    window.Close()
 
-        self.rb_detail_to_view = RadioButton()
-        self.rb_detail_to_view.Content = "Copy Detail Number → View Name"
-        self.rb_detail_to_view.Margin = Thickness(5)
-        panel.Children.Add(self.rb_detail_to_view)
+def cancel_operation(sender, args):
+    window.Tag = None
+    window.Close()
 
-        btn_panel = StackPanel()
-        btn_panel.Orientation = Orientation.Horizontal
-        btn_panel.Margin = Thickness(10)
+# Attach handlers to buttons
+window.FindName("btnViewToDetail").Click += set_view_to_detail
+window.FindName("btnDetailToView").Click += set_detail_to_view
+window.FindName("cancelBtn").Click += cancel_operation
 
-        confirm = Button()
-        confirm.Content = "Confirm"
-        confirm.Width = 100
-        confirm.Margin = Thickness(5)
-        confirm.Click += self.on_confirm
-        btn_panel.Children.Add(confirm)
-
-        cancel = Button()
-        cancel.Content = "Cancel"
-        cancel.Width = 100
-        cancel.Margin = Thickness(5)
-        cancel.Click += self.on_cancel
-        btn_panel.Children.Add(cancel)
-
-        panel.Children.Add(btn_panel)
-        self.Content = panel
-        self.result = None
-
-    def on_confirm(self, sender, args):
-        if self.rb_view_to_detail.IsChecked:
-            self.result = "view_to_detail"
-        elif self.rb_detail_to_view.IsChecked:
-            self.result = "detail_to_view"
-        self.Close()
-
-    def on_cancel(self, sender, args):
-        self.result = None
-        self.Close()
-
-# Show the WPF window
-win = OptionWindow()
-win.ShowDialog()
-if win.result is None:
+# -----------------------------
+# Show window
+# -----------------------------
+window.ShowDialog()
+operation = window.Tag
+if operation is None:
     output.print_md("❌ Operation cancelled.")
     script.exit()
-
-operation = win.result
 
 # -----------------------------
 # Selection of viewports
@@ -105,7 +76,6 @@ if operation == "view_to_detail":
     temp_suffix = "_temp"
     temp_map = {}
 
-    # STEP 1: Apply temporary unique names
     with revit.Transaction("Temporarily Rename Detail Numbers"):
         for vp in selected_viewports:
             detail_param = vp.LookupParameter("Detail Number")
@@ -115,7 +85,6 @@ if operation == "view_to_detail":
                 detail_param.Set(temp_name)
                 temp_map[vp.Id.IntegerValue] = (original, temp_name)
 
-    # STEP 2: Apply final sanitized names with rollback logic
     try:
         with revit.Transaction("Set Detail Number from View Name"):
             for vp in selected_viewports:
@@ -125,7 +94,6 @@ if operation == "view_to_detail":
 
                 if view and sheet and detail_param:
                     base_detail = sanitize_for_detail_number(view.Name)
-
                     other_vps = [
                         doc.GetElement(vid)
                         for vid in sheet.GetAllViewports()
@@ -166,7 +134,6 @@ elif operation == "detail_to_view":
     temp_suffix = "_temp"
     temp_names = {}
 
-    # STEP 1: Temporarily rename views
     with revit.Transaction("Temporarily Rename Views"):
         for vp in selected_viewports:
             view = doc.GetElement(vp.ViewId)
@@ -179,7 +146,6 @@ elif operation == "detail_to_view":
                 except Exception as e:
                     output.print_md("⚠️ Could not temporarily rename view ID `{}`: {}".format(view.Id, str(e)))
 
-    # STEP 2: Set final names from detail numbers with rollback on failure
     try:
         with revit.Transaction("Set View Name from Detail Number"):
             existing_names = set(v.Name for v in DB.FilteredElementCollector(doc).OfClass(DB.View))
