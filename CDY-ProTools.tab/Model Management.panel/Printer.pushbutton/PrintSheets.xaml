@@ -192,12 +192,6 @@
                         <StackPanel DockPanel.Dock="Left">
                             <CheckBox x:Name="combine_cb" DockPanel.Dock="Right" Margin="0,0,0,-20" IsChecked="False" IsEnabled="True" Checked="options_changed" Unchecked="options_changed">Combine Into One PDF</CheckBox>
                             <CheckBox x:Name="export_dwg" DockPanel.Dock="Right" Margin="200,0,0,10" IsChecked="False" IsEnabled="True" Checked="options_changed" Unchecked="options_changed">Export DWG</CheckBox>
-                            <Button x:Name="find_empty_sheets" Margin="5" Click="find_empty_sheets_clicked">
-                                <TextBlock>
-                                    <Run FontWeight="Bold" Text="No Sheets Highlighted" />
-                                    <Run Text=" (Click to Highlight Sheets With No Views)" />
-                                </TextBlock>
-                            </Button>
                             <DockPanel x:Name="namingformat_dp" Margin="0,5,0,0" Height="24" >
                                 <TextBlock Text="Naming Format" VerticalAlignment="Center" Margin="0,0,10,0"/>
                                 <Button Content="Edit Formats" DockPanel.Dock="Right" Width="100" BorderThickness="0,1,1,1" BorderBrush="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}" Click="edit_formats"/>
@@ -255,7 +249,7 @@
         <StatusBar DockPanel.Dock="Bottom" Height="25" Background="{DynamicResource pyRevitDarkBrush}">
             <TextBlock Foreground="#ffffff" Margin="10,0,0,0" MouseDown="handle_url_click">
                 <Hyperlink NavigateUri="https://www.pyrevitlabs.io/">
-                    A pyRevit tool developed by Ehsan Iran-Nejad, improved in house at Craddys.
+                    A pyRevit tool developed by Ehsan Iran-Nejad.
                 </Hyperlink>
             </TextBlock>
         </StatusBar>
@@ -309,7 +303,3 @@
 
     </DockPanel>
 </Window>
-
-
-
-
