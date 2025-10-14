@@ -1115,6 +1115,7 @@ class PrintSheetsWindow(forms.WPFWindow):
                                                 pb1.update_progress(pbCount1, pbTotal1)
                                                 pbCount1 += 1
                                             except Exception as e:
+                                                pbCount1 += 1
                                                 logger.error('Failed to export PDF for sheet %s: %s', sheet.number, e)
 
                                             try:
@@ -1127,10 +1128,12 @@ class PrintSheetsWindow(forms.WPFWindow):
                                                 logger.error('Failed to export DWG for sheet %s: %s', sheet.number, e)
                                             
                                     else:
+                                        pbCount1 += 2
                                         logger.debug(
                                             'Sheet %s does not have a valid file name.',
                                             sheet.number)
                                 else:
+                                    pbCount1 += 2
                                     logger.debug('Sheet %s is not printable. Skipping print.',
                                                 sheet.number)
                 else :
@@ -1165,10 +1168,12 @@ class PrintSheetsWindow(forms.WPFWindow):
                                                 logger.error('Failed to export PDF for sheet %s: %s', sheet.number, e)
 
                                     else:
+                                        pbCount1 += 1
                                         logger.debug(
                                             'Sheet %s does not have a valid file name.',
                                             sheet.number)
                                 else:
+                                    pbCount1 += 1
                                     logger.debug('Sheet %s is not printable. Skipping print.',
                                                 sheet.number)
 
@@ -1213,10 +1218,12 @@ class PrintSheetsWindow(forms.WPFWindow):
                                         logger.error('Failed to export PDF for sheet %s: %s', sheet.number, e)
 
                             else:
+                                pbCount1 += 1
                                 logger.debug(
                                     'Sheet %s does not have a valid file name.',
                                     sheet.number)
                         else:
+                            pbCount1 += 1
                             logger.debug('Sheet %s is not printable. Skipping print.',
                                         sheet.number)
                                     
@@ -1242,16 +1249,13 @@ class PrintSheetsWindow(forms.WPFWindow):
         finder_pattern = r'{' + value_type + r':(.*?)}'
         for param_name in re.findall(finder_pattern, template):
             param_value = value_getter(param_name)
-
             repl_pattern = r'{' + value_type + ':' + param_name + r'}'
-            
             if param_value:
                 if (param_name == 'Drawing Title 2' or param_name == 'Drawing Title 3') and param_value != "":
                     param_value = ' ' + param_value
                 template = re.sub(repl_pattern, str(param_value), template)
             else:
                 template = re.sub(repl_pattern, '', template)
-            
         return template
 
     def _update_print_filename(self, template, sheet):
