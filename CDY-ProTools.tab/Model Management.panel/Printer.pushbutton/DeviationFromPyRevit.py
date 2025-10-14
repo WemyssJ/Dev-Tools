@@ -6,10 +6,8 @@
             repl_pattern = r'{' + value_type + ':' + param_name + r'}'
             
             if param_value:
-                #JW
                 if param_name == 'Drawing Title 2' or param_name == 'Drawing Title 3' and param_value != "":
                     param_value = ' ' + param_value
-                    #JW
                 template = re.sub(repl_pattern, str(param_value), template)
             template = re.sub(repl_pattern, '', template)
             
@@ -49,4 +47,5 @@
                 template='{proj_number}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf',
                 builtin=True
             ),
+
         ]
