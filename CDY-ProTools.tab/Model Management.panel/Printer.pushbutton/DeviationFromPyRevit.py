@@ -9,12 +9,13 @@
                 if (param_name == 'Drawing Title 2' or param_name == 'Drawing Title 3') and param_value != "":
                     param_value = ' ' + param_value
                 template = re.sub(repl_pattern, str(param_value), template)
-            template = re.sub(repl_pattern, '', template)
+            else:
+                template = re.sub(repl_pattern, '', template)
             
         return template
 
 
-@staticmethod
+    @staticmethod
     def get_default_naming_formats():
         return [
             NamingFormat(
