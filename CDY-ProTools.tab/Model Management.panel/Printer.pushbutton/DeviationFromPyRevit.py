@@ -6,7 +6,7 @@
             repl_pattern = r'{' + value_type + ':' + param_name + r'}'
             
             if param_value:
-                if param_name == 'Drawing Title 2' or param_name == 'Drawing Title 3' and param_value != "":
+                if (param_name == 'Drawing Title 2' or param_name == 'Drawing Title 3') and param_value != "":
                     param_value = ' ' + param_value
                 template = re.sub(repl_pattern, str(param_value), template)
             template = re.sub(repl_pattern, '', template)
