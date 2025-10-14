@@ -83,7 +83,7 @@ class PrintUtils:
 
     @staticmethod
     def get_dir():
-        return os.path.expanduser("~/Desktop\\pyRevit Print Folder")
+        return os.path.expanduser("~/Desktop\\CDY-ProTools Print Folder")
 
     @staticmethod
     def get_folder(task="_PDF"):
@@ -1649,3 +1649,4 @@ if __shiftclick__:  #pylint: disable=E0602
             cleanup_sheetnumbers(open_doc)
 else:
     PrintSheetsWindow('PrintSheets.xaml').ShowDialog()
+
