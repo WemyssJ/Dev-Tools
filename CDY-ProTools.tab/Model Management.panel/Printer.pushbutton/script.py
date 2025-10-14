@@ -1123,6 +1123,7 @@ class PrintSheetsWindow(forms.WPFWindow):
                                                 pb1.update_progress(pbCount1, pbTotal1)
                                                 pbCount1 += 1
                                             except Exception as e:
+                                                pbCount1 += 1
                                                 logger.error('Failed to export DWG for sheet %s: %s', sheet.number, e)
                                             
                                     else:
@@ -1160,6 +1161,7 @@ class PrintSheetsWindow(forms.WPFWindow):
                                                 pb1.update_progress(pbCount1, pbTotal1)
                                                 pbCount1 += 1
                                             except Exception as e:
+                                                pbCount1 += 1
                                                 logger.error('Failed to export PDF for sheet %s: %s', sheet.number, e)
 
                                     else:
@@ -1201,10 +1203,14 @@ class PrintSheetsWindow(forms.WPFWindow):
                                 if self._verify_print_filename(sheet.name,
                                                             print_filepath):
                                     
-                                    optspdf = PrintUtils.pdf_opts()
-                                    PrintUtils.export_sheet_pdf(dirPath,sheet.revit_sheet,optspdf,doc, sheet.print_filename)
-                                    pb1.update_progress(pbCount1, pbTotal1)
-                                    pbCount1 += 1
+                                    try:
+                                        optspdf = PrintUtils.pdf_opts()
+                                        PrintUtils.export_sheet_pdf(dirPath, sheet.revit_sheet, optspdf, doc, sheet.print_filename)
+                                        pb1.update_progress(pbCount1, pbTotal1)
+                                        pbCount1 += 1
+                                    except Exception as e:
+                                        pbCount1 += 1
+                                        logger.error('Failed to export PDF for sheet %s: %s', sheet.number, e)
 
                             else:
                                 logger.debug(
@@ -1243,7 +1249,8 @@ class PrintSheetsWindow(forms.WPFWindow):
                 if (param_name == 'Drawing Title 2' or param_name == 'Drawing Title 3') and param_value != "":
                     param_value = ' ' + param_value
                 template = re.sub(repl_pattern, str(param_value), template)
-            template = re.sub(repl_pattern, '', template)
+            else:
+                template = re.sub(repl_pattern, '', template)
             
         return template
 
