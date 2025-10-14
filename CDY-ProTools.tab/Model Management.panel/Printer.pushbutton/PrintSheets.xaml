@@ -255,7 +255,7 @@
         <StatusBar DockPanel.Dock="Bottom" Height="25" Background="{DynamicResource pyRevitDarkBrush}">
             <TextBlock Foreground="#ffffff" Margin="10,0,0,0" MouseDown="handle_url_click">
                 <Hyperlink NavigateUri="https://www.pyrevitlabs.io/">
-                    A pyRevit tool developed by Ehsan Iran-Nejad. Print Index by: Ryan McCullough. DWG export by: Joe Wemyss (thanks to Gavin Crump).
+                    A pyRevit tool developed by Ehsan Iran-Nejad, improved in house at Craddys.
                 </Hyperlink>
             </TextBlock>
         </StatusBar>
@@ -309,6 +309,7 @@
 
     </DockPanel>
 </Window>
+
 
 
 
