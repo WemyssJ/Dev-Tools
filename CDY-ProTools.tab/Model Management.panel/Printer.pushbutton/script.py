@@ -462,6 +462,7 @@ class EditNamingFormatsWindow(forms.WPFWindow):
                 template='{proj_number}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf',
                 builtin=True
             ),
+
         ]
 
     @staticmethod
@@ -1153,11 +1154,13 @@ class PrintSheetsWindow(forms.WPFWindow):
                                         if self._verify_print_filename(sheet.name,
                                                                     print_filepath):
 
-                                            optspdf = PrintUtils.pdf_opts()
-                                            PrintUtils.export_sheet_pdf(dirPath,sheet.revit_sheet,optspdf,doc, sheet.print_filename)
-
-                                            pb1.update_progress(pbCount1, pbTotal1)
-                                            pbCount1 += 1
+                                            try:
+                                                optspdf = PrintUtils.pdf_opts()
+                                                PrintUtils.export_sheet_pdf(dirPath, sheet.revit_sheet, optspdf, doc, sheet.print_filename)
+                                                pb1.update_progress(pbCount1, pbTotal1)
+                                                pbCount1 += 1
+                                            except Exception as e:
+                                                logger.error('Failed to export PDF for sheet %s: %s', sheet.number, e)
 
                                     else:
                                         logger.debug(
@@ -1167,43 +1170,50 @@ class PrintSheetsWindow(forms.WPFWindow):
                                     logger.debug('Sheet %s is not printable. Skipping print.',
                                                 sheet.number)
 
-    def _print_linked_sheets_in_order(self, target_sheets):
+    def _print_linked_sheets_in_order(self, target_sheets, target_doc):
         # make sure we can access the print config
         print_mgr = self._get_printmanager()
         print_mgr.PrintToFile = True
         print_mgr.SelectNewPrintDriver(self.selected_printer)
         print_mgr.PrintRange = DB.PrintRange.Current
-        # setting print settings needs a transaction
-        # can not be done on linked docs
-        # print_mgr.PrintSetup.CurrentPrintSetting =
 
         # make sure you can print, construct print path and make directory
         PrintUtils.can_print()
         dirPath = PrintUtils.get_dir() + "\\" + PrintUtils.get_folder("_PRINT")
         PrintUtils.ensure_dir(dirPath)
         PrintUtils.open_dir(dirPath)
-        doc = PrintUtils.get_doc()
+        doc = target_doc
 
-        for sheet in target_sheets:
-            if sheet.printable:
-                print_filepath = op.join(dirPath + "\\" + sheet.print_filename)
-                print_mgr.PrintToFileName = print_filepath
-
-                if self._verify_print_filename(sheet.name, print_filepath):
-
-                    optspdf = PrintUtils.pdf_opts()
-                    PrintUtils.export_sheet_pdf(dirPath,sheet.revit_sheet,optspdf,doc, sheet.print_filename)
-
-
-                    if self.export_dwg.IsChecked:
-                        optsdwg = PrintUtils.dwg_opts()
-                        PrintUtils.export_sheet_dwg(dirPath,sheet.revit_sheet,optsdwg,doc, sheet.print_filename)
-            else:
-                logger.debug(
-                    'Linked sheet %s is not printable. Skipping print.',
-                    sheet.number
-                    )
+        if target_sheets:
+            with forms.ProgressBar(step=1, title='Exporting Linked PDFs... ' + '{value} of {max_value}', cancellable=True) as pb1:
                 
+                pbTotal1 = len(target_sheets)
+                pbCount1 = 1
+                for sheet in target_sheets:
+                    if pb1.cancelled:
+                        break
+                    else:
+                        if sheet.printable:
+                            if sheet.print_filename:
+                                print_filepath = op.join(dirPath + "\\" + sheet.print_filename)
+                                print_mgr.PrintToFileName = print_filepath
+
+                                if self._verify_print_filename(sheet.name,
+                                                            print_filepath):
+                                    
+                                    optspdf = PrintUtils.pdf_opts()
+                                    PrintUtils.export_sheet_pdf(dirPath,sheet.revit_sheet,optspdf,doc, sheet.print_filename)
+                                    pb1.update_progress(pbCount1, pbTotal1)
+                                    pbCount1 += 1
+
+                            else:
+                                logger.debug(
+                                    'Sheet %s does not have a valid file name.',
+                                    sheet.number)
+                        else:
+                            logger.debug('Sheet %s is not printable. Skipping print.',
+                                        sheet.number)
+                                    
     def _reset_error(self):
         self.enable_element(self.print_b)
         self.hide_element(self.errormsg_block)
@@ -1230,10 +1240,8 @@ class PrintSheetsWindow(forms.WPFWindow):
             repl_pattern = r'{' + value_type + ':' + param_name + r'}'
             
             if param_value:
-                #JW
-                if param_name == 'Drawing Title 2' or param_name == 'Drawing Title 3' and param_value != "":
+                if (param_name == 'Drawing Title 2' or param_name == 'Drawing Title 3') and param_value != "":
                     param_value = ' ' + param_value
-                    #JW
                 template = re.sub(repl_pattern, str(param_value), template)
             template = re.sub(repl_pattern, '', template)
             
@@ -1502,6 +1510,10 @@ class PrintSheetsWindow(forms.WPFWindow):
             self.show_element(self.pfilename)
             self.export_dwg.IsEnabled = True
 
+        if self.selected_doc.IsLinked:
+            self.export_dwg.IsChecked = False
+            self.export_dwg.IsEnabled = False
+
         # decide whether to show the placeholders or not
         if not self.show_placeholders:
             self.indexspace_cb.IsEnabled = True
@@ -1637,7 +1649,7 @@ class PrintSheetsWindow(forms.WPFWindow):
                 self._print_combined_sheets_in_order(target_sheets)
             else:
                 if self.selected_doc.IsLinked:
-                    self._print_linked_sheets_in_order(target_sheets)
+                    self._print_linked_sheets_in_order(target_sheets, self.selected_doc)
                 else:
                     self._print_sheets_in_order(target_sheets)
 
