@@ -252,38 +252,50 @@ if not templates:
 
 # ------------------ Copy Overrides Function ------------------
 def copy_overrides(fid, src_view, dest_view):
-    src_override = src_view.GetFilterOverrides(fid)
+    src_ovr = src_view.GetFilterOverrides(fid)
     ovr = OverrideGraphicSettings()
 
-    # Projection line
+    # --- Projection line ---
     try:
-        ovr.SetProjectionLineColor(src_override.ProjectionLineColor)
-        ovr.SetProjectionLineWeight(src_override.ProjectionLineWeight)
-        ovr.SetProjectionLinePatternId(src_override.ProjectionLinePatternId)
+        ovr.SetProjectionLineColor(src_ovr.ProjectionLineColor)
+        ovr.SetProjectionLineWeight(src_ovr.ProjectionLineWeight)
+        ovr.SetProjectionLinePatternId(src_ovr.ProjectionLinePatternId)
     except: pass
 
-    # Cut line
+    # --- Cut line ---
     try:
-        ovr.SetCutLineColor(src_override.CutLineColor)
-        ovr.SetCutLineWeight(src_override.CutLineWeight)
-        ovr.SetCutLinePatternId(src_override.CutLinePatternId)
+        ovr.SetCutLineColor(src_ovr.CutLineColor)
+        ovr.SetCutLineWeight(src_ovr.CutLineWeight)
+        ovr.SetCutLinePatternId(src_ovr.CutLinePatternId)
     except: pass
 
-    # Surface hatch
+    # --- Surface (projection) hatch ---
     try:
-        ovr.SetSurfaceForegroundPatternColor(src_override.SurfaceForegroundPatternColor)
-        ovr.SetSurfaceForegroundPatternId(src_override.SurfaceForegroundPatternId)
-        ovr.SetSurfaceBackgroundPatternColor(src_override.SurfaceBackgroundPatternColor)
-        ovr.SetSurfaceBackgroundPatternId(src_override.SurfaceBackgroundPatternId)
+        ovr.SetSurfaceForegroundPatternColor(src_ovr.SurfaceForegroundPatternColor)
+        ovr.SetSurfaceForegroundPatternId(src_ovr.SurfaceForegroundPatternId)
+        ovr.SetSurfaceBackgroundPatternColor(src_ovr.SurfaceBackgroundPatternColor)
+        ovr.SetSurfaceBackgroundPatternId(src_ovr.SurfaceBackgroundPatternId)
     except: pass
 
-    # Halftone / Transparency
+    # --- Cut hatch ---
     try:
-        ovr.SetHalftone(src_override.Halftone)
-        ovr.SetSurfaceTransparency(src_override.Transparency)
+        if hasattr(ovr, "SetCutForegroundPatternColor"):
+            ovr.SetCutForegroundPatternColor(src_ovr.CutForegroundPatternColor)
+        if hasattr(ovr, "SetCutForegroundPatternId"):
+            ovr.SetCutForegroundPatternId(src_ovr.CutForegroundPatternId)
+        if hasattr(ovr, "SetCutBackgroundPatternColor"):
+            ovr.SetCutBackgroundPatternColor(src_ovr.CutBackgroundPatternColor)
+        if hasattr(ovr, "SetCutBackgroundPatternId"):
+            ovr.SetCutBackgroundPatternId(src_ovr.CutBackgroundPatternId)
     except: pass
 
-    # --- Enable + Visibility transfer ---
+    # --- Halftone & Transparency ---
+    try:
+        ovr.SetHalftone(src_ovr.Halftone)
+        ovr.SetSurfaceTransparency(src_ovr.Transparency)
+    except: pass
+
+    # --- Enable + Visibility ---
     try:
         enabled = get_filter_enabled(src_view, fid)
         visible = get_filter_visible(src_view, fid)
@@ -296,8 +308,7 @@ def copy_overrides(fid, src_view, dest_view):
             dest_view.SetFilterVisibility(fid, visible)
         elif hasattr(dest_view, "SetFilterVisible"):
             dest_view.SetFilterVisible(fid, visible)
-    except:
-        pass
+    except: pass
 
     return ovr
 
@@ -326,4 +337,5 @@ forms.alert(
     "Selected filters successfully applied from {} to {}!".format(source_name, target_names),
     title="Done"
 )
+
 
