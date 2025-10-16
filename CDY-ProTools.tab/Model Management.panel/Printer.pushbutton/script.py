@@ -60,7 +60,7 @@ AvailableDoc = namedtuple('AvailableDoc', ['name', 'hash', 'linked'])
 NamingFormatter = namedtuple('NamingFormatter', ['template', 'desc'])
 
 SheetRevision = namedtuple('SheetRevision', ['number', 'desc', 'date', 'is_set'])
-UNSET_REVISION = SheetRevision(number=None, desc=None, date=None, is_set=False)
+UNSET_REVISION = SheetRevision(number='WIP', desc='WIP', date='WIP', is_set=False)
 
 TitleBlockPrintSettings = \
     namedtuple('TitleBlockPrintSettings', ['psettings', 'set_by_param'])
@@ -1685,3 +1685,4 @@ if __shiftclick__:  #pylint: disable=E0602
             cleanup_sheetnumbers(open_doc)
 else:
     PrintSheetsWindow('PrintSheets.xaml').ShowDialog()
+
