@@ -50,3 +50,5 @@
             ),
 
         ]
+
+UNSET_REVISION = SheetRevision(number='WIP', desc='WIP', date='WIP', is_set=False)
