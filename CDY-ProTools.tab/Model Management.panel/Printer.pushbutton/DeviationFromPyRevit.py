@@ -51,4 +51,12 @@
 
         ]
 
-UNSET_REVISION = SheetRevision(number='WIP', desc='WIP', date='WIP', is_set=False)
+
+    @staticmethod
+    def get_dir():
+        return os.path.expanduser("~/Desktop\\CDY-ProTools Print Folder")
+
+
+
+
+    UNSET_REVISION = SheetRevision(number='WIP', desc='WIP', date='WIP', is_set=False)
