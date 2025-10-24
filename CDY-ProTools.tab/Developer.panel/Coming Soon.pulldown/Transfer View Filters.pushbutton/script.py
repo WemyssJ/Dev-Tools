@@ -2,7 +2,7 @@
 __title__ = "Transfer View Filters"
 __doc__ = "Live preview: Projection/Cut line + weight + pattern, hatch FG/BG + color, Halftone, Transparency, Enable, Visibility"
 
-import clr, sys, os
+import clr, sys, os, traceback
 clr.AddReference('System')
 clr.AddReference('PresentationFramework')
 clr.AddReference('WindowsBase')
@@ -67,8 +67,6 @@ def get_dash_array(pid):
         return None
     return dash if len(dash) else None
 
-
-# ✅ Your version preserved exactly
 def revit_color_to_brush(c):
     """Convert a Revit color to a WPF SolidColorBrush safely"""
     from System.Windows.Media import Color as MediaColor, SolidColorBrush
@@ -79,8 +77,6 @@ def revit_color_to_brush(c):
     except:
         return SolidColorBrush(MediaColor.FromRgb(200, 200, 200))
 
-
-# ------------------ Robust Enabled/Visible helpers ------------------
 def get_filter_enabled(view, fid):
     try:
         if hasattr(view, "GetIsFilterEnabled"):
@@ -102,7 +98,6 @@ def get_filter_visible(view, fid):
             return True
     except:
         return True
-
 
 # ------------------ FilterInfo Class ------------------
 class FilterInfo(INotifyPropertyChanged):
@@ -148,7 +143,6 @@ class FilterInfo(INotifyPropertyChanged):
     def add_PropertyChanged(self, handler): pass
     def remove_PropertyChanged(self, handler): pass
 
-
 # ------------------ Collect Filters ------------------
 try:
     applied_filters = active_view.GetFilters()
@@ -182,23 +176,17 @@ for fid in applied_filters:
     filter_data.Add(item)
     filter_map[f.Name] = (fid, ovr)
 
-
 # ------------------ Load XAML ------------------
 xaml_path = os.path.join(os.path.dirname(__file__), "TransferVG.xaml")
 with FileStream(xaml_path, FileMode.Open) as f:
     window = XamlReader.Load(f)
 
-
 window.FindName("filterList").ItemsSource = filter_data
 
-# Automatically find icon.png in the same folder as the current script
 icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
-
-# Optional: fallback in case the file doesn’t exist
 if not os.path.exists(icon_path):
     print("⚠️ icon.png not found in script folder.")
 
-# Assign to Image control
 bmp = BitmapImage()
 bmp.BeginInit()
 bmp.UriSource = Uri(icon_path)
@@ -206,7 +194,6 @@ bmp.CacheOption = BitmapCacheOption.OnLoad
 bmp.EndInit()
 window.FindName("headerIcon").Source = bmp
 
-# ------------------ Buttons ------------------
 def on_ok(sender, args):
     selected = [i.Name for i in window.FindName("filterList").SelectedItems]
     window.Tag = selected
@@ -219,14 +206,12 @@ def on_cancel(sender, args):
 window.FindName("okBtn").Click += on_ok
 window.FindName("cancelBtn").Click += on_cancel
 
-# --- Disable OK initially ---
 ok_button = window.FindName("okBtn")
 filter_list = window.FindName("filterList")
 ok_button.IsEnabled = False
 
 def on_selection_changed(sender, args):
     ok_button.IsEnabled = filter_list.SelectedItems.Count > 0
-
 filter_list.SelectionChanged += on_selection_changed
 
 window.ShowDialog()
@@ -249,53 +234,55 @@ templates = forms.SelectFromList.show(
 if not templates:
     sys.exit()
 
-
 # ------------------ Copy Overrides Function ------------------
 def copy_overrides(fid, src_view, dest_view):
+    """Copy graphic overrides for a given filter ID between views/templates."""
     src_ovr = src_view.GetFilterOverrides(fid)
     ovr = OverrideGraphicSettings()
 
-    # --- Projection line ---
-    try:
-        ovr.SetProjectionLineColor(src_ovr.ProjectionLineColor)
-        ovr.SetProjectionLineWeight(src_ovr.ProjectionLineWeight)
+    def safe_call(label, func):
+        try:
+            func()
+        except Exception as e:
+            print("⚠️ {} failed: {}".format(label, e))
+
+    safe_call("Projection line", lambda: (
+        ovr.SetProjectionLineColor(src_ovr.ProjectionLineColor),
+        ovr.SetProjectionLineWeight(src_ovr.ProjectionLineWeight),
         ovr.SetProjectionLinePatternId(src_ovr.ProjectionLinePatternId)
-    except: pass
+    ))
 
-    # --- Cut line ---
-    try:
-        ovr.SetCutLineColor(src_ovr.CutLineColor)
-        ovr.SetCutLineWeight(src_ovr.CutLineWeight)
+    safe_call("Cut line", lambda: (
+        ovr.SetCutLineColor(src_ovr.CutLineColor),
+        ovr.SetCutLineWeight(src_ovr.CutLineWeight),
         ovr.SetCutLinePatternId(src_ovr.CutLinePatternId)
-    except: pass
+    ))
 
-    # --- Surface (projection) hatch ---
-    try:
-        ovr.SetSurfaceForegroundPatternColor(src_ovr.SurfaceForegroundPatternColor)
-        ovr.SetSurfaceForegroundPatternId(src_ovr.SurfaceForegroundPatternId)
-        ovr.SetSurfaceBackgroundPatternColor(src_ovr.SurfaceBackgroundPatternColor)
+    safe_call("Surface hatch", lambda: (
+        ovr.SetSurfaceForegroundPatternColor(src_ovr.SurfaceForegroundPatternColor),
+        ovr.SetSurfaceForegroundPatternId(src_ovr.SurfaceForegroundPatternId),
+        ovr.SetSurfaceBackgroundPatternColor(src_ovr.SurfaceBackgroundPatternColor),
         ovr.SetSurfaceBackgroundPatternId(src_ovr.SurfaceBackgroundPatternId)
-    except: pass
+    ))
 
-    # --- Cut hatch ---
-    try:
-        if hasattr(ovr, "SetCutForegroundPatternColor"):
-            ovr.SetCutForegroundPatternColor(src_ovr.CutForegroundPatternColor)
-        if hasattr(ovr, "SetCutForegroundPatternId"):
-            ovr.SetCutForegroundPatternId(src_ovr.CutForegroundPatternId)
-        if hasattr(ovr, "SetCutBackgroundPatternColor"):
-            ovr.SetCutBackgroundPatternColor(src_ovr.CutBackgroundPatternColor)
-        if hasattr(ovr, "SetCutBackgroundPatternId"):
-            ovr.SetCutBackgroundPatternId(src_ovr.CutBackgroundPatternId)
-    except: pass
+    safe_call("Cut hatch", lambda: (
+        hasattr(ovr, "SetCutForegroundPatternColor") and ovr.SetCutForegroundPatternColor(src_ovr.CutForegroundPatternColor),
+        hasattr(ovr, "SetCutForegroundPatternId") and ovr.SetCutForegroundPatternId(src_ovr.CutForegroundPatternId),
+        hasattr(ovr, "SetCutBackgroundPatternColor") and ovr.SetCutBackgroundPatternColor(src_ovr.CutBackgroundPatternColor),
+        hasattr(ovr, "SetCutBackgroundPatternId") and ovr.SetCutBackgroundPatternId(src_ovr.CutBackgroundPatternId)
+    ))
 
-    # --- Halftone & Transparency ---
-    try:
-        ovr.SetHalftone(src_ovr.Halftone)
-        ovr.SetSurfaceTransparency(src_ovr.Transparency)
-    except: pass
+    safe_call("Halftone", lambda: ovr.SetHalftone(src_ovr.Halftone))
 
-    # --- Enable + Visibility ---
+    # Transparency compatibility (Revit 2024 vs 2025+)
+    if hasattr(ovr, "SetSurfaceTransparency"):
+        safe_call("Transparency (2024)", lambda: ovr.SetSurfaceTransparency(src_ovr.Transparency))
+    elif hasattr(ovr, "SetTransparency"):
+        safe_call("Transparency (2025+)", lambda: ovr.SetTransparency(src_ovr.Transparency))
+    else:
+        print("⚠️ No transparency method found on OverrideGraphicSettings")
+
+    # Enable / Visibility
     try:
         enabled = get_filter_enabled(src_view, fid)
         visible = get_filter_visible(src_view, fid)
@@ -303,39 +290,42 @@ def copy_overrides(fid, src_view, dest_view):
             dest_view.SetIsFilterEnabled(fid, enabled)
         elif hasattr(dest_view, "SetFilterEnabled"):
             dest_view.SetFilterEnabled(fid, enabled)
-
         if hasattr(dest_view, "SetFilterVisibility"):
             dest_view.SetFilterVisibility(fid, visible)
         elif hasattr(dest_view, "SetFilterVisible"):
             dest_view.SetFilterVisible(fid, visible)
-    except: pass
+    except Exception as e:
+        print("⚠️ Enable/Visibility override failed:", e)
 
     return ovr
 
-
 # ------------------ Apply to Selected Templates ------------------
+failed = []
 t = DB.Transaction(doc, 'Apply View Filters to Templates')
 t.Start()
 for fname in selected_filters:
     fid, existing_override = filter_map[fname]
     for template in templates:
-        if not template.IsFilterApplied(fid):
-            template.AddFilter(fid)
-        new_override = copy_overrides(fid, active_view, template)
-        template.SetFilterOverrides(fid, new_override)
+        try:
+            if not template.IsFilterApplied(fid):
+                template.AddFilter(fid)
+            new_override = copy_overrides(fid, active_view, template)
+            template.SetFilterOverrides(fid, new_override)
+        except Exception as e:
+            msg = "⚠️ Failed to apply filter '{}' to template '{}': {}".format(fname, template.Name, e)
+            print(msg)
+            failed.append(msg)
 t.Commit()
 
-# Get the names for display
+# ------------------ Result ------------------
 source_template_id = active_view.ViewTemplateId
 if source_template_id != DB.ElementId.InvalidElementId:
     source_name = doc.GetElement(source_template_id).Name
 else:
-    source_name = active_view.Name  # fallback if no template
+    source_name = active_view.Name
+
 target_names = ", ".join([v.Name for v in templates])
-
-forms.alert(
-    "Selected filters successfully applied from {} to {}!".format(source_name, target_names),
-    title="Done"
-)
-
-
+msg = "Selected filters successfully applied from {} to {}!".format(source_name, target_names)
+if failed:
+    msg += "\n\nSome filters failed:\n" + "\n".join(failed[:5]) + ("\n..." if len(failed) > 5 else "")
+forms.alert(msg, title="Done")
