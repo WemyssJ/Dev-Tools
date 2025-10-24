@@ -252,41 +252,70 @@ if not templates:
 
 # ------------------ Copy Overrides Function ------------------
 def copy_overrides(fid, src_view, dest_view):
-    src_override = src_view.GetFilterOverrides(fid)
+    """Copy graphic overrides for a given filter ID between views/templates."""
+    src_ovr = src_view.GetFilterOverrides(fid)
     ovr = OverrideGraphicSettings()
 
-    # Projection line
+    # --- Projection line ---
     try:
-        ovr.SetProjectionLineColor(src_override.ProjectionLineColor)
-        ovr.SetProjectionLineWeight(src_override.ProjectionLineWeight)
-        ovr.SetProjectionLinePatternId(src_override.ProjectionLinePatternId)
-    except: pass
+        ovr.SetProjectionLineColor(src_ovr.ProjectionLineColor)
+        ovr.SetProjectionLineWeight(src_ovr.ProjectionLineWeight)
+        ovr.SetProjectionLinePatternId(src_ovr.ProjectionLinePatternId)
+    except Exception as e:
+        print("⚠️ Projection line override failed:", e)
 
-    # Cut line
+    # --- Cut line ---
     try:
-        ovr.SetCutLineColor(src_override.CutLineColor)
-        ovr.SetCutLineWeight(src_override.CutLineWeight)
-        ovr.SetCutLinePatternId(src_override.CutLinePatternId)
-    except: pass
+        ovr.SetCutLineColor(src_ovr.CutLineColor)
+        ovr.SetCutLineWeight(src_ovr.CutLineWeight)
+        ovr.SetCutLinePatternId(src_ovr.CutLinePatternId)
+    except Exception as e:
+        print("⚠️ Cut line override failed:", e)
 
-    # Surface hatch
+    # --- Surface (projection) hatch ---
     try:
-        ovr.SetSurfaceForegroundPatternColor(src_override.SurfaceForegroundPatternColor)
-        ovr.SetSurfaceForegroundPatternId(src_override.SurfaceForegroundPatternId)
-        ovr.SetSurfaceBackgroundPatternColor(src_override.SurfaceBackgroundPatternColor)
-        ovr.SetSurfaceBackgroundPatternId(src_override.SurfaceBackgroundPatternId)
-    except: pass
+        ovr.SetSurfaceForegroundPatternColor(src_ovr.SurfaceForegroundPatternColor)
+        ovr.SetSurfaceForegroundPatternId(src_ovr.SurfaceForegroundPatternId)
+        ovr.SetSurfaceBackgroundPatternColor(src_ovr.SurfaceBackgroundPatternColor)
+        ovr.SetSurfaceBackgroundPatternId(src_ovr.SurfaceBackgroundPatternId)
+    except Exception as e:
+        print("⚠️ Surface hatch override failed:", e)
 
-    # Halftone / Transparency
+    # --- Cut hatch ---
     try:
-        ovr.SetHalftone(src_override.Halftone)
-        ovr.SetSurfaceTransparency(src_override.Transparency)
-    except: pass
+        if hasattr(ovr, "SetCutForegroundPatternColor"):
+            ovr.SetCutForegroundPatternColor(src_ovr.CutForegroundPatternColor)
+        if hasattr(ovr, "SetCutForegroundPatternId"):
+            ovr.SetCutForegroundPatternId(src_ovr.CutForegroundPatternId)
+        if hasattr(ovr, "SetCutBackgroundPatternColor"):
+            ovr.SetCutBackgroundPatternColor(src_ovr.CutBackgroundPatternColor)
+        if hasattr(ovr, "SetCutBackgroundPatternId"):
+            ovr.SetCutBackgroundPatternId(src_ovr.CutBackgroundPatternId)
+    except Exception as e:
+        print("⚠️ Cut hatch override failed:", e)
 
-    # --- Enable + Visibility transfer ---
+    # --- Halftone ---
+    try:
+        ovr.SetHalftone(src_ovr.Halftone)
+    except Exception as e:
+        print("⚠️ Halftone override failed:", e)
+
+    # --- Transparency (2024 vs 2025 compatibility) ---
+    try:
+        if hasattr(ovr, "SetSurfaceTransparency"):
+            ovr.SetSurfaceTransparency(src_ovr.Transparency)  # Revit ≤2024
+        elif hasattr(ovr, "SetTransparency"):
+            ovr.SetTransparency(src_ovr.Transparency)  # Revit ≥2025
+        else:
+            print("⚠️ No transparency method found on OverrideGraphicSettings")
+    except Exception as e:
+        print("⚠️ Transparency override failed:", e)
+
+    # --- Enable + Visibility ---
     try:
         enabled = get_filter_enabled(src_view, fid)
         visible = get_filter_visible(src_view, fid)
+
         if hasattr(dest_view, "SetIsFilterEnabled"):
             dest_view.SetIsFilterEnabled(fid, enabled)
         elif hasattr(dest_view, "SetFilterEnabled"):
@@ -296,10 +325,11 @@ def copy_overrides(fid, src_view, dest_view):
             dest_view.SetFilterVisibility(fid, visible)
         elif hasattr(dest_view, "SetFilterVisible"):
             dest_view.SetFilterVisible(fid, visible)
-    except:
-        pass
+    except Exception as e:
+        print("⚠️ Enable/Visibility override failed:", e)
 
     return ovr
+
 
 
 # ------------------ Apply to Selected Templates ------------------
@@ -308,10 +338,14 @@ t.Start()
 for fname in selected_filters:
     fid, existing_override = filter_map[fname]
     for template in templates:
-        if not template.IsFilterApplied(fid):
-            template.AddFilter(fid)
-        new_override = copy_overrides(fid, active_view, template)
-        template.SetFilterOverrides(fid, new_override)
+        try:
+            if not template.IsFilterApplied(fid):
+                template.AddFilter(fid)
+            new_override = copy_overrides(fid, active_view, template)
+            template.SetFilterOverrides(fid, new_override)
+        except Exception as e:
+            print("⚠️ Failed to apply filter '{}' to template '{}': {}".format(fname, template.Name, e))
+    
 t.Commit()
 
 # Get the names for display
@@ -326,4 +360,5 @@ forms.alert(
     "Selected filters successfully applied from {} to {}!".format(source_name, target_names),
     title="Done"
 )
+
 
