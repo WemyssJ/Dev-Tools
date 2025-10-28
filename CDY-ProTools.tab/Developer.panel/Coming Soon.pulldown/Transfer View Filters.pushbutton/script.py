@@ -178,7 +178,6 @@ for fid in applied_filters:
     
 
 
-# ------------------ Copy View Templates Between Models ------------------
 def action_copy_viewtemplates():
     """Copy selected view templates to other open Revit models."""
     try:
@@ -186,24 +185,49 @@ def action_copy_viewtemplates():
         if not selected_viewtemplates:
             forms.alert("No view templates selected.", exitscript=False)
             return
+
         dest_docs = forms.select_open_docs(title='Select Destination Documents')
         if not dest_docs:
             return
+
         for ddoc in dest_docs:
-            with revit.Transaction('Copy View Templates', doc=ddoc):
+            t = DB.Transaction(ddoc, "Copy View Templates")
+            t.Start()
+            try:
                 revit.create.copy_viewtemplates(
                     selected_viewtemplates,
                     src_doc=revit.doc,
                     dest_doc=ddoc
                 )
+                t.Commit()
+            except Exception, e:
+                t.RollBack()
+                forms.alert(
+                    "⚠️ Failed to copy templates to document '{}':\n{}".format(ddoc.Title, e),
+                    title="Error"
+                )
+
         forms.alert(
             "✅ {} view template(s) copied to {} document(s).".format(
                 len(selected_viewtemplates), len(dest_docs)
             ),
             title="Copy Complete"
+            
         )
-    except Exception as e:
+
+        window.Close()
+
+    except Exception, e:
         forms.alert("⚠️ Error copying view templates:\n\n{}".format(e), title="Error")
+        window.Close()
+
+
+
+
+
+
+
+
         
 # ------------------ Load XAML ------------------
 xaml_path = os.path.join(os.path.dirname(__file__), "TransferVG.xaml")
@@ -235,8 +259,9 @@ def on_cancel(sender, args):
 window.FindName("okBtn").Click += on_ok
 window.FindName("cancelBtn").Click += on_cancel
 
+
 btnCopyTemplates = window.FindName("btnCopyTemplates")
-btnCopyTemplates.Click += lambda s, e: action_copy_viewtemplates()
+btnCopyTemplates.Click += lambda sender, args: action_copy_viewtemplates()
 
 ok_button = window.FindName("okBtn")
 filter_list = window.FindName("filterList")
