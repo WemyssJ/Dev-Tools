@@ -3,9 +3,7 @@
         Title="Select Filters" Height="580" Width="1690"
         WindowStartupLocation="CenterScreen"
         Background="#FAFAFA" Foreground="#222"
-        ResizeMode="CanResizeWithGrip"
-        ShowInTaskbar="False"
-        Topmost="True"
+        ResizeMode="NoResize"
         FontFamily="Mona-Sans Light" FontSize="13">
 
     <DockPanel Margin="10">
@@ -283,4 +281,5 @@
         </Border>
     </DockPanel>
 </Window>
+
 
