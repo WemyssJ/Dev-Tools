@@ -178,8 +178,9 @@ for fid in applied_filters:
     
 
 
+# ------------------ Copy View Templates Between Models ------------------
 def action_copy_viewtemplates():
-    """Copy selected view templates to other open Revit models."""
+    """Copy selected view templates to other open Revit models, overwriting existing ones."""
     try:
         selected_viewtemplates = forms.select_viewtemplates(doc=revit.doc)
         if not selected_viewtemplates:
@@ -191,16 +192,24 @@ def action_copy_viewtemplates():
             return
 
         for ddoc in dest_docs:
+            # Start a transaction on the destination doc
             t = DB.Transaction(ddoc, "Copy View Templates")
             t.Start()
             try:
+                # Delete existing templates with the same name
+                existing_names = {v.Name: v.Id for v in DB.FilteredElementCollector(ddoc).OfClass(DB.View).ToElements() if v.IsTemplate}
+                for tmpl in selected_viewtemplates:
+                    if tmpl.Name in existing_names:
+                        ddoc.Delete(existing_names[tmpl.Name])
+
+                # Now copy
                 revit.create.copy_viewtemplates(
                     selected_viewtemplates,
                     src_doc=revit.doc,
                     dest_doc=ddoc
                 )
                 t.Commit()
-            except Exception, e:
+            except Exception as e:
                 t.RollBack()
                 forms.alert(
                     "⚠️ Failed to copy templates to document '{}':\n{}".format(ddoc.Title, e),
@@ -212,13 +221,13 @@ def action_copy_viewtemplates():
                 len(selected_viewtemplates), len(dest_docs)
             ),
             title="Copy Complete"
-            
         )
-
         window.Close()
 
-    except Exception, e:
+
+    except Exception as e:
         forms.alert("⚠️ Error copying view templates:\n\n{}".format(e), title="Error")
+
         window.Close()
 
 
