@@ -14,8 +14,88 @@ logger = script.get_logger()
 # -----------------------------
 # Helper functions
 # -----------------------------
-def get_all_revisions():
-    return DB.FilteredElementCollector(revit.doc).OfClass(DB.Revision).ToElements()
+def get_all_revisions(doc=None):
+    if doc is None:
+        doc = revit.doc
+    return DB.FilteredElementCollector(doc).OfClass(DB.Revision).ToElements()
+
+
+def safe_get_revision_number(rev):
+    """Safely get RevisionNumber (handles Per-Sheet numbering)."""
+    try:
+        return rev.RevisionNumber
+    except:
+        return "<per-sheet>"
+
+
+def copy_revision_to_doc(src_rev, dest_doc):
+    """Create a new Revision in dest_doc, copying key properties safely."""
+    new_rev = DB.Revision.Create(dest_doc)
+
+    # --- copy standard text fields ---
+    try:
+        new_rev.Description = src_rev.Description
+    except:
+        pass
+
+    try:
+        new_rev.IssuedBy = src_rev.IssuedBy
+    except:
+        pass
+
+    try:
+        new_rev.IssuedTo = src_rev.IssuedTo
+    except:
+        pass
+
+    try:
+        new_rev.RevisionDate = src_rev.RevisionDate
+    except:
+        pass
+
+    # --- safely handle RevisionNumber (can fail under per-sheet mode) ---
+    try:
+        new_rev.RevisionNumber = src_rev.RevisionNumber
+    except:
+        # per-sheet numbering or API restriction — ignore
+        pass
+
+    # --- safely handle properties that may not exist in some Revit versions ---
+    if hasattr(src_rev, "RevisionVisibility") and hasattr(new_rev, "RevisionVisibility"):
+        try:
+            new_rev.RevisionVisibility = src_rev.RevisionVisibility
+        except:
+            pass
+
+    if hasattr(src_rev, "NumberType") and hasattr(new_rev, "NumberType"):
+        try:
+            new_rev.NumberType = src_rev.NumberType
+        except:
+            pass
+
+    # --- sequence and flags ---
+    try:
+        new_rev.SequenceNumber = src_rev.SequenceNumber
+    except:
+        pass
+
+    if hasattr(src_rev, "Issued"):
+        try:
+            new_rev.Issued = src_rev.Issued
+        except:
+            pass
+    if hasattr(src_rev, "SheetIssued"):
+        try:
+            new_rev.SheetIssued = src_rev.SheetIssued
+        except:
+            pass
+    if hasattr(src_rev, "ProjectIssued"):
+        try:
+            new_rev.ProjectIssued = src_rev.ProjectIssued
+        except:
+            pass
+
+    return new_rev
 
 
 # -----------------------------
@@ -96,7 +176,15 @@ def action_turn_off_revision_clouds():
 
     with revit.Transaction('Turn off Revisions'):
         for rev in revs:
-            rev.Visibility = DB.RevisionVisibility.Hidden
+            # Some Revit versions expose Revision.Visibility, some expose RevisionVisibility enum etc.
+            try:
+                if hasattr(rev, "Visibility"):
+                    rev.Visibility = DB.RevisionVisibility.Hidden
+                elif hasattr(rev, "RevisionVisibility"):
+                    rev.RevisionVisibility = DB.RevisionVisibility.Hidden
+            except Exception:
+                # Best effort — skip if property not available
+                pass
 
     forms.alert("All revision clouds hidden.", ok=True)
 
@@ -195,6 +283,61 @@ def action_find_sheets_with_revision():
 
 
 # -----------------------------
+# 7. Copy revisions to other open documents
+# -----------------------------
+def action_copy_revisions():
+    """
+    Show a selection of revisions in the active document, let user pick one or more,
+    then select one or more destination open documents and copy the revisions into them.
+    """
+    src_doc = revit.doc
+    all_revs = get_all_revisions(src_doc)
+    if not all_revs:
+        forms.alert("No revisions found in active document.", exitscript=True)
+        return
+
+    # Build display list (safe on per-sheet numbering)
+    rev_options = [
+        "Seq {} | Rev {} | {}".format(
+            r.SequenceNumber,
+            safe_get_revision_number(r),
+            r.Description or "<no description>"
+        )
+        for r in all_revs
+    ]
+
+    selected_names = forms.SelectFromList.show(
+        rev_options,
+        title="Select Revisions to Copy",
+        multiselect=True,
+        button_name="Copy Selected Revisions"
+    )
+
+    if not selected_names:
+        return
+
+    # Map selections back to revision objects
+    selected_revs = [r for name, r in zip(rev_options, all_revs) if name in selected_names]
+
+    # Choose destination documents (one or more open docs)
+    dest_docs = forms.select_open_docs(title='Select Destination Documents')
+    if not dest_docs:
+        return
+
+    # Copy revisions into destination docs inside transactions
+    for ddoc in dest_docs:
+        try:
+            with revit.Transaction("Copy Revisions", doc=ddoc):
+                for src_rev in selected_revs:
+                    copy_revision_to_doc(src_rev, ddoc)
+        except Exception as ex:
+            logger.error("Failed copying revisions to document {0}: {1}".format(ddoc.Title, ex))
+            forms.alert("Failed copying revisions to: {0}\nSee console for details.".format(ddoc.Title), ok=True)
+
+    forms.alert("{} revision(s) copied to {} document(s).".format(len(selected_revs), len(dest_docs)), ok=True)
+
+
+# -----------------------------
 # Main Window
 # -----------------------------
 class MasterRevisionWindow(WPFWindow):
@@ -204,10 +347,13 @@ class MasterRevisionWindow(WPFWindow):
         self.cancelBtn.Click += lambda s, e: self.Close()
         self.btnAdd.Click += lambda s, e: (self.Close(), action_add_revisions_to_sheets())
         self.btnRemove.Click += lambda s, e: (self.Close(), action_remove_revisions_from_sheets())
-        self.btnHideClouds.Click += lambda s, e: (self.Close(), action_turn_off_revision_clouds())
-        self.btnIssued.Click += lambda s, e: (self.Close(), action_set_revisions_as_issued())
-        self.btnSheetSet.Click += lambda s, e: (self.Close(), action_create_sheet_set())
         self.btnFind.Click += lambda s, e: (self.Close(), action_find_sheets_with_revision())
+        self.btnIssued.Click += lambda s, e: (self.Close(), action_set_revisions_as_issued())
+        self.btnHideClouds.Click += lambda s, e: (self.Close(), action_turn_off_revision_clouds())
+        self.btnSheetSet.Click += lambda s, e: (self.Close(), action_create_sheet_set())
+        # NEW: Copy Revisions button
+        # If the XAML doesn't contain btnCopy this will raise — ensure XAML updated below.
+        self.btnCopy.Click += lambda s, e: (self.Close(), action_copy_revisions())
 
 
 # -----------------------------
