@@ -2,7 +2,7 @@
 __title__ = "Transfer View Filters"
 __doc__ = "Live preview: Projection/Cut line + weight + pattern, hatch FG/BG + color, Halftone, Transparency, Enable, Visibility"
 
-import clr, sys, os, traceback
+import clr, os, sys
 clr.AddReference('System')
 clr.AddReference('PresentationFramework')
 clr.AddReference('WindowsBase')
@@ -14,14 +14,14 @@ from System.Windows.Markup import XamlReader
 from System.ComponentModel import INotifyPropertyChanged
 from System.Collections.ObjectModel import ObservableCollection
 from System.Windows.Media import SolidColorBrush, Color, DoubleCollection
-from Autodesk.Revit.DB import *
-from pyrevit import revit, DB, forms
 from System import Uri
 from System.Windows.Media.Imaging import BitmapImage, BitmapCacheOption
+from Autodesk.Revit.DB import *
+from pyrevit import revit, DB, forms
 
 # ------------------ Document & View ------------------
-doc = __revit__.ActiveUIDocument.Document
-active_view = __revit__.ActiveUIDocument.ActiveView
+doc = revit.doc
+active_view = revit.active_view
 
 # ------------------ Caches ------------------
 line_pattern_cache = {}
@@ -49,7 +49,6 @@ def get_line_pattern_name(pid):
     return name
 
 def get_dash_array(pid):
-    """Return WPF-compatible dash array for a Revit LinePatternElement"""
     if not pid or pid == ElementId.InvalidElementId:
         return None
     lpe = doc.GetElement(pid)
@@ -68,7 +67,6 @@ def get_dash_array(pid):
     return dash if len(dash) else None
 
 def revit_color_to_brush(c):
-    """Convert a Revit color to a WPF SolidColorBrush safely"""
     from System.Windows.Media import Color as MediaColor, SolidColorBrush
     try:
         if not c or not c.IsValid:
@@ -175,69 +173,42 @@ for fid in applied_filters:
 
     filter_data.Add(item)
     filter_map[f.Name] = (fid, ovr)
-    
-
 
 # ------------------ Copy View Templates Between Models ------------------
 def action_copy_viewtemplates():
-    """Copy selected view templates to other open Revit models, overwriting existing ones."""
-    try:
-        selected_viewtemplates = forms.select_viewtemplates(doc=revit.doc)
-        if not selected_viewtemplates:
-            forms.alert("No view templates selected.", exitscript=False)
-            return
+    """Copy selected view templates to other open Revit models."""
+    # Select templates from current document
+    selected_viewtemplates = forms.select_viewtemplates(doc=doc)
+    if not selected_viewtemplates:
+        forms.alert("No view templates selected.", exitscript=False)
+        return
 
-        dest_docs = forms.select_open_docs(title='Select Destination Documents')
-        if not dest_docs:
-            return
+    # Select destination open documents
+    dest_docs = forms.select_open_docs(title='Select Destination Documents')
+    if not dest_docs:
+        return
 
-        for ddoc in dest_docs:
-            # Start a transaction on the destination doc
-            t = DB.Transaction(ddoc, "Copy View Templates")
-            t.Start()
-            try:
-                # Delete existing templates with the same name
-                existing_names = {v.Name: v.Id for v in DB.FilteredElementCollector(ddoc).OfClass(DB.View).ToElements() if v.IsTemplate}
-                for tmpl in selected_viewtemplates:
-                    if tmpl.Name in existing_names:
-                        ddoc.Delete(existing_names[tmpl.Name])
+    # Copy each template to each destination document
+    for ddoc in dest_docs:
+        with revit.Transaction("Copy View Templates", doc=ddoc):
+            revit.create.copy_viewtemplates(
+                selected_viewtemplates,
+                src_doc=doc,
+                dest_doc=ddoc
+            )
 
-                # Now copy
-                revit.create.copy_viewtemplates(
-                    selected_viewtemplates,
-                    src_doc=revit.doc,
-                    dest_doc=ddoc
-                )
-                t.Commit()
-            except Exception as e:
-                t.RollBack()
-                forms.alert(
-                    "⚠️ Failed to copy templates to document '{}':\n{}".format(ddoc.Title, e),
-                    title="Error"
-                )
+    forms.alert(
+        "✅ {} view template(s) copied to {} document(s).".format(
+            len(selected_viewtemplates), len(dest_docs)
+        ),
+        title="Copy Complete"
+    )
 
-        forms.alert(
-            "✅ {} view template(s) copied to {} document(s).".format(
-                len(selected_viewtemplates), len(dest_docs)
-            ),
-            title="Copy Complete"
-        )
-        window.Close()
-
-
-    except Exception as e:
-        forms.alert("⚠️ Error copying view templates:\n\n{}".format(e), title="Error")
-
-        window.Close()
+    window.Close()
+    
 
 
 
-
-
-
-
-
-        
 # ------------------ Load XAML ------------------
 xaml_path = os.path.join(os.path.dirname(__file__), "TransferVG.xaml")
 with FileStream(xaml_path, FileMode.Open) as f:
@@ -246,15 +217,13 @@ with FileStream(xaml_path, FileMode.Open) as f:
 window.FindName("filterList").ItemsSource = filter_data
 
 icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
-if not os.path.exists(icon_path):
-    print("⚠️ icon.png not found in script folder.")
-
-bmp = BitmapImage()
-bmp.BeginInit()
-bmp.UriSource = Uri(icon_path)
-bmp.CacheOption = BitmapCacheOption.OnLoad
-bmp.EndInit()
-window.FindName("headerIcon").Source = bmp
+if os.path.exists(icon_path):
+    bmp = BitmapImage()
+    bmp.BeginInit()
+    bmp.UriSource = Uri(icon_path)
+    bmp.CacheOption = BitmapCacheOption.OnLoad
+    bmp.EndInit()
+    window.FindName("headerIcon").Source = bmp
 
 def on_ok(sender, args):
     selected = [i.Name for i in window.FindName("filterList").SelectedItems]
@@ -268,9 +237,8 @@ def on_cancel(sender, args):
 window.FindName("okBtn").Click += on_ok
 window.FindName("cancelBtn").Click += on_cancel
 
-
 btnCopyTemplates = window.FindName("btnCopyTemplates")
-btnCopyTemplates.Click += lambda sender, args: action_copy_viewtemplates()
+btnCopyTemplates.Click += lambda s, e: action_copy_viewtemplates()
 
 ok_button = window.FindName("okBtn")
 filter_list = window.FindName("filterList")
@@ -340,15 +308,11 @@ def copy_overrides(fid, src_view, dest_view):
 
     safe_call("Halftone", lambda: ovr.SetHalftone(src_ovr.Halftone))
 
-    # Transparency compatibility (Revit 2024 vs 2025+)
     if hasattr(ovr, "SetSurfaceTransparency"):
         safe_call("Transparency (2024)", lambda: ovr.SetSurfaceTransparency(src_ovr.Transparency))
     elif hasattr(ovr, "SetTransparency"):
         safe_call("Transparency (2025+)", lambda: ovr.SetTransparency(src_ovr.Transparency))
-    else:
-        print("⚠️ No transparency method found on OverrideGraphicSettings")
 
-    # Enable / Visibility
     try:
         enabled = get_filter_enabled(src_view, fid)
         visible = get_filter_visible(src_view, fid)
@@ -383,15 +347,9 @@ for fname in selected_filters:
             failed.append(msg)
 t.Commit()
 
-
-
 # ------------------ Result ------------------
 source_template_id = active_view.ViewTemplateId
-if source_template_id != DB.ElementId.InvalidElementId:
-    source_name = doc.GetElement(source_template_id).Name
-else:
-    source_name = active_view.Name
-
+source_name = doc.GetElement(source_template_id).Name if source_template_id != DB.ElementId.InvalidElementId else active_view.Name
 target_names = ", ".join([v.Name for v in templates])
 msg = "Selected filters successfully applied from {} to {}!".format(source_name, target_names)
 if failed:
