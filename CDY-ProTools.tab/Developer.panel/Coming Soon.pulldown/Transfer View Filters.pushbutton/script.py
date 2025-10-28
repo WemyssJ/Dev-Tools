@@ -175,7 +175,36 @@ for fid in applied_filters:
 
     filter_data.Add(item)
     filter_map[f.Name] = (fid, ovr)
+    
 
+
+# ------------------ Copy View Templates Between Models ------------------
+def action_copy_viewtemplates():
+    """Copy selected view templates to other open Revit models."""
+    try:
+        selected_viewtemplates = forms.select_viewtemplates(doc=revit.doc)
+        if not selected_viewtemplates:
+            forms.alert("No view templates selected.", exitscript=False)
+            return
+        dest_docs = forms.select_open_docs(title='Select Destination Documents')
+        if not dest_docs:
+            return
+        for ddoc in dest_docs:
+            with revit.Transaction('Copy View Templates', doc=ddoc):
+                revit.create.copy_viewtemplates(
+                    selected_viewtemplates,
+                    src_doc=revit.doc,
+                    dest_doc=ddoc
+                )
+        forms.alert(
+            "✅ {} view template(s) copied to {} document(s).".format(
+                len(selected_viewtemplates), len(dest_docs)
+            ),
+            title="Copy Complete"
+        )
+    except Exception as e:
+        forms.alert("⚠️ Error copying view templates:\n\n{}".format(e), title="Error")
+        
 # ------------------ Load XAML ------------------
 xaml_path = os.path.join(os.path.dirname(__file__), "TransferVG.xaml")
 with FileStream(xaml_path, FileMode.Open) as f:
@@ -205,6 +234,9 @@ def on_cancel(sender, args):
 
 window.FindName("okBtn").Click += on_ok
 window.FindName("cancelBtn").Click += on_cancel
+
+btnCopyTemplates = window.FindName("btnCopyTemplates")
+btnCopyTemplates.Click += lambda s, e: action_copy_viewtemplates()
 
 ok_button = window.FindName("okBtn")
 filter_list = window.FindName("filterList")
@@ -316,6 +348,8 @@ for fname in selected_filters:
             print(msg)
             failed.append(msg)
 t.Commit()
+
+
 
 # ------------------ Result ------------------
 source_template_id = active_view.ViewTemplateId
