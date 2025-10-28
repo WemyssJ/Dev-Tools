@@ -4,6 +4,8 @@
         WindowStartupLocation="CenterScreen"
         Background="#FAFAFA" Foreground="#222"
         ResizeMode="CanResizeWithGrip"
+        ShowInTaskbar="False"
+        Topmost="True"
         FontFamily="Mona-Sans Light" FontSize="13">
 
     <DockPanel Margin="10">
@@ -281,3 +283,4 @@
         </Border>
     </DockPanel>
 </Window>
+
