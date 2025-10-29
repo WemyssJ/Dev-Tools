@@ -1,6 +1,6 @@
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="What's Changed?" Height="360" Width="500"
+        Title="What's Changed?" Height="450" Width="500"
         WindowStartupLocation="CenterScreen"
         Background="#FAFAFA" Foreground="#222"
         ResizeMode="NoResize"
@@ -11,17 +11,28 @@
     <!-- Header -->
     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="40" Background="#0078D7">
       <TextBlock Text="What's Changed?" FontSize="16" FontWeight="Bold"
-                 VerticalAlignment="Center" Foreground="White"/>
+                 VerticalAlignment="Center" Foreground="White" Margin="10,0,0,0"/>
     </StackPanel>
 
-    <!-- Buttons -->
+    <!-- Bottom Buttons -->
     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
-      <Button x:Name="cancelBtn" Width="90" Height="28" Margin="5" Content="Cancel" Background="#EEE" Foreground="#222"/>
-      <Button x:Name="okBtn" Width="90" Height="28" Margin="5" Content="Confirm" Background="#0078D7" Foreground="White"/>
+      <Button x:Name="cancelBtn" Width="90" Height="28" Margin="5" Content="Cancel" Background="#EEE" Foreground="#222" />
+      <Button x:Name="okBtn" Width="90" Height="28" Margin="5" Content="Confirm" Background="#0078D7" Foreground="White" />
     </StackPanel>
 
-    <!-- Form -->
-    <Border DockPanel.Dock="Top" Padding="20" Margin="0,10,0,0" Background="White" CornerRadius="6" BorderBrush="#DDD" BorderThickness="1">
+    <!-- Action Toggle Buttons -->
+    <StackPanel DockPanel.Dock="Top" Orientation="Vertical" HorizontalAlignment="Center" Margin="0,20,0,0">
+      <TextBlock Text="Select Action:" FontWeight="SemiBold" Margin="0,0,0,10" FontSize="14"/>
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+        <ToggleButton x:Name="importToggle" Content="Import JSON" Width="120" Height="35" Margin="5" IsChecked="True"
+                      Background="#E1F5FE" Foreground="#0078D7" FontWeight="SemiBold" BorderBrush="#81D4FA" BorderThickness="1"/>
+        <ToggleButton x:Name="exportToggle" Content="Export JSON" Width="120" Height="35" Margin="5"
+                      Background="#FFF3E0" Foreground="#FB8C00" FontWeight="SemiBold" BorderBrush="#FFB74D" BorderThickness="1"/>
+      </StackPanel>
+    </StackPanel>
+
+    <!-- Export Form -->
+    <Border x:Name="exportForm" DockPanel.Dock="Top" Padding="20" Margin="0,15,0,0" Background="White" CornerRadius="6" BorderBrush="#DDD" BorderThickness="1" Visibility="Collapsed">
       <Grid Margin="0,5,0,0">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="160"/>
@@ -31,24 +42,18 @@
           <RowDefinition Height="Auto"/>
           <RowDefinition Height="Auto"/>
           <RowDefinition Height="Auto"/>
-          <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Row="0" Grid.Column="0" Text="Discipline:" VerticalAlignment="Center" FontWeight="SemiBold"/>
-        <TextBox x:Name="disciplineBox" Grid.Row="0" Grid.Column="1" Width="150" Height="25" Text="Architect"/>
+        <ComboBox x:Name="disciplineBox" Grid.Row="0" Grid.Column="1" Width="150" Height="25" Text="Architect"/>
 
         <TextBlock Grid.Row="1" Grid.Column="0" Text="Revision:" VerticalAlignment="Center" FontWeight="SemiBold"/>
-        <TextBox x:Name="revisionBox" Grid.Row="1" Grid.Column="1" Width="150" Height="25" Text="P09"/>
+        <TextBox x:Name="revisionBox" Grid.Row="1" Grid.Column="1" Width="150" Height="25" Text="P0#"/>
 
         <TextBlock Grid.Row="2" Grid.Column="0" Text="Job Name:" VerticalAlignment="Center" FontWeight="SemiBold"/>
-        <TextBox x:Name="jobBox" Grid.Row="2" Grid.Column="1" Width="150" Height="25" Text="wixams"/>
-
-        <TextBlock Grid.Row="3" Grid.Column="0" Text="Action:" VerticalAlignment="Center" FontWeight="SemiBold"/>
-        <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal">
-          <RadioButton x:Name="exportRadio" Content="Export JSON" IsChecked="True" Margin="0,0,10,0"/>
-          <RadioButton x:Name="importRadio" Content="Import JSON"/>
-        </StackPanel>
+        <TextBox x:Name="jobBox" Grid.Row="2" Grid.Column="1" Width="150" Height="25" Text="N/A"/>
       </Grid>
     </Border>
+
   </DockPanel>
 </Window>
