@@ -1,29 +1,29 @@
 # -*- coding: utf-8 -*-
 """
 What's Changed? Reporter for Revit Models
-UI-based Export / Import with color-coded 3D view
+UI-based Export / Import with color-coded 3D view and progress bar
 """
 
 import os, json, math, clr
-from pyrevit import revit, DB, script
-from System.IO import StreamWriter, FileStream, FileMode, FileAccess
+from pyrevit import revit, DB, script, forms
+from System.IO import FileStream, FileMode, FileAccess
 from System.Collections.Generic import List
-from System.Windows import Application
 from System.Windows.Markup import XamlReader
+from System.Windows.Controls.Primitives import ToggleButton
+from System.Windows import Visibility
 from System.Windows.Forms import FolderBrowserDialog, OpenFileDialog
 import System
+from System.Windows.Forms import FolderBrowserDialog, OpenFileDialog
 
 output = script.get_output()
 doc = revit.doc
 uidoc = revit.uidoc
 
-# --- Helper functions -------------------------------------------------------
-
+# ---------------- Helper Functions ----------------
 def make_color(r, g, b):
     return DB.Color(r, g, b)
 
 def capture_model_state(doc):
-    """Capture all 3D element IDs, categories, locations and key parameters"""
     cats_to_include = [
         DB.BuiltInCategory.OST_Walls,
         DB.BuiltInCategory.OST_Floors,
@@ -52,7 +52,6 @@ def capture_model_state(doc):
         DB.BuiltInCategory.OST_CurtainWallMullions,
         DB.BuiltInCategory.OST_SpecialityEquipment
     ]
-
     all_data = {}
     for bic in cats_to_include:
         try:
@@ -89,14 +88,11 @@ def capture_model_state(doc):
     return all_data
 
 def compare_states(prev_data, current_data):
-    """Compare two model states"""
     prev_ids = set(prev_data.keys())
     curr_ids = set(current_data.keys())
-
     new_ids = curr_ids - prev_ids
     deleted_ids = prev_ids - curr_ids
     common_ids = prev_ids & curr_ids
-
     moved_ids, param_changed_ids = [], []
 
     for eid in common_ids:
@@ -114,101 +110,93 @@ def compare_states(prev_data, current_data):
             if k in curr_el["params"] and curr_el["params"][k] != v:
                 param_changed_ids.append(eid)
                 break
-
     return new_ids, deleted_ids, moved_ids, param_changed_ids
 
 def prepare_view(view3d, doc):
-    """Configure clean interrogation-ready 3D view"""
     view3d.DisplayStyle = DB.DisplayStyle(2)
     view3d.DetailLevel = DB.ViewDetailLevel.Fine
 
-    section_box_cat = DB.Category.GetCategory(doc, DB.BuiltInCategory.OST_VolumeOfInterest)
-
+    # Hide annotations / analytical
     for cat in doc.Settings.Categories:
         try:
-            if cat.Id == section_box_cat.Id:
-                continue
             if cat.CategoryType != DB.CategoryType.Model or "Analytical" in cat.Name or "Annotation" in cat.Name:
                 view3d.SetCategoryHidden(cat.Id, True)
         except:
             continue
 
+    # Hide Revit links
     rvt_links_cat = DB.Category.GetCategory(doc, DB.BuiltInCategory.OST_RvtLinks)
     if rvt_links_cat:
         view3d.SetCategoryHidden(rvt_links_cat.Id, True)
 
-    imports = DB.FilteredElementCollector(doc).OfClass(DB.ImportInstance).ToElementIds()
-    if imports:
-        view3d.HideElements(List[DB.ElementId](imports))
+    # Hide imports
+    if hasattr(DB.BuiltInCategory, "OST_ImportInstances"):
+        imports = DB.FilteredElementCollector(doc).OfCategory(DB.BuiltInCategory.OST_ImportInstances).ToElementIds()
+        if imports:
+            view3d.HideElements(List[DB.ElementId](imports))
 
+    # Activate section box
     if not view3d.IsSectionBoxActive:
         view3d.IsSectionBoxActive = True
 
-    scope_boxes = DB.FilteredElementCollector(doc).OfCategory(DB.BuiltInCategory.OST_VolumeOfInterest)\
-                    .WhereElementIsNotElementType().ToElements()
-    if scope_boxes:
-        try:
-            sb_param = view3d.get_Parameter(DB.BuiltInParameter.VIEWER_VOLUME_OF_INTEREST_CROP)
-            if sb_param and not sb_param.IsReadOnly:
-                sb_param.Set(scope_boxes[0].Id)
-        except:
-            pass
-
     return view3d
 
-# --- WPF UI -----------------------------------------------------------------
-
+# ---------------- UI ----------------
 def show_ui(xaml_path):
     fs = FileStream(xaml_path, FileMode.Open, FileAccess.Read)
     window = XamlReader.Load(fs)
     fs.Close()
 
-    # Fetch controls
+    # Controls
     cancelBtn = window.FindName("cancelBtn")
     okBtn = window.FindName("okBtn")
-    exportRadio = window.FindName("exportRadio")
-    importRadio = window.FindName("importRadio")
+    importToggle = window.FindName("importToggle")
+    exportToggle = window.FindName("exportToggle")
     disciplineBox = window.FindName("disciplineBox")
     revisionBox = window.FindName("revisionBox")
     jobBox = window.FindName("jobBox")
+
+    # Default
+    importToggle.IsChecked = True
+    window.FindName("exportForm").Visibility = Visibility.Collapsed
+
+    # Toggle handlers
+    def toggle_export(sender, e):
+        window.FindName("exportForm").Visibility = Visibility.Visible
+        importToggle.IsChecked = False
+    def toggle_import(sender, e):
+        window.FindName("exportForm").Visibility = Visibility.Collapsed
+        exportToggle.IsChecked = False
+
+    exportToggle.Checked += toggle_export
+    importToggle.Checked += toggle_import
 
     def cancel_click(sender, e):
         window.Tag = None
         window.Close()
 
     def ok_click(sender, e):
-        action = 'Export' if exportRadio.IsChecked else 'Import'
-        discipline = disciplineBox.Text
-        revision = revisionBox.Text
-        job = jobBox.Text
-
-        if action == 'Export':
+        if exportToggle.IsChecked:
             dlg = FolderBrowserDialog()
             if dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK:
                 folder = dlg.SelectedPath
-                filename = "{}_{}_{}.json".format(discipline, job, revision)
+                filename = "{}_{}_{}.json".format(disciplineBox.Text, jobBox.Text, revisionBox.Text)
                 path = os.path.join(folder, filename)
-                window.Tag = ('Export', path)
-        elif action == 'Import':
+                window.Tag = ("Export", path)
+        else:
             dlg = OpenFileDialog()
             dlg.Filter = "JSON Files|*.json"
             if dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK:
-                path = dlg.FileName
-                window.Tag = ('Import', path)
-
+                window.Tag = ("Import", dlg.FileName)
         window.Close()
+
 
     cancelBtn.Click += cancel_click
     okBtn.Click += ok_click
+    window.ShowDialog()
+    return getattr(window, "Tag", None)
 
-    # Instead of Application().Run(window), just:
-    window.ShowDialog()  
-
-    return getattr(window, 'Tag', None)
-
-
-# --- MAIN -------------------------------------------------------------------
-
+# ---------------- MAIN ----------------
 xaml_path = os.path.join(script.get_script_path(), "whats_changed_ui.xaml")
 result = show_ui(xaml_path)
 
@@ -218,15 +206,13 @@ if not result:
 action, file_path = result
 output.print_md("**Action:** {} | **File:** {}".format(action, file_path))
 
-if action == 'Export':
+if action == "Export":
     model_state = capture_model_state(doc)
-    json_text = json.dumps(model_state, ensure_ascii=False, indent=2)
     with open(file_path, 'w') as f:
-        f.write(json_text)
+        f.write(json.dumps(model_state, ensure_ascii=False, indent=2))
     output.print_md("✅ Snapshot exported to `{}`".format(file_path))
     script.exit()
-
-elif action == 'Import':
+elif action == "Import":
     if not os.path.exists(file_path):
         output.print_md("⚠️ File not found: `{}`".format(file_path))
         script.exit()
@@ -241,11 +227,16 @@ view_family_type = next(vft for vft in DB.FilteredElementCollector(doc).OfClass(
                         if vft.ViewFamily == DB.ViewFamily.ThreeDimensional)
 
 with revit.Transaction("Create What's Changed 3D View"):
+    # Delete old view if exists
+    existing = DB.FilteredElementCollector(doc).OfClass(DB.View3D).ToElements()
+    for v in existing:
+        if v.Name == "What's Changed":
+            doc.Delete(v.Id)
     view3d = DB.View3D.CreateIsometric(doc, view_family_type.Id)
     view3d.Name = "What's Changed"
     view3d = prepare_view(view3d, doc)
 
-# --- Apply Color Overrides ---
+# --- Color Overrides with Progress Bar ---
 def make_override(r, g, b):
     col = make_color(r, g, b)
     ovr = DB.OverrideGraphicSettings()
@@ -260,21 +251,27 @@ ovr_blue = make_override(0, 100, 255)
 ovr_halftone = DB.OverrideGraphicSettings()
 ovr_halftone.SetHalftone(True)
 
-with revit.Transaction("Apply What's Changed Overrides"):
-    for eid, eldata in current_data.items():
-        el = doc.GetElement(DB.ElementId(int(eid)))
-        if not el:
-            continue
-        if eid in new_ids:
-            view3d.SetElementOverrides(el.Id, ovr_green)
-        elif eid in moved_ids:
-            view3d.SetElementOverrides(el.Id, ovr_orange)
-        elif eid in param_changed_ids:
-            view3d.SetElementOverrides(el.Id, ovr_blue)
-        else:
-            view3d.SetElementOverrides(el.Id, ovr_halftone)
+with forms.ProgressBar(step=1, title="Applying overrides... {value} of {max_value}", cancellable=True) as pb:
+    element_ids = list(current_data.keys())
+    total = len(element_ids)
+    with revit.Transaction("Apply What's Changed Overrides"):
+        for i, eid in enumerate(element_ids):
+            if pb.cancelled:
+                break
+            el = doc.GetElement(DB.ElementId(int(eid)))
+            if not el:
+                continue
+            if eid in new_ids:
+                view3d.SetElementOverrides(el.Id, ovr_green)
+            elif eid in moved_ids:
+                view3d.SetElementOverrides(el.Id, ovr_orange)
+            elif eid in param_changed_ids:
+                view3d.SetElementOverrides(el.Id, ovr_blue)
+            pb.update_progress(i + 1, total)
 
-# --- Summary Report ---
+uidoc.ActiveView = view3d
+
+# --- Summary ---
 output.print_md("### ✅ What's Changed Report")
 output.print_md("**New elements:** {} 🟩".format(len(new_ids)))
 output.print_md("**Moved elements:** {} 🟧".format(len(moved_ids)))
@@ -282,6 +279,4 @@ output.print_md("**Parameter changes:** {} 🟦".format(len(param_changed_ids)))
 output.print_md("**Deleted elements:** {} ❌".format(len(prev_data) - len(current_data)))
 output.print_md("---")
 output.print_md("**Legend:**\n🟩 Green = New\n🟧 Orange = Moved\n🟦 Blue = Parameter changed\nHalftone = Unchanged")
-
-uidoc.ActiveView = view3d
 output.print_md("👀 View created: **'What's Changed'** — ready for interrogation.")
