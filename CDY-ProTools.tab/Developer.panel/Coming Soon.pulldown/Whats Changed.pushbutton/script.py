@@ -4,22 +4,18 @@ What's Changed? Reporter for Revit Models
 Now supports exporting from linked models. Unloaded links are shown but disabled.
 """
 
-import os, json, math, clr
-import re
-import codecs, io
+import os, json, math, clr, re, codecs
 from System import Environment
 clr.AddReference("System")
 from pyrevit import revit, DB, script, forms
 from System.IO import FileStream, FileMode, FileAccess
 from System.Windows.Input import MouseEventHandler
 from System.Windows.Documents import Run
-from System.Windows.Media import Brushes
-from System.Collections.Generic import List
+from System.Windows.Media import Brushes, SolidColorBrush, Color
 from System.Windows.Markup import XamlReader
 from System.Windows import Visibility
 from System.Windows.Forms import FolderBrowserDialog, OpenFileDialog, ColorDialog, DialogResult
 from System.Windows.Controls import ComboBoxItem
-from System.Windows.Media import SolidColorBrush, Color
 
 output = script.get_output()
 doc = revit.doc
@@ -133,6 +129,7 @@ def show_ui(xaml_path):
     window = XamlReader.Load(fs)
     fs.Close()
 
+    # --- UI Controls ---
     cancelBtn = window.FindName("cancelBtn")
     okBtn = window.FindName("okBtn")
     importToggle = window.FindName("importToggle")
@@ -151,7 +148,7 @@ def show_ui(xaml_path):
     exportForm = window.FindName("exportForm")
     importForm = window.FindName("importForm")
 
-    # ---------------- Auto-fill Job Info ----------------
+    # --- Auto-fill Job Info ---
     project_info = doc.ProjectInformation
 
     def get_param_value(el, param_name, fallback=""):
@@ -169,28 +166,24 @@ def show_ui(xaml_path):
     project_number = get_param_value(project_info, "Project Number")
     job_name_default = get_param_value(project_info, "Project Name", fallback="TBC")
 
-    # Build combined job number using separator logic
     parts = []
     if craddys_job:
         parts.append(craddys_job)
     if project_number:
         parts.append(project_number)
 
-    job_number_default = "_".join(parts) + ("_" if parts else "")
-
+    job_number_default = "_".join(parts)
     jobBox.Text = job_name_default
     jobNumberBox.Text = job_number_default
 
-
-    # ---------------- Filename Preview & Hover ----------------
+    # --- Filename Preview & Hover ---
     def get_item_text(item, fallback=""):
-        """Return the string value of a ComboBoxItem or str."""
         if item is None:
             return fallback
         try:
-            return str(item.Content)  # ComboBoxItem
+            return str(item.Content)
         except AttributeError:
-            return str(item)          # Already a string
+            return str(item)
 
     def get_filename_parts():
         prefix = jobNumberBox.Text.strip() or "TBC_"
@@ -218,10 +211,8 @@ def show_ui(xaml_path):
             if highlight == key:
                 run.Foreground = Brushes.Red
             anticipatedFileName.Inlines.Add(run)
-            # Add separator only if not the last element (model)
             if i < len(keys) - 1:
                 anticipatedFileName.Inlines.Add(Run(separator))
-
 
     def attach_hover(ctrl, key):
         def enter(sender, e):
@@ -231,7 +222,6 @@ def show_ui(xaml_path):
         ctrl.MouseEnter += MouseEventHandler(enter)
         ctrl.MouseLeave += MouseEventHandler(leave)
 
-    # Initialize and attach events
     update_filename_display()
     attach_hover(jobNumberBox, "prefix")
     attach_hover(disciplineBox, "discipline")
@@ -245,14 +235,13 @@ def show_ui(xaml_path):
     modelSourceBox.SelectionChanged += update_filename_display
     disciplineBox.SelectionChanged += update_filename_display
 
-
-    # ---------------- Discipline dropdown ----------------
+    # --- Discipline dropdown ---
     disciplineBox.Items.Clear()
     for d in ["Structures", "Architect", "M&E"]:
         disciplineBox.Items.Add(d)
     disciplineBox.SelectedIndex = 0
 
-    # ---------------- Model source dropdown ----------------
+    # --- Model source dropdown ---
     modelSourceBox.Items.Clear()
     item_this = ComboBoxItem()
     item_this.Content = "This Model"
@@ -286,7 +275,7 @@ def show_ui(xaml_path):
     importToggle.IsChecked = True
     exportForm.Visibility = Visibility.Collapsed
 
-    # ---------------- UI Event Handlers ----------------
+    # --- UI Event Handlers ---
     def toggle_export(sender, e):
         exportForm.Visibility = Visibility.Visible
         importToggle.IsChecked = False
@@ -322,7 +311,11 @@ def show_ui(xaml_path):
                                "pyRevit", "WhatChangedColourConfig.json")
 
     def save_config(colors):
-        colors_json = {k: [int(c) for c in v] for k, v in colors.items()}
+        colors_json = {}
+        for k in colors:
+            colors_json[k] = []
+            for c in colors[k]:
+                colors_json[k].append(int(c))
         folder = os.path.dirname(config_path)
         if not os.path.exists(folder):
             os.makedirs(folder)
@@ -335,14 +328,18 @@ def show_ui(xaml_path):
             return None
         with codecs.open(config_path, 'r', 'utf-8') as f:
             colors_json = json.load(f)
-        return {k: tuple(v) for k, v in colors_json.items()}
+        loaded_colors = {}
+        for k in colors_json:
+            loaded_colors[k] = tuple(colors_json[k])
+        return loaded_colors
 
     saveConfigBtn.Click += lambda s, e: save_config(colors)
 
     def load_click(s, e):
         loaded = load_config()
         if loaded:
-            colors.update(loaded)
+            for k in loaded:
+                colors[k] = loaded[k]
             newRect.Background = SolidColorBrush(Color.FromRgb(*colors["new"]))
             movedRect.Background = SolidColorBrush(Color.FromRgb(*colors["moved"]))
             changedRect.Background = SolidColorBrush(Color.FromRgb(*colors["changed"]))
@@ -356,7 +353,6 @@ def show_ui(xaml_path):
     def ok_click(sender, args):
         selected_model = get_item_text(modelSourceBox.SelectedItem, fallback="This Model")
         dlg_type = "Export" if exportToggle.IsChecked else "Import"
-
         filename_parts = get_filename_parts()
         safe_model_name = re.sub(r'[<>:"/\\|?*]', '_', filename_parts["model"])
         prefix = "{}".format(filename_parts["prefix"])
@@ -386,13 +382,11 @@ def show_ui(xaml_path):
         window.Tag = (dlg_type, dlg_file, colors["new"], colors["moved"], colors["changed"], selected_model)
         window.Close()
 
-
     cancelBtn.Click += cancel_click
     okBtn.Click += ok_click
 
     window.ShowDialog()
     return getattr(window, "Tag", None)
-
 
 # ---------------- MAIN ----------------
 xaml_path = os.path.join(script.get_script_path(), "whats_changed_ui.xaml")
@@ -407,8 +401,12 @@ output.print_md("**Action:** {} | **File:** {}".format(action, file_path))
 target_doc = doc
 if action == "Export" and model_choice and model_choice != "This Model":
     base_choice = model_choice.replace(" (unloaded)", "")
-    link_instance = next((l for l in DB.FilteredElementCollector(doc).OfClass(DB.RevitLinkInstance)
-                          if l.Name == base_choice or "{} ({})".format(l.Name, l.Id.IntegerValue) == base_choice), None)
+    link_instance = None
+    for l in DB.FilteredElementCollector(doc).OfClass(DB.RevitLinkInstance):
+        lname_check = l.Name
+        if lname_check == base_choice or "{} ({})".format(l.Name, l.Id.IntegerValue) == base_choice:
+            link_instance = l
+            break
     if link_instance:
         try:
             link_doc = link_instance.GetLinkDocument()
@@ -419,16 +417,19 @@ if action == "Export" and model_choice and model_choice != "This Model":
         else:
             forms.alert("⚠️ The selected link '{}' is not loaded or accessible.".format(base_choice), exitscript=True)
 
+# --- Export ---
 if action == "Export":
     model_state = capture_model_state(target_doc)
     with codecs.open(file_path, 'w', 'utf-8') as f:
         f.write(json.dumps(model_state, ensure_ascii=False, indent=2))
     output.print_md("✅ Snapshot exported to `{}`".format(file_path))
     script.exit()
+
+# --- Import ---
 elif action == "Import":
     if not os.path.exists(file_path):
         forms.alert("⚠️ File not found: `{}`".format(file_path), exitscript=True)
-    with io.open(file_path, 'r', encoding='utf-8-sig', errors='ignore') as f:
+    with codecs.open(file_path, 'r', 'utf-8') as f:
         prev_data = json.load(f)
 
 current_data = capture_model_state(doc)
@@ -438,10 +439,11 @@ if not (new_ids or moved_ids or param_changed_ids):
     forms.alert("✅ No changes detected between current model and snapshot.", exitscript=True)
 
 # --- 3D View ---
-view_family_type = next(
-    vft for vft in DB.FilteredElementCollector(doc).OfClass(DB.ViewFamilyType)
-    if vft.ViewFamily == DB.ViewFamily.ThreeDimensional
-)
+view_family_type = None
+for vft in DB.FilteredElementCollector(doc).OfClass(DB.ViewFamilyType):
+    if vft.ViewFamily == DB.ViewFamily.ThreeDimensional:
+        view_family_type = vft
+        break
 
 with revit.Transaction("Create/Reuse What's Changed 3D View"):
     view3d = None
