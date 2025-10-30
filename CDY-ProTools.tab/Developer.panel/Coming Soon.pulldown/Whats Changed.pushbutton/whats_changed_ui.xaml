@@ -82,38 +82,44 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="Model Source:" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                <ComboBox x:Name="modelSourceBox" Grid.Row="1" Grid.Column="1" Width="250" Height="28" 
+                <!-- Job Number -->
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Job Number:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                <TextBox x:Name="jobNumberBox" Grid.Row="0" Grid.Column="1" Width="250" Height="28" Text=""
+                        Background="#FAFAFA" BorderBrush="#CCC" BorderThickness="1" Padding="2" VerticalContentAlignment="Center"
+                        Margin="0,0,10,0"/>
+
+                <!-- Discipline -->
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Discipline:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                <ComboBox x:Name="disciplineBox" Grid.Row="1" Grid.Column="1" Width="250" Height="28"
                           Background="#FAFAFA" BorderBrush="#CCC" BorderThickness="1" Padding="2" VerticalContentAlignment="Center"
                           Margin="0,0,10,0"/>
 
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="Discipline:" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                <ComboBox x:Name="disciplineBox" Grid.Row="2" Grid.Column="1" Width="250" Height="28" 
-                          Background="#FAFAFA" BorderBrush="#CCC" BorderThickness="1" Padding="2" VerticalContentAlignment="Center"
-                          Margin="0,0,10,0"/>
+                <!-- Job Name -->
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Job Name:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                <TextBox x:Name="jobBox" Grid.Row="2" Grid.Column="1" Width="250" Height="28" Text="N/A"
+                        Background="#FAFAFA" BorderBrush="#CCC" BorderThickness="1" Padding="2" VerticalContentAlignment="Center"
+                        Margin="0,0,10,0"/>
 
+                <!-- Rev / Date -->
                 <TextBlock Grid.Row="3" Grid.Column="0" Text="Rev / Date:" VerticalAlignment="Center" FontWeight="SemiBold"/>
                 <TextBox x:Name="revisionBox" Grid.Row="3" Grid.Column="1" Width="250" Height="28" Text="P00"
                         Background="#FAFAFA" BorderBrush="#CCC" BorderThickness="1" Padding="2" VerticalContentAlignment="Center"
                         Margin="0,0,10,0"/>
 
-                <TextBlock Grid.Row="4" Grid.Column="0" Text="Job Name:" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                <TextBox x:Name="jobBox" Grid.Row="4" Grid.Column="1" Width="250" Height="28" Text="N/A"
-                        Background="#FAFAFA" BorderBrush="#CCC" BorderThickness="1" Padding="2" VerticalContentAlignment="Center"
-                        Margin="0,0,10,0"/>
-
-                <TextBlock Grid.Row="5" Grid.Column="0" Text="Job Number:" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                <TextBox x:Name="jobNumberBox" Grid.Row="5" Grid.Column="1" Width="250" Height="28" Text=""
-                        Background="#FAFAFA" BorderBrush="#CCC" BorderThickness="1" Padding="2" VerticalContentAlignment="Center"
-                        Margin="0,0,10,0"/>
+                <!-- Model Source -->
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="Model Source:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                <ComboBox x:Name="modelSourceBox" Grid.Row="4" Grid.Column="1" Width="250" Height="28"
+                          Background="#FAFAFA" BorderBrush="#CCC" BorderThickness="1" Padding="2" VerticalContentAlignment="Center"
+                          Margin="0,0,10,0"/>
             </Grid>
 
             <TextBlock x:Name="anticipatedFileName" Margin="0,12,0,0" FontStyle="Italic" Foreground="Gray" TextWrapping="Wrap"/>
         </StackPanel>
     </Border>
+
+
 
     <!-- Import Form / Color Pickers -->
     <Border x:Name="importForm" DockPanel.Dock="Top" Padding="18" Margin="0,0,0,10" Background="White"
