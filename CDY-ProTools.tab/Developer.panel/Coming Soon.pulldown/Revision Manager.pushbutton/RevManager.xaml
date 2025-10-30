@@ -1,6 +1,6 @@
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Master Revision Tool" Height="420" Width="760"
+        Title="Master Revision Tool" Height="430" Width="760"
         WindowStartupLocation="CenterScreen"
         Background="#FAFAFA" Foreground="#222"
         ResizeMode="NoResize"
@@ -65,3 +65,4 @@
 
     </DockPanel>
 </Window>
+
