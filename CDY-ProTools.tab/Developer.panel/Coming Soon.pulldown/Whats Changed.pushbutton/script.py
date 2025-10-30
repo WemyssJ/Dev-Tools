@@ -6,7 +6,7 @@ Now supports exporting from linked models. Unloaded links are shown but disabled
 
 import os, json, math, clr
 import re
-import codecs
+import codecs, io
 from System import Environment
 clr.AddReference("System")
 from pyrevit import revit, DB, script, forms
@@ -411,7 +411,7 @@ if action == "Export":
 elif action == "Import":
     if not os.path.exists(file_path):
         forms.alert("⚠️ File not found: `{}`".format(file_path), exitscript=True)
-    with codecs.open(file_path, 'r', 'utf-8') as f:
+    with io.open(file_path, 'r', encoding='utf-8-sig', errors='ignore') as f:
         prev_data = json.load(f)
 
 current_data = capture_model_state(doc)
