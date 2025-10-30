@@ -1,357 +1,302 @@
 # -*- coding: utf-8 -*-
-__title__ = "Transfer View Filters"
-__doc__ = "Live preview: Projection/Cut line + weight + pattern, hatch FG/BG + color, Halftone, Transparency, Enable, Visibility"
+"""
+What's Changed? Reporter for Revit Models
+UI-based Export / Import with color-coded 3D view and progress bar
+"""
 
-import clr, os, sys
-clr.AddReference('System')
-clr.AddReference('PresentationFramework')
-clr.AddReference('WindowsBase')
-clr.AddReference('PresentationCore')
-clr.AddReference('RevitAPI')
-
-from System.IO import FileStream, FileMode
+import os, json, math, clr
+clr.AddReference("System")
+from pyrevit import revit, DB, script, forms
+from System.IO import FileStream, FileMode, FileAccess
+from System.Collections.Generic import List
 from System.Windows.Markup import XamlReader
-from System.ComponentModel import INotifyPropertyChanged
-from System.Collections.ObjectModel import ObservableCollection
-from System.Windows.Media import SolidColorBrush, Color, DoubleCollection
-from System import Uri
-from System.Windows.Media.Imaging import BitmapImage, BitmapCacheOption
-from Autodesk.Revit.DB import *
-from pyrevit import revit, DB, forms
+from System.Windows.Controls.Primitives import ToggleButton
+from System.Windows import Visibility
+from System.Windows.Forms import FolderBrowserDialog, OpenFileDialog
+import System
+from System.Windows.Forms import FolderBrowserDialog, OpenFileDialog
 
-# ------------------ Document & View ------------------
+output = script.get_output()
 doc = revit.doc
-active_view = revit.active_view
+uidoc = revit.uidoc
 
-# ------------------ Caches ------------------
-line_pattern_cache = {}
-fill_pattern_cache = {}
+# ---------------- SETTINGS ----------------
+# Define exactly which parameters you want to compare
+PARAMS_TO_CHECK = [
+    "Type Name",
+    "Type",
+    "Height",
+    "Perimeter",
+    "Length",
+    "Width",
+    "Depth"
+]
 
-# ------------------ Helpers ------------------
-def get_fill_pattern_name(pid):
-    if not pid or pid == ElementId.InvalidElementId:
-        return "No Override"
-    if pid in fill_pattern_cache:
-        return fill_pattern_cache[pid]
-    el = doc.GetElement(pid)
-    name = el.Name if el else "No Override"
-    fill_pattern_cache[pid] = name
-    return name
+# ---------------- Helper Functions ----------------
+def make_color(r, g, b):
+    return DB.Color(r, g, b)
 
-def get_line_pattern_name(pid):
-    if not pid or pid == ElementId.InvalidElementId:
-        return "No Override"
-    if pid in line_pattern_cache:
-        return line_pattern_cache[pid]
-    el = doc.GetElement(pid)
-    name = el.Name if el else "No Override"
-    line_pattern_cache[pid] = name
-    return name
-
-def get_dash_array(pid):
-    if not pid or pid == ElementId.InvalidElementId:
-        return None
-    lpe = doc.GetElement(pid)
-    if not lpe:
-        return None
-    dash = DoubleCollection()
-    try:
-        for seg in lpe.GetLinePattern().Segments:
-            if seg.SegmentType == LinePatternSegmentType.Dash:
-                dash.Add(seg.Length)
-            elif seg.SegmentType == LinePatternSegmentType.Dot:
-                dash.Add(0.0)
-                dash.Add(seg.Length)
-    except:
-        return None
-    return dash if len(dash) else None
-
-def revit_color_to_brush(c):
-    from System.Windows.Media import Color as MediaColor, SolidColorBrush
-    try:
-        if not c or not c.IsValid:
-            return SolidColorBrush(MediaColor.FromRgb(200, 200, 200))
-        return SolidColorBrush(MediaColor.FromRgb(int(c.Red), int(c.Green), int(c.Blue)))
-    except:
-        return SolidColorBrush(MediaColor.FromRgb(200, 200, 200))
-
-def get_filter_enabled(view, fid):
-    try:
-        if hasattr(view, "GetIsFilterEnabled"):
-            return view.GetIsFilterEnabled(fid)
-        elif hasattr(view, "GetFilterEnabled"):
-            return view.GetFilterEnabled(fid)
-        else:
-            return True
-    except:
-        return True
-
-def get_filter_visible(view, fid):
-    try:
-        if hasattr(view, "GetFilterVisibility"):
-            return view.GetFilterVisibility(fid)
-        elif hasattr(view, "GetFilterVisible"):
-            return view.GetFilterVisible(fid)
-        else:
-            return True
-    except:
-        return True
-
-# ------------------ FilterInfo Class ------------------
-class FilterInfo(INotifyPropertyChanged):
-    def __init__(self, name, enabled, visible,
-                 projColor, projWeight, projPatternId,
-                 projFgPatternId, projFgColor, projBgPatternId, projBgColor,
-                 cutColor, cutWeight, cutPatternId,
-                 cutFgPatternId, cutFgColor, cutBgPatternId, cutBgColor,
-                 halftone, transparency):
-
-        self.Name = name
-        self.Enabled = True if enabled else False
-        self.Visible = True if visible else False
-
-        # Projection Line
-        self.ProjBrush = revit_color_to_brush(projColor)
-        self.ProjWeight = projWeight if projWeight > 0 else 1
-        self.ProjDashArray = get_dash_array(projPatternId)
-        self.ProjPatternText = get_line_pattern_name(projPatternId)
-
-        # Projection Hatch
-        self.ProjFg = get_fill_pattern_name(projFgPatternId)
-        self.ProjFgBrush = revit_color_to_brush(projFgColor)
-        self.ProjBg = get_fill_pattern_name(projBgPatternId)
-        self.ProjBgBrush = revit_color_to_brush(projBgColor)
-
-        # Cut Line
-        self.CutBrush = revit_color_to_brush(cutColor)
-        self.CutWeight = cutWeight if cutWeight > 0 else 1
-        self.CutDashArray = get_dash_array(cutPatternId)
-        self.CutPatternText = get_line_pattern_name(cutPatternId)
-
-        # Cut Hatch
-        self.CutFg = get_fill_pattern_name(cutFgPatternId)
-        self.CutFgBrush = revit_color_to_brush(cutFgColor)
-        self.CutBg = get_fill_pattern_name(cutBgPatternId)
-        self.CutBgBrush = revit_color_to_brush(cutBgColor)
-
-        # Halftone / Transparency
-        self.Halftone = halftone
-        self.Transparency = transparency
-
-    def add_PropertyChanged(self, handler): pass
-    def remove_PropertyChanged(self, handler): pass
-
-# ------------------ Collect Filters ------------------
-try:
-    applied_filters = active_view.GetFilters()
-except:
-    forms.alert("This view does not support VG Overrides.", exitscript=True)
-
-if not applied_filters:
-    forms.alert("No filters applied.", exitscript=True)
-
-filter_map = {}
-filter_data = ObservableCollection[FilterInfo]()
-
-for fid in applied_filters:
-    f = doc.GetElement(fid)
-    ovr = active_view.GetFilterOverrides(fid)
-    enabled = get_filter_enabled(active_view, fid)
-    visible = get_filter_visible(active_view, fid)
-
-    item = FilterInfo(
-        f.Name, enabled, visible,
-        ovr.ProjectionLineColor, ovr.ProjectionLineWeight, ovr.ProjectionLinePatternId,
-        ovr.SurfaceForegroundPatternId, ovr.SurfaceForegroundPatternColor,
-        ovr.SurfaceBackgroundPatternId, ovr.SurfaceBackgroundPatternColor,
-        ovr.CutLineColor, ovr.CutLineWeight, ovr.CutLinePatternId,
-        ovr.CutForegroundPatternId, ovr.CutForegroundPatternColor,
-        ovr.CutBackgroundPatternId, ovr.CutBackgroundPatternColor,
-        ovr.Halftone,
-        ovr.Transparency
-    )
-
-    filter_data.Add(item)
-    filter_map[f.Name] = (fid, ovr)
-
-# ------------------ Copy View Templates Between Models ------------------
-def action_copy_viewtemplates():
-    """Copy selected view templates to other open Revit models."""
-    # Select templates from current document
-    selected_viewtemplates = forms.select_viewtemplates(doc=doc)
-    if not selected_viewtemplates:
-        forms.alert("No view templates selected.", exitscript=False)
-        return
-
-    # Select destination open documents
-    dest_docs = forms.select_open_docs(title='Select Destination Documents')
-    if not dest_docs:
-        return
-
-    # Copy each template to each destination document
-    for ddoc in dest_docs:
-        with revit.Transaction("Copy View Templates", doc=ddoc):
-            revit.create.copy_viewtemplates(
-                selected_viewtemplates,
-                src_doc=doc,
-                dest_doc=ddoc
-            )
-
-    forms.alert(
-        "✅ {} view template(s) copied to {} document(s).".format(
-            len(selected_viewtemplates), len(dest_docs)
-        ),
-        title="Copy Complete"
-    )
-
-    window.Close()
-    
-
-
-
-# ------------------ Load XAML ------------------
-xaml_path = os.path.join(os.path.dirname(__file__), "TransferVG.xaml")
-with FileStream(xaml_path, FileMode.Open) as f:
-    window = XamlReader.Load(f)
-
-window.FindName("filterList").ItemsSource = filter_data
-
-icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
-if os.path.exists(icon_path):
-    bmp = BitmapImage()
-    bmp.BeginInit()
-    bmp.UriSource = Uri(icon_path)
-    bmp.CacheOption = BitmapCacheOption.OnLoad
-    bmp.EndInit()
-    window.FindName("headerIcon").Source = bmp
-
-def on_ok(sender, args):
-    selected = [i.Name for i in window.FindName("filterList").SelectedItems]
-    window.Tag = selected
-    window.Close()
-
-def on_cancel(sender, args):
-    window.Tag = None
-    window.Close()
-
-window.FindName("okBtn").Click += on_ok
-window.FindName("cancelBtn").Click += on_cancel
-
-btnCopyTemplates = window.FindName("btnCopyTemplates")
-btnCopyTemplates.Click += lambda s, e: action_copy_viewtemplates()
-
-ok_button = window.FindName("okBtn")
-filter_list = window.FindName("filterList")
-ok_button.IsEnabled = False
-
-def on_selection_changed(sender, args):
-    ok_button.IsEnabled = filter_list.SelectedItems.Count > 0
-filter_list.SelectionChanged += on_selection_changed
-
-window.ShowDialog()
-
-selected_filters = window.Tag
-if not selected_filters:
-    sys.exit()
-
-# ------------------ Select Target Templates ------------------
-all_views = DB.FilteredElementCollector(doc).OfClass(DB.View).ToElements()
-template_ids_in_use = {v.ViewTemplateId for v in all_views if v.ViewTemplateId != DB.ElementId.InvalidElementId}
-used_templates = [doc.GetElement(tid) for tid in template_ids_in_use]
-
-if not used_templates:
-    forms.alert("No view templates currently in use.", exitscript=True)
-
-templates = forms.SelectFromList.show(
-    used_templates, multiselect=True, title='Select In-Use View Templates', name_attr='Name'
-)
-if not templates:
-    sys.exit()
-
-# ------------------ Copy Overrides Function ------------------
-def copy_overrides(fid, src_view, dest_view):
-    """Copy graphic overrides for a given filter ID between views/templates."""
-    src_ovr = src_view.GetFilterOverrides(fid)
-    ovr = OverrideGraphicSettings()
-
-    def safe_call(label, func):
+def capture_model_state(doc):
+    cats_to_include = [
+        DB.BuiltInCategory.OST_Walls,
+        DB.BuiltInCategory.OST_Floors,
+        DB.BuiltInCategory.OST_Roofs,
+        DB.BuiltInCategory.OST_Ceilings,
+        DB.BuiltInCategory.OST_Columns,
+        DB.BuiltInCategory.OST_StructuralColumns,
+        DB.BuiltInCategory.OST_StructuralFraming,
+        DB.BuiltInCategory.OST_StructuralFoundation,
+        DB.BuiltInCategory.OST_Doors,
+        DB.BuiltInCategory.OST_Windows,
+        DB.BuiltInCategory.OST_GenericModel,
+        DB.BuiltInCategory.OST_Furniture,
+        DB.BuiltInCategory.OST_FurnitureSystems,
+        DB.BuiltInCategory.OST_Casework,
+        DB.BuiltInCategory.OST_MechanicalEquipment,
+        DB.BuiltInCategory.OST_PipeCurves,
+        DB.BuiltInCategory.OST_DuctCurves,
+        DB.BuiltInCategory.OST_CableTray,
+        DB.BuiltInCategory.OST_Conduit,
+        DB.BuiltInCategory.OST_StructConnections,
+        DB.BuiltInCategory.OST_Stairs,
+        DB.BuiltInCategory.OST_Ramps,
+        DB.BuiltInCategory.OST_Railings,
+        DB.BuiltInCategory.OST_CurtainWallPanels,
+        DB.BuiltInCategory.OST_CurtainWallMullions,
+        DB.BuiltInCategory.OST_SpecialityEquipment
+    ]
+    all_data = {}
+    for bic in cats_to_include:
         try:
-            func()
-        except Exception as e:
-            print("⚠️ {} failed: {}".format(label, e))
+            collector = DB.FilteredElementCollector(doc).OfCategory(bic).WhereElementIsNotElementType()
+            for el in collector:
+                try:
+                    elid = str(el.Id.IntegerValue)
+                    loc = el.Location
+                    if hasattr(loc, "Point") and loc.Point:
+                        loc_data = (loc.Point.X, loc.Point.Y, loc.Point.Z)
+                    elif hasattr(loc, "Curve") and loc.Curve:
+                        c = loc.Curve
+                        loc_data = (c.GetEndPoint(0).X, c.GetEndPoint(0).Y, c.GetEndPoint(0).Z)
+                    else:
+                        loc_data = None
 
-    safe_call("Projection line", lambda: (
-        ovr.SetProjectionLineColor(src_ovr.ProjectionLineColor),
-        ovr.SetProjectionLineWeight(src_ovr.ProjectionLineWeight),
-        ovr.SetProjectionLinePatternId(src_ovr.ProjectionLinePatternId)
-    ))
+                    param_dict = {}
+                    for p in el.Parameters:
+                        if p.Definition and p.Definition.Name and p.HasValue:
+                            try:
+                                param_dict[p.Definition.Name] = p.AsValueString() or str(p.AsString())
+                            except:
+                                pass
 
-    safe_call("Cut line", lambda: (
-        ovr.SetCutLineColor(src_ovr.CutLineColor),
-        ovr.SetCutLineWeight(src_ovr.CutLineWeight),
-        ovr.SetCutLinePatternId(src_ovr.CutLinePatternId)
-    ))
+                    all_data[elid] = {
+                        "cat": el.Category.Name if el.Category else "",
+                        "loc": loc_data,
+                        "params": param_dict
+                    }
+                except:
+                    continue
+        except:
+            continue
+    return all_data
 
-    safe_call("Surface hatch", lambda: (
-        ovr.SetSurfaceForegroundPatternColor(src_ovr.SurfaceForegroundPatternColor),
-        ovr.SetSurfaceForegroundPatternId(src_ovr.SurfaceForegroundPatternId),
-        ovr.SetSurfaceBackgroundPatternColor(src_ovr.SurfaceBackgroundPatternColor),
-        ovr.SetSurfaceBackgroundPatternId(src_ovr.SurfaceBackgroundPatternId)
-    ))
+def compare_states(prev_data, current_data):
+    prev_ids = set(prev_data.keys())
+    curr_ids = set(current_data.keys())
+    new_ids = curr_ids - prev_ids
+    deleted_ids = prev_ids - curr_ids
+    common_ids = prev_ids & curr_ids
 
-    safe_call("Cut hatch", lambda: (
-        hasattr(ovr, "SetCutForegroundPatternColor") and ovr.SetCutForegroundPatternColor(src_ovr.CutForegroundPatternColor),
-        hasattr(ovr, "SetCutForegroundPatternId") and ovr.SetCutForegroundPatternId(src_ovr.CutForegroundPatternId),
-        hasattr(ovr, "SetCutBackgroundPatternColor") and ovr.SetCutBackgroundPatternColor(src_ovr.CutBackgroundPatternColor),
-        hasattr(ovr, "SetCutBackgroundPatternId") and ovr.SetCutBackgroundPatternId(src_ovr.CutBackgroundPatternId)
-    ))
+    moved_ids, param_changed_ids = [], []
 
-    safe_call("Halftone", lambda: ovr.SetHalftone(src_ovr.Halftone))
+    for eid in common_ids:
+        prev_el, curr_el = prev_data[eid], current_data[eid]
 
-    if hasattr(ovr, "SetSurfaceTransparency"):
-        safe_call("Transparency (2024)", lambda: ovr.SetSurfaceTransparency(src_ovr.Transparency))
-    elif hasattr(ovr, "SetTransparency"):
-        safe_call("Transparency (2025+)", lambda: ovr.SetTransparency(src_ovr.Transparency))
+        # --- Location change check ---
+        if prev_el["loc"] and curr_el["loc"]:
+            try:
+                dist = math.sqrt(sum((a - b) ** 2 for a, b in zip(prev_el["loc"], curr_el["loc"])))
+                if dist > 0.001:
+                    moved_ids.append(eid)
+                    continue
+            except:
+                pass
 
-    try:
-        enabled = get_filter_enabled(src_view, fid)
-        visible = get_filter_visible(src_view, fid)
-        if hasattr(dest_view, "SetIsFilterEnabled"):
-            dest_view.SetIsFilterEnabled(fid, enabled)
-        elif hasattr(dest_view, "SetFilterEnabled"):
-            dest_view.SetFilterEnabled(fid, enabled)
-        if hasattr(dest_view, "SetFilterVisibility"):
-            dest_view.SetFilterVisibility(fid, visible)
-        elif hasattr(dest_view, "SetFilterVisible"):
-            dest_view.SetFilterVisible(fid, visible)
-    except Exception as e:
-        print("⚠️ Enable/Visibility override failed:", e)
+        # --- Parameter change check (only chosen ones) ---
+        for pname in PARAMS_TO_CHECK:
+            if pname in prev_el["params"] and pname in curr_el["params"]:
+                if prev_el["params"][pname] != curr_el["params"][pname]:
+                    param_changed_ids.append(eid)
+                    break
 
+    return new_ids, deleted_ids, moved_ids, param_changed_ids
+
+def prepare_view(view3d, doc):
+    view3d.DisplayStyle = DB.DisplayStyle(2)
+    view3d.DetailLevel = DB.ViewDetailLevel.Fine
+
+    # Hide annotations / analytical
+    for cat in doc.Settings.Categories:
+        try:
+            if cat.CategoryType != DB.CategoryType.Model or "Analytical" in cat.Name or "Annotation" in cat.Name:
+                view3d.SetCategoryHidden(cat.Id, True)
+        except:
+            continue
+
+    # Hide Revit links
+    rvt_links_cat = DB.Category.GetCategory(doc, DB.BuiltInCategory.OST_RvtLinks)
+    if rvt_links_cat:
+        view3d.SetCategoryHidden(rvt_links_cat.Id, True)
+
+    # Hide imports
+    if hasattr(DB.BuiltInCategory, "OST_ImportInstances"):
+        imports = DB.FilteredElementCollector(doc).OfCategory(DB.BuiltInCategory.OST_ImportInstances).ToElementIds()
+        if imports:
+            view3d.HideElements(List[DB.ElementId](imports))
+
+    # Activate section box
+    if not view3d.IsSectionBoxActive:
+        view3d.IsSectionBoxActive = True
+
+    return view3d
+
+# ---------------- UI ----------------
+def show_ui(xaml_path):
+    fs = FileStream(xaml_path, FileMode.Open, FileAccess.Read)
+    window = XamlReader.Load(fs)
+    fs.Close()
+
+    # Controls
+    cancelBtn = window.FindName("cancelBtn")
+    okBtn = window.FindName("okBtn")
+    importToggle = window.FindName("importToggle")
+    exportToggle = window.FindName("exportToggle")
+    disciplineBox = window.FindName("disciplineBox")
+    revisionBox = window.FindName("revisionBox")
+    jobBox = window.FindName("jobBox")
+
+    # --- Prefill Discipline Dropdown ---
+    disciplineBox.Items.Clear()
+    disciplines = ["Architect", "Structures", "M&E"]
+    for d in disciplines:
+        disciplineBox.Items.Add(d)
+    disciplineBox.SelectedIndex = 0  # Default selection: Architect
+
+    # Default toggle states
+    importToggle.IsChecked = True
+    window.FindName("exportForm").Visibility = Visibility.Collapsed
+    # Toggle handlers
+    def toggle_export(sender, e):
+        window.FindName("exportForm").Visibility = Visibility.Visible
+        importToggle.IsChecked = False
+    def toggle_import(sender, e):
+        window.FindName("exportForm").Visibility = Visibility.Collapsed
+        exportToggle.IsChecked = False
+
+    exportToggle.Checked += toggle_export
+    importToggle.Checked += toggle_import
+
+    def cancel_click(sender, e):
+        window.Tag = None
+        window.Close()
+
+    def ok_click(sender, e):
+        if exportToggle.IsChecked:
+            dlg = FolderBrowserDialog()
+            if dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK:
+                folder = dlg.SelectedPath
+                filename = "{}_{}_{}.json".format(disciplineBox.Text, jobBox.Text, revisionBox.Text)
+                path = os.path.join(folder, filename)
+                window.Tag = ("Export", path)
+        else:
+            dlg = OpenFileDialog()
+            dlg.Filter = "JSON Files|*.json"
+            if dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK:
+                window.Tag = ("Import", dlg.FileName)
+        window.Close()
+
+
+    cancelBtn.Click += cancel_click
+    okBtn.Click += ok_click
+    window.ShowDialog()
+    return getattr(window, "Tag", None)
+
+# ---------------- MAIN ----------------
+xaml_path = os.path.join(script.get_script_path(), "whats_changed_ui.xaml")
+result = show_ui(xaml_path)
+
+if not result:
+    script.exit()
+
+action, file_path = result
+output.print_md("**Action:** {} | **File:** {}".format(action, file_path))
+
+if action == "Export":
+    model_state = capture_model_state(doc)
+    with open(file_path, 'w') as f:
+        f.write(json.dumps(model_state, ensure_ascii=False, indent=2))
+    output.print_md("✅ Snapshot exported to `{}`".format(file_path))
+    script.exit()
+elif action == "Import":
+    if not os.path.exists(file_path):
+        output.print_md("⚠️ File not found: `{}`".format(file_path))
+        script.exit()
+    with open(file_path, 'r') as f:
+        prev_data = json.load(f)
+
+current_data = capture_model_state(doc)
+new_ids, deleted_ids, moved_ids, param_changed_ids = compare_states(prev_data, current_data)
+
+# --- Create 3D view ---
+view_family_type = next(vft for vft in DB.FilteredElementCollector(doc).OfClass(DB.ViewFamilyType)
+                        if vft.ViewFamily == DB.ViewFamily.ThreeDimensional)
+
+with revit.Transaction("Create What's Changed 3D View"):
+    # Delete old view if exists
+    existing = DB.FilteredElementCollector(doc).OfClass(DB.View3D).ToElements()
+    for v in existing:
+        if v.Name == "What's Changed":
+            doc.Delete(v.Id)
+    view3d = DB.View3D.CreateIsometric(doc, view_family_type.Id)
+    view3d.Name = "What's Changed"
+    view3d = prepare_view(view3d, doc)
+
+# --- Color Overrides with Progress Bar ---
+def make_override(r, g, b):
+    col = make_color(r, g, b)
+    ovr = DB.OverrideGraphicSettings()
+    ovr.SetProjectionLineColor(col)
+    ovr.SetSurfaceForegroundPatternColor(col)
+    ovr.SetSurfaceForegroundPatternVisible(True)
     return ovr
 
-# ------------------ Apply to Selected Templates ------------------
-failed = []
-t = DB.Transaction(doc, 'Apply View Filters to Templates')
-t.Start()
-for fname in selected_filters:
-    fid, existing_override = filter_map[fname]
-    for template in templates:
-        try:
-            if not template.IsFilterApplied(fid):
-                template.AddFilter(fid)
-            new_override = copy_overrides(fid, active_view, template)
-            template.SetFilterOverrides(fid, new_override)
-        except Exception as e:
-            msg = "⚠️ Failed to apply filter '{}' to template '{}': {}".format(fname, template.Name, e)
-            print(msg)
-            failed.append(msg)
-t.Commit()
+ovr_green = make_override(0, 255, 0)
+ovr_orange = make_override(255, 165, 0)
+ovr_blue = make_override(0, 100, 255)
 
-# ------------------ Result ------------------
-source_template_id = active_view.ViewTemplateId
-source_name = doc.GetElement(source_template_id).Name if source_template_id != DB.ElementId.InvalidElementId else active_view.Name
-target_names = ", ".join([v.Name for v in templates])
-msg = "Selected filters successfully applied from {} to {}!".format(source_name, target_names)
-if failed:
-    msg += "\n\nSome filters failed:\n" + "\n".join(failed[:5]) + ("\n..." if len(failed) > 5 else "")
-forms.alert(msg, title="Done")
+with forms.ProgressBar(step=1, title="Comparing Elements... {value} of {max_value}", cancellable=True) as pb:
+    element_ids = list(current_data.keys())
+    total = len(element_ids)
+    with revit.Transaction("Apply What's Changed Overrides"):
+        for i, eid in enumerate(element_ids):
+            if pb.cancelled:
+                break
+            el = doc.GetElement(DB.ElementId(int(eid)))
+            if not el:
+                continue
+            if eid in new_ids:
+                view3d.SetElementOverrides(el.Id, ovr_green)
+            elif eid in moved_ids:
+                view3d.SetElementOverrides(el.Id, ovr_orange)
+            elif eid in param_changed_ids:
+                view3d.SetElementOverrides(el.Id, ovr_blue)
+            pb.update_progress(i + 1, total)
+
+uidoc.ActiveView = view3d
+
+# --- Summary ---
+output.print_md("### ✅ What's Changed Report")
+output.print_md("**New elements:** {} 🟩".format(len(new_ids)))
+output.print_md("**Moved elements:** {} 🟧".format(len(moved_ids)))
+output.print_md("**Parameter changes:** {} 🟦".format(len(param_changed_ids)))
+output.print_md("**Deleted elements:** {} ❌".format(len(prev_data) - len(current_data)))
