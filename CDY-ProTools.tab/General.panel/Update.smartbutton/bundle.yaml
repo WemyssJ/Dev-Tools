@@ -67,9 +67,10 @@ tooltip:
       - v1.2.10: CDY-ProTools OverHaul
       - v1.2.11: Pile E+N+Z Improved.
       - v1.2.12: WIP tool updates
+      - v1.2.13: DevAccess tweaked.
   
       Current Version:
-      - v1.2.13: DevAccess tweaked.
+      - v1.2.14: Coming Soon tools updated
 
       
       
@@ -77,6 +78,7 @@ tooltip:
 context: zero-doc
 
 author: pyRevit
+
 
 
 
