@@ -95,7 +95,7 @@ def compare_states(prev_data, current_data):
     return new_ids, deleted_ids, moved_ids, param_changed_ids
 
 def prepare_view(view3d, doc):
-    view3d.DisplayStyle = DB.DisplayStyle.Shading
+    view3d.DisplayStyle = DB.DisplayStyle(2)
     view3d.DetailLevel = DB.ViewDetailLevel.Fine
     for cat in doc.Settings.Categories:
         try:
@@ -327,3 +327,4 @@ output.print_html("<b>Parameter changes:</b> {} {}".format(rgb_block(changed_col
 deleted_ids = set(prev_data.keys()) - set(current_data.keys())
 # Keep the deleted emoji (red cross) or make a red block
 output.print_md("**Deleted elements:** {} ❌".format(len(deleted_ids)))
+
