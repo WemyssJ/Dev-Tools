@@ -11,6 +11,9 @@ from System import Environment
 clr.AddReference("System")
 from pyrevit import revit, DB, script, forms
 from System.IO import FileStream, FileMode, FileAccess
+from System.Windows.Input import MouseEventHandler
+from System.Windows.Documents import Run
+from System.Windows.Media import Brushes
 from System.Collections.Generic import List
 from System.Windows.Markup import XamlReader
 from System.Windows import Visibility
@@ -54,7 +57,6 @@ def capture_model_state(doc):
     for bic in cats_to_include:
         try:
             collector = DB.FilteredElementCollector(doc).OfCategory(bic).WhereElementIsNotElementType()
-            # iterate safely; avoid heavy geometry unless available
             for el in collector:
                 try:
                     elid = str(el.Id.IntegerValue)
@@ -68,7 +70,6 @@ def capture_model_state(doc):
                             c = loc.Curve
                             loc_data = (c.GetEndPoint(0).X, c.GetEndPoint(0).Y, c.GetEndPoint(0).Z)
                     except:
-                        # location access sometimes throws for links/complex elements
                         loc_data = None
 
                     param_dict = {}
@@ -126,7 +127,6 @@ def prepare_view(view3d, doc):
     view3d.IsSectionBoxActive = True
     return view3d
 
-
 # ---------------- UI ----------------
 def show_ui(xaml_path):
     fs = FileStream(xaml_path, FileMode.Open, FileAccess.Read)
@@ -169,60 +169,86 @@ def show_ui(xaml_path):
     project_number = get_param_value(project_info, "Project Number")
     job_name_default = get_param_value(project_info, "Project Name", fallback="TBC")
 
-    # Build combined prefix
-    if craddys_job and project_number:
-        job_number_default = "{}_{}_".format(craddys_job, project_number)
-    elif craddys_job:
-        job_number_default = "{}_".format(craddys_job)
-    elif project_number:
-        job_number_default = "{}_".format(project_number)
-    else:
-        job_number_default = "TBC_"
+    # Build combined job number using separator logic
+    parts = []
+    if craddys_job:
+        parts.append(craddys_job)
+    if project_number:
+        parts.append(project_number)
 
-    # Set initial UI fields
+    job_number_default = "_".join(parts) + ("_" if parts else "")
+
     jobBox.Text = job_name_default
     jobNumberBox.Text = job_number_default
 
-    # ---------------- Anticipated filename live preview ----------------
-    def update_filename_preview(sender=None, e=None):
+
+    # ---------------- Filename Preview & Hover ----------------
+    def get_item_text(item, fallback=""):
+        """Return the string value of a ComboBoxItem or str."""
+        if item is None:
+            return fallback
+        try:
+            return str(item.Content)  # ComboBoxItem
+        except AttributeError:
+            return str(item)          # Already a string
+
+    def get_filename_parts():
         prefix = jobNumberBox.Text.strip() or "TBC_"
         job_name = jobBox.Text.strip() or "TBC"
         revision = revisionBox.Text.strip() or "P00"
-
-        # Get selected discipline safely
-        discipline = ""
-        sel_disc = disciplineBox.SelectedItem
-        if sel_disc:
-            try:
-                discipline = str(sel_disc.Content)
-            except:
-                discipline = str(sel_disc)  # fallback
-        if not discipline:
-            discipline = "Discipline"
-
-        # Get selected model source
-        sel_item = modelSourceBox.SelectedItem
-        model_name = str(sel_item.Content) if sel_item else "This Model"
+        discipline = get_item_text(disciplineBox.SelectedItem, fallback="Discipline")
+        model_name = get_item_text(modelSourceBox.SelectedItem, fallback="This Model")
         model_name_clean = model_name.replace(".rvt", "").replace(" (unloaded)", "")
+        return {
+            "prefix": prefix,
+            "discipline": discipline,
+            "job": job_name,
+            "revision": revision,
+            "model": model_name_clean
+        }
 
-        # Build preview filename
-        preview = "{}{}_{}_{}_({})".format(prefix, discipline, job_name, revision, model_name_clean)
+    def update_filename_display(highlight=None, *args):
+        parts = get_filename_parts()
+        separator = "_"
+        anticipatedFileName.Inlines.Clear()
+        keys = ["prefix", "discipline", "job", "revision", "model"]
+        for i, key in enumerate(keys):
+            run = Run()
+            run.Text = parts[key]
+            if highlight == key:
+                run.Foreground = Brushes.Red
+            anticipatedFileName.Inlines.Add(run)
+            # Add separator only if not the last element (model)
+            if i < len(keys) - 1:
+                anticipatedFileName.Inlines.Add(Run(separator))
 
-        # Update TextBlock directly (no "Anticipated filename:" prefix)
-        anticipatedFileName.Text = preview
 
+    def attach_hover(ctrl, key):
+        def enter(sender, e):
+            update_filename_display(highlight=key)
+        def leave(sender, e):
+            update_filename_display(highlight=None)
+        ctrl.MouseEnter += MouseEventHandler(enter)
+        ctrl.MouseLeave += MouseEventHandler(leave)
 
-    # ---------------- Hook events ----------------
-    jobNumberBox.TextChanged += update_filename_preview
-    jobBox.TextChanged += update_filename_preview
-    revisionBox.TextChanged += update_filename_preview
-    modelSourceBox.SelectionChanged += update_filename_preview
-    disciplineBox.SelectionChanged += update_filename_preview  # <-- now instant
+    # Initialize and attach events
+    update_filename_display()
+    attach_hover(jobNumberBox, "prefix")
+    attach_hover(disciplineBox, "discipline")
+    attach_hover(jobBox, "job")
+    attach_hover(revisionBox, "revision")
+    attach_hover(modelSourceBox, "model")
+
+    jobNumberBox.TextChanged += update_filename_display
+    jobBox.TextChanged += update_filename_display
+    revisionBox.TextChanged += update_filename_display
+    modelSourceBox.SelectionChanged += update_filename_display
+    disciplineBox.SelectionChanged += update_filename_display
 
 
     # ---------------- Discipline dropdown ----------------
     disciplineBox.Items.Clear()
-    for d in ["Architect", "Structures", "M&E"]:
+    for d in ["Structures", "Architect", "M&E"]:
         disciplineBox.Items.Add(d)
     disciplineBox.SelectedIndex = 0
 
@@ -286,12 +312,11 @@ def show_ui(xaml_path):
         if dlg.ShowDialog() == DialogResult.OK:
             val = dlg.Color
             colors[key] = (val.R, val.G, val.B)
-            rect.Fill = SolidColorBrush(Color.FromRgb(val.R, val.G, val.B))
+            rect.Background = SolidColorBrush(Color.FromRgb(val.R, val.G, val.B))
 
     newRect.MouseLeftButtonDown += lambda s, e: pick_color("new", newRect)
     movedRect.MouseLeftButtonDown += lambda s, e: pick_color("moved", movedRect)
     changedRect.MouseLeftButtonDown += lambda s, e: pick_color("changed", changedRect)
-
 
     config_path = os.path.join(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                                "pyRevit", "WhatChangedColourConfig.json")
@@ -318,9 +343,9 @@ def show_ui(xaml_path):
         loaded = load_config()
         if loaded:
             colors.update(loaded)
-            newRect.Fill = SolidColorBrush(Color.FromRgb(*colors["new"]))
-            movedRect.Fill = SolidColorBrush(Color.FromRgb(*colors["moved"]))
-            changedRect.Fill = SolidColorBrush(Color.FromRgb(*colors["changed"]))
+            newRect.Background = SolidColorBrush(Color.FromRgb(*colors["new"]))
+            movedRect.Background = SolidColorBrush(Color.FromRgb(*colors["moved"]))
+            changedRect.Background = SolidColorBrush(Color.FromRgb(*colors["changed"]))
 
     loadConfigBtn.Click += load_click
 
@@ -329,24 +354,23 @@ def show_ui(xaml_path):
         window.Close()
 
     def ok_click(sender, args):
-        sel_item = modelSourceBox.SelectedItem
-        selected_model = sel_item.Content if sel_item else "This Model"
-
+        selected_model = get_item_text(modelSourceBox.SelectedItem, fallback="This Model")
         dlg_type = "Export" if exportToggle.IsChecked else "Import"
-        job_number = jobNumberBox.Text.strip()
+
+        filename_parts = get_filename_parts()
+        safe_model_name = re.sub(r'[<>:"/\\|?*]', '_', filename_parts["model"])
+        prefix = "{}".format(filename_parts["prefix"])
 
         if dlg_type == "Export":
             dlg = FolderBrowserDialog()
             if dlg.ShowDialog() == DialogResult.OK:
                 folder = dlg.SelectedPath
-                safe_model_name = re.sub(r'[<>:"/\\|?*]', '_', selected_model)
-                prefix = "{}_".format(job_number) if job_number else "TBC_"
-                filename = "{}{}{}_{}_({}).json".format(
+                filename = "{}{}_{}_{}_({}).json".format(
                     prefix,
-                    disciplineBox.Text,
-                    jobBox.Text,
-                    revisionBox.Text,
-                    safe_model_name.replace(".rvt", "")
+                    filename_parts["discipline"],
+                    filename_parts["job"],
+                    filename_parts["revision"],
+                    safe_model_name
                 )
                 dlg_file = os.path.join(folder, filename)
             else:
@@ -362,12 +386,12 @@ def show_ui(xaml_path):
         window.Tag = (dlg_type, dlg_file, colors["new"], colors["moved"], colors["changed"], selected_model)
         window.Close()
 
+
     cancelBtn.Click += cancel_click
     okBtn.Click += ok_click
 
     window.ShowDialog()
     return getattr(window, "Tag", None)
-
 
 
 # ---------------- MAIN ----------------
@@ -382,9 +406,7 @@ output.print_md("**Action:** {} | **File:** {}".format(action, file_path))
 # Handle linked document selection
 target_doc = doc
 if action == "Export" and model_choice and model_choice != "This Model":
-    # strip unloaded suffix if it somehow got through
     base_choice = model_choice.replace(" (unloaded)", "")
-    # find link by name (or name with id if duplicates)
     link_instance = next((l for l in DB.FilteredElementCollector(doc).OfClass(DB.RevitLinkInstance)
                           if l.Name == base_choice or "{} ({})".format(l.Name, l.Id.IntegerValue) == base_choice), None)
     if link_instance:
@@ -398,9 +420,7 @@ if action == "Export" and model_choice and model_choice != "This Model":
             forms.alert("⚠️ The selected link '{}' is not loaded or accessible.".format(base_choice), exitscript=True)
 
 if action == "Export":
-    # capture from target_doc (this model or linked doc)
     model_state = capture_model_state(target_doc)
-    # write JSON safely (IronPython-compatible)
     with codecs.open(file_path, 'w', 'utf-8') as f:
         f.write(json.dumps(model_state, ensure_ascii=False, indent=2))
     output.print_md("✅ Snapshot exported to `{}`".format(file_path))
@@ -416,7 +436,6 @@ new_ids, deleted_ids, moved_ids, param_changed_ids = compare_states(prev_data, c
 
 if not (new_ids or moved_ids or param_changed_ids):
     forms.alert("✅ No changes detected between current model and snapshot.", exitscript=True)
-
 
 # --- 3D View ---
 view_family_type = next(
