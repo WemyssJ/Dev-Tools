@@ -143,9 +143,6 @@ def show_ui(xaml_path):
     jobNumberBox = window.FindName("jobNumberBox")
     anticipatedFileName = window.FindName("anticipatedFileName")
     modelSourceBox = window.FindName("modelSourceBox")
-    newColorBtn = window.FindName("newColorBtn")
-    movedColorBtn = window.FindName("movedColorBtn")
-    changedColorBtn = window.FindName("changedColorBtn")
     newRect = window.FindName("newRect")
     movedRect = window.FindName("movedRect")
     changedRect = window.FindName("changedRect")
@@ -291,9 +288,9 @@ def show_ui(xaml_path):
             colors[key] = (val.R, val.G, val.B)
             rect.Fill = SolidColorBrush(Color.FromRgb(val.R, val.G, val.B))
 
-    newColorBtn.Click += lambda s, e: pick_color("new", newRect)
-    movedColorBtn.Click += lambda s, e: pick_color("moved", movedRect)
-    changedColorBtn.Click += lambda s, e: pick_color("changed", changedRect)
+    newRect.MouseLeftButtonDown += lambda s, e: pick_color("new", newRect)
+    movedRect.MouseLeftButtonDown += lambda s, e: pick_color("moved", movedRect)
+    changedRect.MouseLeftButtonDown += lambda s, e: pick_color("changed", changedRect)
 
 
     config_path = os.path.join(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
