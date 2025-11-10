@@ -522,3 +522,4 @@ msg = "Selected filters successfully applied from {} to {}!".format(source_name,
 if failed:
     msg += "\n\nSome filters failed:\n" + "\n".join(failed[:5]) + ("\n..." if len(failed) > 5 else "")
 forms.alert(msg, title="Done")
+
