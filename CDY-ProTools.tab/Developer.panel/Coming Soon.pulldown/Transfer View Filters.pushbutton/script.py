@@ -153,63 +153,132 @@ if not applied_filters:
 filter_map = {}
 filter_data = ObservableCollection[FilterInfo]()
 
-for fid in applied_filters:
-    f = doc.GetElement(fid)
-    ovr = active_view.GetFilterOverrides(fid)
-    enabled = get_filter_enabled(active_view, fid)
-    visible = get_filter_visible(active_view, fid)
+def refresh_filter_data():
+    """Reload the live list after override changes"""
+    filter_data.Clear()
+    filter_map.clear()
+    for fid in applied_filters:
+        f = doc.GetElement(fid)
+        ovr = active_view.GetFilterOverrides(fid)
+        enabled = get_filter_enabled(active_view, fid)
+        visible = get_filter_visible(active_view, fid)
+        item = FilterInfo(
+            f.Name, enabled, visible,
+            ovr.ProjectionLineColor, ovr.ProjectionLineWeight, ovr.ProjectionLinePatternId,
+            ovr.SurfaceForegroundPatternId, ovr.SurfaceForegroundPatternColor,
+            ovr.SurfaceBackgroundPatternId, ovr.SurfaceBackgroundPatternColor,
+            ovr.CutLineColor, ovr.CutLineWeight, ovr.CutLinePatternId,
+            ovr.CutForegroundPatternId, ovr.CutForegroundPatternColor,
+            ovr.CutBackgroundPatternId, ovr.CutBackgroundPatternColor,
+            ovr.Halftone, ovr.Transparency
+        )
+        filter_data.Add(item)
+        filter_map[f.Name] = (fid, ovr)
 
-    item = FilterInfo(
-        f.Name, enabled, visible,
-        ovr.ProjectionLineColor, ovr.ProjectionLineWeight, ovr.ProjectionLinePatternId,
-        ovr.SurfaceForegroundPatternId, ovr.SurfaceForegroundPatternColor,
-        ovr.SurfaceBackgroundPatternId, ovr.SurfaceBackgroundPatternColor,
-        ovr.CutLineColor, ovr.CutLineWeight, ovr.CutLinePatternId,
-        ovr.CutForegroundPatternId, ovr.CutForegroundPatternColor,
-        ovr.CutBackgroundPatternId, ovr.CutBackgroundPatternColor,
-        ovr.Halftone,
-        ovr.Transparency
-    )
-
-    filter_data.Add(item)
-    filter_map[f.Name] = (fid, ovr)
+refresh_filter_data()
 
 # ------------------ Copy View Templates Between Models ------------------
 def action_copy_viewtemplates():
-    """Copy selected view templates to other open Revit models."""
-    # Select templates from current document
     selected_viewtemplates = forms.select_viewtemplates(doc=doc)
     if not selected_viewtemplates:
         forms.alert("No view templates selected.", exitscript=False)
         return
 
-    # Select destination open documents
     dest_docs = forms.select_open_docs(title='Select Destination Documents')
     if not dest_docs:
         return
 
-    # Copy each template to each destination document
     for ddoc in dest_docs:
         with revit.Transaction("Copy View Templates", doc=ddoc):
-            revit.create.copy_viewtemplates(
-                selected_viewtemplates,
-                src_doc=doc,
-                dest_doc=ddoc
-            )
+            revit.create.copy_viewtemplates(selected_viewtemplates, src_doc=doc, dest_doc=ddoc)
 
-    forms.alert(
-        "✅ {} view template(s) copied to {} document(s).".format(
-            len(selected_viewtemplates), len(dest_docs)
-        ),
-        title="Copy Complete"
-    )
+    forms.alert("✅ {} view template(s) copied to {} document(s).".format(len(selected_viewtemplates), len(dest_docs)),
+                title="Copy Complete")
 
     window.Close()
-    
 
+# ------------------ Matching Core ------------------
+def safe_set(ovr, setter_name, value):
+    """Call setter on OverrideGraphicSettings if exists (safe)."""
+    try:
+        if not hasattr(ovr, setter_name):
+            return False
+        func = getattr(ovr, setter_name)
+        func(value)
+        return True
+    except Exception as e:
+        # ignore but return False
+        # print("safe_set failed:", setter_name, e)
+        return False
 
+def match_filters(direction='proj_to_cut', include_line=True, include_hatch=True):
+    """
+    direction: 'proj_to_cut' or 'cut_to_proj'
+    include_line: copy line style (color, weight, pattern)
+    include_hatch: copy hatch (foreground/background patterns + colors)
+    Applies to currently selected filters in the main UI.
+    """
+    selected_items = list(window.FindName("filterList").SelectedItems)
+    if not selected_items:
+        forms.alert("Please select one or more filters in the main window.", exitscript=False)
+        return 0
 
-# ------------------ Load XAML ------------------
+    t = DB.Transaction(doc, "Match Projection/Cut")
+    t.Start()
+    count = 0
+    for item in selected_items:
+        fid, _ = filter_map[item.Name]
+        src_ovr = active_view.GetFilterOverrides(fid)
+        new_ovr = OverrideGraphicSettings(src_ovr)  # start with the same settings
+
+        # projection -> cut
+        if direction == 'proj_to_cut':
+            if include_line:
+                try:
+                    new_ovr.SetCutLineColor(src_ovr.ProjectionLineColor)
+                    new_ovr.SetCutLineWeight(src_ovr.ProjectionLineWeight)
+                    new_ovr.SetCutLinePatternId(src_ovr.ProjectionLinePatternId)
+                except: pass
+            if include_hatch:
+                try:
+                    # surface -> cut
+                    if hasattr(new_ovr, "SetCutForegroundPatternId"):
+                        new_ovr.SetCutForegroundPatternId(src_ovr.SurfaceForegroundPatternId)
+                        new_ovr.SetCutForegroundPatternColor(src_ovr.SurfaceForegroundPatternColor)
+                        new_ovr.SetCutBackgroundPatternId(src_ovr.SurfaceBackgroundPatternId)
+                        new_ovr.SetCutBackgroundPatternColor(src_ovr.SurfaceBackgroundPatternColor)
+                    else:
+                        # Older/newer API fallback to surface methods if available - but here we are copying surface -> cut only if cut setters exist
+                        pass
+                except: pass
+
+        # cut -> projection
+        elif direction == 'cut_to_proj':
+            if include_line:
+                try:
+                    new_ovr.SetProjectionLineColor(src_ovr.CutLineColor)
+                    new_ovr.SetProjectionLineWeight(src_ovr.CutLineWeight)
+                    new_ovr.SetProjectionLinePatternId(src_ovr.CutLinePatternId)
+                except: pass
+            if include_hatch:
+                try:
+                    new_ovr.SetSurfaceForegroundPatternId(src_ovr.CutForegroundPatternId)
+                    new_ovr.SetSurfaceForegroundPatternColor(src_ovr.CutForegroundPatternColor)
+                    new_ovr.SetSurfaceBackgroundPatternId(src_ovr.CutBackgroundPatternId)
+                    new_ovr.SetSurfaceBackgroundPatternColor(src_ovr.CutBackgroundPatternColor)
+                except: pass
+
+        try:
+            active_view.SetFilterOverrides(fid, new_ovr)
+            count += 1
+        except Exception as e:
+            print("Failed to set overrides for {}: {}".format(item.Name, e))
+
+    t.Commit()
+    refresh_filter_data()
+    return count
+
+# ------------------ Load XAML (main) ------------------
 xaml_path = os.path.join(os.path.dirname(__file__), "TransferVG.xaml")
 with FileStream(xaml_path, FileMode.Open) as f:
     window = XamlReader.Load(f)
@@ -225,6 +294,17 @@ if os.path.exists(icon_path):
     bmp.EndInit()
     window.FindName("headerIcon").Source = bmp
 
+# ------------------ Load XAML (match dialog) ------------------
+match_xaml_path = os.path.join(os.path.dirname(__file__), "MatchVG.xaml")
+with FileStream(match_xaml_path, FileMode.Open) as f:
+    match_window_template = XamlReader.Load(f)
+
+# Provide a function to create a fresh instance (so events and state are clean)
+def create_match_window():
+    with FileStream(match_xaml_path, FileMode.Open) as f:
+        return XamlReader.Load(f)
+
+# ------------------ Buttons / Events ------------------
 def on_ok(sender, args):
     selected = [i.Name for i in window.FindName("filterList").SelectedItems]
     window.Tag = selected
@@ -237,17 +317,115 @@ def on_cancel(sender, args):
 window.FindName("okBtn").Click += on_ok
 window.FindName("cancelBtn").Click += on_cancel
 
+# Existing copy templates button
 btnCopyTemplates = window.FindName("btnCopyTemplates")
 btnCopyTemplates.Click += lambda s, e: action_copy_viewtemplates()
 
+# NEW: open Match modal when user clicks the new button
+def on_open_match_dialog(sender, args):
+    match_win = create_match_window()
+    # set owner to main window (so centering is relative)
+    try:
+        match_win.Owner = window
+    except:
+        pass
+
+    # load icon if present
+    m_icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
+    if os.path.exists(m_icon_path):
+        bmpm = BitmapImage()
+        bmpm.BeginInit()
+        bmpm.UriSource = Uri(m_icon_path)
+        bmpm.CacheOption = BitmapCacheOption.OnLoad
+        bmpm.EndInit()
+        try:
+            match_win.FindName("matchHeaderIcon").Source = bmpm
+        except:
+            pass
+
+    # grab controls
+    rbProjToCut = match_win.FindName("rbProjToCut")
+    rbCutToProj = match_win.FindName("rbCutToProj")
+    cbLine = match_win.FindName("cbLine")
+    cbHatch = match_win.FindName("cbHatch")
+    cbBoth = match_win.FindName("cbBoth")
+    btnOk = match_win.FindName("btnMatchOk")
+    btnCancel = match_win.FindName("btnMatchCancel")
+
+    # helper for toggling cbBoth -> sync two checkboxes
+    def on_cbBoth_changed(sender, args):
+        try:
+            state = bool(cbBoth.IsChecked)
+            cbLine.IsChecked = state
+            cbHatch.IsChecked = state
+        except:
+            pass
+    try:
+        cbBoth.Checked += on_cbBoth_changed
+        cbBoth.Unchecked += on_cbBoth_changed
+    except:
+        # older event hooking may vary; fallback to ignore
+        pass
+
+    def do_confirm(s,e):
+        # Determine direction
+        direction = 'proj_to_cut' if bool(rbProjToCut.IsChecked) else 'cut_to_proj'
+        include_line = bool(cbLine.IsChecked)
+        include_hatch = bool(cbHatch.IsChecked)
+        # If both unchecked, warn and return
+        if not include_line and not include_hatch:
+            forms.alert("Please select at least one option to match (Line or Hatch).", exitscript=False)
+            return
+        # Run match on selected filters in main window
+        count = match_filters(direction=direction, include_line=include_line, include_hatch=include_hatch)
+        if count:
+            dir_text = "Projection → Cut" if direction == 'proj_to_cut' else "Cut → Projection"
+            parts = []
+            if include_line: parts.append("Line")
+            if include_hatch: parts.append("Hatch")
+            parts_text = " + ".join(parts)
+            forms.alert("✅ Matched {} ({} ) for {} filter(s).".format(dir_text, parts_text, count), exitscript=False)
+        else:
+            forms.alert("No filters were selected in the main window.", exitscript=False)
+        try:
+            match_win.Close()
+        except:
+            pass
+
+    def do_cancel(s,e):
+        try:
+            match_win.Close()
+        except:
+            pass
+
+    btnOk.Click += do_confirm
+    btnCancel.Click += do_cancel
+
+    # Show as dialog centered on owner
+    try:
+        match_win.ShowDialog()
+    except:
+        # fallback to non-modal show
+        match_win.Show()
+
+# wire the new main button
+try:
+    window.FindName("btnMatchProjectionCut").Click += on_open_match_dialog
+except Exception as e:
+    print("Failed to wire match button:", e)
+
+# Enable/disable Confirm button logic for main window
 ok_button = window.FindName("okBtn")
+btnMatchProjectionCut = window.FindName("btnMatchProjectionCut")
 filter_list = window.FindName("filterList")
 ok_button.IsEnabled = False
-
 def on_selection_changed(sender, args):
-    ok_button.IsEnabled = filter_list.SelectedItems.Count > 0
+    has_selection = filter_list.SelectedItems.Count > 0
+    ok_button.IsEnabled = has_selection
+    btnMatchProjectionCut.IsEnabled = has_selection
 filter_list.SelectionChanged += on_selection_changed
 
+# Show main window
 window.ShowDialog()
 
 selected_filters = window.Tag
@@ -270,44 +448,35 @@ if not templates:
 
 # ------------------ Copy Overrides Function ------------------
 def copy_overrides(fid, src_view, dest_view):
-    """Copy graphic overrides for a given filter ID between views/templates."""
     src_ovr = src_view.GetFilterOverrides(fid)
     ovr = OverrideGraphicSettings()
-
     def safe_call(label, func):
-        try:
-            func()
-        except Exception as e:
-            print("⚠️ {} failed: {}".format(label, e))
+        try: func()
+        except Exception as e: print("⚠️ {} failed: {}".format(label, e))
 
     safe_call("Projection line", lambda: (
         ovr.SetProjectionLineColor(src_ovr.ProjectionLineColor),
         ovr.SetProjectionLineWeight(src_ovr.ProjectionLineWeight),
         ovr.SetProjectionLinePatternId(src_ovr.ProjectionLinePatternId)
     ))
-
     safe_call("Cut line", lambda: (
         ovr.SetCutLineColor(src_ovr.CutLineColor),
         ovr.SetCutLineWeight(src_ovr.CutLineWeight),
         ovr.SetCutLinePatternId(src_ovr.CutLinePatternId)
     ))
-
     safe_call("Surface hatch", lambda: (
         ovr.SetSurfaceForegroundPatternColor(src_ovr.SurfaceForegroundPatternColor),
         ovr.SetSurfaceForegroundPatternId(src_ovr.SurfaceForegroundPatternId),
         ovr.SetSurfaceBackgroundPatternColor(src_ovr.SurfaceBackgroundPatternColor),
         ovr.SetSurfaceBackgroundPatternId(src_ovr.SurfaceBackgroundPatternId)
     ))
-
     safe_call("Cut hatch", lambda: (
         hasattr(ovr, "SetCutForegroundPatternColor") and ovr.SetCutForegroundPatternColor(src_ovr.CutForegroundPatternColor),
         hasattr(ovr, "SetCutForegroundPatternId") and ovr.SetCutForegroundPatternId(src_ovr.CutForegroundPatternId),
         hasattr(ovr, "SetCutBackgroundPatternColor") and ovr.SetCutBackgroundPatternColor(src_ovr.CutBackgroundPatternColor),
         hasattr(ovr, "SetCutBackgroundPatternId") and ovr.SetCutBackgroundPatternId(src_ovr.CutBackgroundPatternId)
     ))
-
     safe_call("Halftone", lambda: ovr.SetHalftone(src_ovr.Halftone))
-
     if hasattr(ovr, "SetSurfaceTransparency"):
         safe_call("Transparency (2024)", lambda: ovr.SetSurfaceTransparency(src_ovr.Transparency))
     elif hasattr(ovr, "SetTransparency"):
@@ -326,7 +495,6 @@ def copy_overrides(fid, src_view, dest_view):
             dest_view.SetFilterVisible(fid, visible)
     except Exception as e:
         print("⚠️ Enable/Visibility override failed:", e)
-
     return ovr
 
 # ------------------ Apply to Selected Templates ------------------
@@ -347,7 +515,6 @@ for fname in selected_filters:
             failed.append(msg)
 t.Commit()
 
-# ------------------ Result ------------------
 source_template_id = active_view.ViewTemplateId
 source_name = doc.GetElement(source_template_id).Name if source_template_id != DB.ElementId.InvalidElementId else active_view.Name
 target_names = ", ".join([v.Name for v in templates])

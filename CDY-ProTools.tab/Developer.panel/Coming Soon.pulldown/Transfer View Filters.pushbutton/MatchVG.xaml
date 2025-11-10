@@ -1,0 +1,55 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Match Projection / Cut" Height="400" Width="480"
+        WindowStartupLocation="CenterOwner"
+        Background="#FAFAFA" Foreground="#222"
+        ResizeMode="NoResize"
+        Topmost="False"
+        FontFamily="Mona-Sans Light" FontSize="13"
+        WindowStyle="ToolWindow">
+
+    <DockPanel Margin="10">
+        <!-- Top Banner -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="36" Background="#0078D7" Margin="0,0,0,8">
+            <Image Name="matchHeaderIcon" Width="20" Height="20" Margin="10,8"/>
+            <TextBlock Text="Match Projection / Cut" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" Foreground="White"/>
+        </StackPanel>
+
+        <Grid Margin="6">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Direction -->
+            <GroupBox Header="Direction" Grid.Row="0" Margin="0,0,0,8">
+                <StackPanel Orientation="Vertical" Margin="8">
+                    <RadioButton Name="rbProjToCut" Content="Projection → Cut" IsChecked="True" Margin="0,2"/>
+                    <RadioButton Name="rbCutToProj" Content="Cut → Projection" Margin="0,2"/>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Options -->
+            <GroupBox Header="What to match" Grid.Row="1" Margin="0,0,0,8">
+                <StackPanel Orientation="Vertical" Margin="8">
+                    <CheckBox Name="cbLine" Content="Line style (color, weight, pattern)" IsChecked="True" Margin="0,2"/>
+                    <CheckBox Name="cbHatch" Content="Hatch fill (foreground &amp; background patterns + colors)" IsChecked="True" Margin="0,2"/>
+                    <CheckBox Name="cbBoth" Content="Both (toggle both checkboxes)" IsChecked="True" Margin="0,4,0,0"/>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Note -->
+            <TextBlock Grid.Row="2" Text="Selected filters in the main window will be updated. Use Confirm to apply." TextWrapping="Wrap" Margin="4" Foreground="#555"/>
+
+            <!-- Buttons -->
+            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                <Button Name="btnMatchCancel" Width="90" Height="28" Margin="5" Content="Cancel"
+                        Background="#EEE" Foreground="#222" BorderBrush="#CCC" BorderThickness="1" Cursor="Hand"/>
+                <Button Name="btnMatchOk" Width="90" Height="28" Margin="5" Content="Confirm"
+                        Background="#0078D7" Foreground="White" FontWeight="SemiBold" BorderBrush="#005A9E" BorderThickness="1" Cursor="Hand"/>
+            </StackPanel>
+        </Grid>
+    </DockPanel>
+</Window>
