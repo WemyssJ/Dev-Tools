@@ -269,7 +269,11 @@ def match_filters(direction='proj_to_cut', include_line=True, include_hatch=True
                 except: pass
 
         try:
-            active_view.SetFilterOverrides(fid, new_ovr)
+            template = doc.GetElement(active_view.ViewTemplateId)
+            if template and template.IsValidObject:
+                template.SetFilterOverrides(fid, new_ovr)
+            else:
+                active_view.SetFilterOverrides(fid, new_ovr)
             count += 1
         except Exception as e:
             print("Failed to set overrides for {}: {}".format(item.Name, e))
