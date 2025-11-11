@@ -1,0 +1,8 @@
+engine: 
+  clean: true
+title:
+  en_us: Bulk Cut Beams
+tooltip: 
+  en_us: Cuts structural framing along gridline(s)
+authors: >-
+  Joe Wemyss
