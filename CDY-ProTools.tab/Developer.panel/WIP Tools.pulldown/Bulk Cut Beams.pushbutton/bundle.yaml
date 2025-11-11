@@ -3,6 +3,7 @@ engine:
 title:
   en_us: Bulk Cut Beams
 tooltip: 
-  en_us: Cuts structural framing along gridline(s)
+  en_us: Cuts structural framing along reference planes
 authors: >-
   Joe Wemyss
+
