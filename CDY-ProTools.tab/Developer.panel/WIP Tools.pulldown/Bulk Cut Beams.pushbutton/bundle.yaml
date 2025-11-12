@@ -1,9 +1,10 @@
 engine: 
   clean: true
 title:
-  en_us: Bulk Cut Beams
+  en_us: Split Beams
 tooltip: 
-  en_us: Cuts structural framing along reference planes
+  en_us: Split beams along reference plane
 authors: >-
   Joe Wemyss
+
 
