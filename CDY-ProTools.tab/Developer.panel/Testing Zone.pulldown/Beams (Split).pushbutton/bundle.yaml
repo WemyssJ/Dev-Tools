@@ -1,0 +1,10 @@
+engine: 
+  clean: true
+title:
+  en_us: Beams (Split)
+tooltip: 
+  en_us: Bulk Split beams along reference planes / grids
+authors: >-
+  Joe Wemyss
+
+
