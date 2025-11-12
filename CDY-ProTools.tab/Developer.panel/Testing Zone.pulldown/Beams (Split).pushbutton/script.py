@@ -7,6 +7,8 @@ from Autodesk.Revit.UI.Selection import ObjectType, ISelectionFilter
 from pyrevit import forms, script
 import sys, time, traceback, os
 from System.Windows import Visibility
+from System import Uri
+from System.Windows.Media.Imaging import BitmapImage, BitmapCacheOption
 
 uidoc = __revit__.ActiveUIDocument
 doc = uidoc.Document
@@ -200,6 +202,15 @@ class SplitLauncher(forms.WPFWindow):
     def __init__(self):
         xaml_path = os.path.join(os.path.dirname(__file__), "SplitFramingAtRefPlanes.xaml")
         forms.WPFWindow.__init__(self, xaml_path)
+
+        icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
+        if os.path.exists(icon_path):
+            bmp = BitmapImage()
+            bmp.BeginInit()
+            bmp.UriSource = Uri(icon_path)
+            bmp.CacheOption = BitmapCacheOption.OnLoad
+            bmp.EndInit()
+            self.FindName("headerIcon").Source = bmp   # <-- use self, not window
 
         # Initial state
         self.selectBeamsBtn.IsEnabled = True
