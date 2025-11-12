@@ -31,7 +31,7 @@ if os.path.exists(icon_path):
     bmp.UriSource = Uri(icon_path)
     bmp.CacheOption = BitmapCacheOption.OnLoad
     bmp.EndInit()
-    self.FindName("headerIcon").Source = bmp   # <-- use self, not window
+    window.FindName("headerIcon").Source = bmp   # <-- use self, not window
 
 # -----------------------------
 # Event Handlers
@@ -207,4 +207,5 @@ elif operation == "detail_to_view":
                         output.print_md("↩️ Rolled back view ID `{}` to `'{}'`".format(view.Id.IntegerValue, original))
                     except Exception as rollback_err:
                         output.print_md("⚠️ Failed to roll back view ID `{}`: {}".format(view.Id.IntegerValue, rollback_err))
+
 
