@@ -7,6 +7,8 @@ from Autodesk.Revit.DB import *
 from Autodesk.Revit.UI import TaskDialog
 from Autodesk.Revit.UI.Selection import ObjectType
 from pyrevit import revit, DB, forms, script
+from System import Uri
+from System.Windows.Media.Imaging import BitmapImage, BitmapCacheOption
 
 logger = script.get_logger()
 uidoc = __revit__.ActiveUIDocument
@@ -20,7 +22,17 @@ xaml_path = os.path.join(script_dir, "LinkOptions.xaml")
 if not os.path.exists(xaml_path):
     forms.alert("Could not find LinkOptions.xaml in script folder.", exitscript=True)
 
+
 window = forms.WPFWindow(xaml_path)
+
+icon_path = os.path.join(script_dir, "icon.png")
+if os.path.exists(icon_path):
+    bmp = BitmapImage()
+    bmp.BeginInit()
+    bmp.UriSource = Uri(icon_path)
+    bmp.CacheOption = BitmapCacheOption.OnLoad
+    bmp.EndInit()
+    window.FindName("headerIcon").Source = bmp
 
 # --------------------------
 # Helper Functions
