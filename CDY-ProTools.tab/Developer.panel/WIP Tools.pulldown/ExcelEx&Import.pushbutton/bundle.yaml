@@ -1,8 +1,0 @@
-engine: 
-  clean: true
-title:
-  en_us: Excel Ex & Import
-tooltip: 
-  en_us: Export parameters to excel and import them
-authors: >-
-  Joe Wemys, Dave Barron
