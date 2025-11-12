@@ -12,7 +12,7 @@
 
     <!-- Top Banner with large white "?" icon -->
     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="48" Background="#0078D7" Margin="0,0,0,10">
-        <TextBlock Text="❓" FontSize="28" Margin="10,10,5,10" VerticalAlignment="Center" Foreground="White"/>
+        <Image Name="headerIcon" Width="24" Height="24" Margin="10,8"/>
         <TextBlock Text="What's Changed?" FontSize="16" FontWeight="Bold" VerticalAlignment="Center" Foreground="White"/>
     </StackPanel>
 
@@ -155,3 +155,4 @@
 
   </DockPanel>
 </Window>
+
