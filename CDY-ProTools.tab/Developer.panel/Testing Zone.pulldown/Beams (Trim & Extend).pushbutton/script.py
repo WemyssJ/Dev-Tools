@@ -8,6 +8,8 @@ from Autodesk.Revit.UI.Selection import ObjectType, ISelectionFilter
 from Autodesk.Revit.Exceptions import InvalidOperationException
 from pyrevit import forms, script
 from System.Windows import Visibility
+from System import Uri
+from System.Windows.Media.Imaging import BitmapImage, BitmapCacheOption
 import os, traceback, math
 
 uidoc = __revit__.ActiveUIDocument
@@ -177,6 +179,15 @@ class TrimExtendLauncher(forms.WPFWindow):
     def __init__(self):
         xaml_path = os.path.join(os.path.dirname(__file__), "TrimExtendBeams.xaml")
         forms.WPFWindow.__init__(self, xaml_path)
+
+        icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
+        if os.path.exists(icon_path):
+            bmp = BitmapImage()
+            bmp.BeginInit()
+            bmp.UriSource = Uri(icon_path)
+            bmp.CacheOption = BitmapCacheOption.OnLoad
+            bmp.EndInit()
+            self.FindName("headerIcon").Source = bmp   # <-- use self, not window
 
         # Initial state
         self.selectBeamsBtn.IsEnabled = True

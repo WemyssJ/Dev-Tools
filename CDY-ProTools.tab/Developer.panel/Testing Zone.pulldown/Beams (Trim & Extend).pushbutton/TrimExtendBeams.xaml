@@ -10,6 +10,7 @@
 
     <!-- Top Banner -->
     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="48" Background="#0078D7" Margin="0,0,0,10">
+        <Image Name="headerIcon" Width="24" Height="24" Margin="10,8"/>
         <TextBlock Text="Trim/Extend" FontSize="16" FontWeight="Bold" Margin="10,10,6,10" VerticalAlignment="Center" Foreground="White"/>
         <TextBlock Text="Trim or Extend Beams to Reference" FontSize="16" FontWeight="Bold" VerticalAlignment="Center" Foreground="White"/>
     </StackPanel>
