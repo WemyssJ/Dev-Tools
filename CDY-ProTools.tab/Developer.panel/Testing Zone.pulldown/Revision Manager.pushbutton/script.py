@@ -8,6 +8,9 @@ clr.AddReference('System.Windows.Forms')
 from System.Windows.Forms import Control, Keys
 from pyrevit.forms import WPFWindow
 import os
+from System import Uri
+from System.Windows.Media.Imaging import BitmapImage, BitmapCacheOption
+
 
 logger = script.get_logger()
 
@@ -361,4 +364,14 @@ class MasterRevisionWindow(WPFWindow):
 # -----------------------------
 xaml_path = os.path.join(os.path.dirname(__file__), "RevManager.xaml")
 win = MasterRevisionWindow(xaml_path)
+
+icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
+if os.path.exists(icon_path):
+    bmp = BitmapImage()
+    bmp.BeginInit()
+    bmp.UriSource = Uri(icon_path)
+    bmp.CacheOption = BitmapCacheOption.OnLoad
+    bmp.EndInit()
+    win.FindName("headerIcon").Source = bmp
 win.ShowDialog()
+
