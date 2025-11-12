@@ -16,6 +16,8 @@ from System.Windows.Markup import XamlReader
 from System.Windows import Visibility
 from System.Windows.Forms import FolderBrowserDialog, OpenFileDialog, ColorDialog, DialogResult
 from System.Windows.Controls import ComboBoxItem
+from System import Uri
+from System.Windows.Media.Imaging import BitmapImage, BitmapCacheOption
 
 output = script.get_output()
 doc = revit.doc
@@ -393,9 +395,19 @@ xaml_path = os.path.join(script.get_script_path(), "whats_changed_ui.xaml")
 result = show_ui(xaml_path)
 if not result:
     script.exit()
-
+    
 action, file_path, new_col, moved_col, changed_col, model_choice = result
 output.print_md("**Action:** {} | **File:** {}".format(action, file_path))
+
+icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
+if os.path.exists(icon_path):
+    bmp = BitmapImage()
+    bmp.BeginInit()
+    bmp.UriSource = Uri(icon_path)
+    bmp.CacheOption = BitmapCacheOption.OnLoad
+    bmp.EndInit()
+    result.FindName("headerIcon").Source = bmp
+
 
 # Handle linked document selection
 target_doc = doc
@@ -491,3 +503,4 @@ output.print_html("<b>Moved elements:</b> {} {}".format(rgb_block(moved_col), le
 output.print_html("<b>Parameter changes:</b> {} {}".format(rgb_block(changed_col), len(param_changed_ids)))
 deleted_ids = set(prev_data.keys()) - set(current_data.keys())
 output.print_md("**Deleted elements:** {} ❌".format(len(deleted_ids)))
+
