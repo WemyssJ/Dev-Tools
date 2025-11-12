@@ -7,6 +7,8 @@ Pretty modern WPF version with buttons
 from Autodesk.Revit.DB import TextNote, HorizontalTextAlignment, FilteredElementCollector, Transaction
 from pyrevit import revit, forms
 import clr, os
+from System import Uri
+from System.Windows.Media.Imaging import BitmapImage, BitmapCacheOption
 
 doc = revit.doc
 uidoc = revit.uidoc
@@ -35,6 +37,16 @@ else:
 HERE = os.path.dirname(__file__)
 XAMLFILE = os.path.join(HERE, "AlignTextNotes.xaml")
 dlg = forms.WPFWindow(XAMLFILE)
+
+icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
+if os.path.exists(icon_path):
+    bmp = BitmapImage()
+    bmp.BeginInit()
+    bmp.UriSource = Uri(icon_path)
+    bmp.CacheOption = BitmapCacheOption.OnLoad
+    bmp.EndInit()
+    dlg.FindName("headerIcon").Source = bmp
+
 
 # Buttons
 left_btn = dlg.leftBtn
@@ -73,3 +85,4 @@ cancel_btn.Click += lambda s, a: dlg.Close()
 
 # -------------------- Show Dialog --------------------
 dlg.ShowDialog()
+
