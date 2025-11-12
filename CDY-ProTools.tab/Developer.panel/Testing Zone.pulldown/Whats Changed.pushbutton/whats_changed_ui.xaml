@@ -4,7 +4,7 @@
         WindowStartupLocation="CenterScreen"
         Background="#FAFAFA" Foreground="#222"
         ResizeMode="NoResize"
-        Topmost="False"
+        Topmost="True"
         FontFamily="Mona-Sans Light" FontSize="13">
 
   <DockPanel Margin="10">
@@ -154,5 +154,6 @@
 
   </DockPanel>
 </Window>
+
 
 
