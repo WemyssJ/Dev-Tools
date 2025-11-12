@@ -9,6 +9,7 @@
 
         <!-- Header -->
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="40" Background="#0078D7">
+            <Image Name="headerIcon" Width="24" Height="24" Margin="10,8"/>
             <TextBlock Text="Link Options" FontSize="16" FontWeight="Bold"
                        VerticalAlignment="Center" Foreground="White" Margin="10,0,0,0"/>
         </StackPanel>
