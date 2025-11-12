@@ -63,7 +63,9 @@
       - v1.2.11: Pile E+N+Z Improved.
       - v1.2.12: WIP tool updates
       - v1.2.13: DevAccess tweaked.
-      - v1.2.14: Beam tools added + UI improvements
+      - v1.2.14: Coming Soon tools updated
+      - v1.2.15: Beam tools added + UI improvements
+
 
 
 
