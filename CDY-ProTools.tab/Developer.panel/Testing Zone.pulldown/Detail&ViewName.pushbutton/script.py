@@ -8,6 +8,9 @@ from pyrevit import forms
 from System.Windows import Window
 from System.Windows.Markup import XamlReader
 from System.IO import FileStream, FileMode
+from System import Uri
+from System.Windows.Media.Imaging import BitmapImage, BitmapCacheOption
+
 
 doc = revit.doc
 uidoc = revit.uidoc
@@ -20,6 +23,15 @@ output.set_title("Viewport Name ↔ Detail Number Copy Tool")
 script_dir = os.path.dirname(__file__)
 xaml_path = os.path.join(script_dir, "Detail&ViewName.xaml")
 window = forms.WPFWindow(xaml_path)
+
+icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
+if os.path.exists(icon_path):
+    bmp = BitmapImage()
+    bmp.BeginInit()
+    bmp.UriSource = Uri(icon_path)
+    bmp.CacheOption = BitmapCacheOption.OnLoad
+    bmp.EndInit()
+    self.FindName("headerIcon").Source = bmp   # <-- use self, not window
 
 # -----------------------------
 # Event Handlers
@@ -195,3 +207,4 @@ elif operation == "detail_to_view":
                         output.print_md("↩️ Rolled back view ID `{}` to `'{}'`".format(view.Id.IntegerValue, original))
                     except Exception as rollback_err:
                         output.print_md("⚠️ Failed to roll back view ID `{}`: {}".format(view.Id.IntegerValue, rollback_err))
+
