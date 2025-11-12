@@ -3,7 +3,7 @@ engine:
 title:
   en_us: Split Beams
 tooltip: 
-  en_us: Split beams along reference plane
+  en_us: Bulk Split beams along reference plane
 authors: >-
   Joe Wemyss
 
