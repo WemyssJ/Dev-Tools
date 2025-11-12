@@ -6,7 +6,6 @@
         ResizeMode="NoResize"
         Topmost="False"
         FontFamily="Mona-Sans Light" FontSize="13"
-        WindowStyle="ToolWindow">
 
     <DockPanel Margin="10">
         <!-- Top Banner -->
@@ -53,3 +52,4 @@
         </Grid>
     </DockPanel>
 </Window>
+
