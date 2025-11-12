@@ -10,7 +10,8 @@
 
         <!-- Header -->
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="40" Background="#0078D7">
-            <TextBlock Text="Align Text Notes" FontSize="16" FontWeight="Bold"
+                <Image Name="headerIcon" Width="24" Height="24" Margin="10,8"/>
+                <TextBlock Text="Align Text Notes" FontSize="16" FontWeight="Bold"
                        VerticalAlignment="Center" Foreground="White" Margin="10,0"/>
         </StackPanel>
 
@@ -41,3 +42,4 @@
         </StackPanel>
     </DockPanel>
 </Window>
+
