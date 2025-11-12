@@ -5,7 +5,6 @@
         Background="#FAFAFA" Foreground="#222"
         ResizeMode="NoResize"
         Topmost="False"
-        WindowStyle="ToolWindow"
         FontFamily="Mona-Sans Light" FontSize="13">
 
   <DockPanel Margin="10">
@@ -155,4 +154,5 @@
 
   </DockPanel>
 </Window>
+
 
