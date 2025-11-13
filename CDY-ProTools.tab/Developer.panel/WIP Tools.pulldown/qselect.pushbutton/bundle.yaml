@@ -1,0 +1,8 @@
+engine: 
+  clean: true
+title:
+  en_us: qselect
+tooltip: 
+  en_us: quick select
+authors: >-
+  Joe Wemyss
