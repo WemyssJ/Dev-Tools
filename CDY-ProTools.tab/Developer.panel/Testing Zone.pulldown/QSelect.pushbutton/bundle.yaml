@@ -1,8 +1,9 @@
 engine: 
   clean: true
 title:
-  en_us: QSelect
+  en_us: qselect
 tooltip: 
-  en_us: Selects all elements attached to associted level
+  en_us: Selects all elements attached to associted level / work plane
 authors: >-
-  Joe Wemyss
+  Joe Wemyss & Max Bressington
+
