@@ -1,6 +1,6 @@
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="QSelect" Height="325" Width="550"
+        Title="qselect" Height="325" Width="550"
         WindowStartupLocation="CenterScreen"
         Background="#FAFAFA" Foreground="#222"
         ResizeMode="NoResize"

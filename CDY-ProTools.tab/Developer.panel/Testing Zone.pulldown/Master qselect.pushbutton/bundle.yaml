@@ -1,8 +1,8 @@
 engine: 
   clean: true
 title:
-  en_us: qselect
+  en_us: Master qselect
 tooltip: 
-  en_us: quick select
+  en_us: qselect... but for Revit
 authors: >-
   Joe Wemyss
