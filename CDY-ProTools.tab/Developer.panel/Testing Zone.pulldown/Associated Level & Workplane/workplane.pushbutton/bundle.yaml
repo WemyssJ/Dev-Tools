@@ -1,8 +1,0 @@
-engine: 
-  clean: true
-title:
-  en_us: Associated Level & Workplane
-tooltip: 
-  en_us: Selects all elements attached to associted level or Structural Framing attached to specified workplane.
-authors: >-
-  Joe Wemyss
