@@ -1,20 +1,9 @@
 # -*- coding: utf-8 -*-
 # pylint: skip-file
-# by Roman Golev 
 
-#TODO: Implement the procedure of checking if elements are joined or not before executing command.
+__doc__ = """Joins multiple elements / Присоединяет множественные элементы"""
 
-__doc__ = """Joins multiple elements / Присоединяет множественные элементы 
-
-First you need to choose the category of elements to join\
-(script collects all elements of category). Then you need to choose \
-an element or elements to be joined to with the previous selected set of elements by category.
----------------------------------------------------------------------------
-Необходимо выбрать категорию элементов для множественного присоединения, \
-затем выбирается элемент или элементы к которым данное присоединение \
-необходимо применить. 
-"""
-__author__ = 'Roman Golev'
+__author__ = 'Roman Golev & Joe Wemyss'
 __title__ = "Batch Join By Category"
 
 import clr
@@ -30,35 +19,50 @@ uidoc = __revit__.ActiveUIDocument
 doc = __revit__.ActiveUIDocument.Document
 transaction = Autodesk.Revit.DB.Transaction(doc)
 
+
 def main():
-	catlist = get_catlist(doc)
-	ops = ['Columns', 'Walls', 'Floors', 'Roofs','Structural Columns', 'Structural Foundations', 'Structural Framing']
-	choice1 = forms.CommandSwitchWindow.show(ops, message='Select First Category to join')
-	try :
-		elements1 = catlist[choice1].WhereElementIsNotElementType().ToElements() 
-	except:
-		sys.exit()
-	ops.remove(choice1)
-	choice2 = forms.CommandSwitchWindow.show(ops, message='Select Option')
-	try :
-		elements2 = catlist[choice2].WhereElementIsNotElementType().ToElements() 
-	except:
-		sys.exit()
+    catlist = get_catlist(doc)
+    ops = ['Columns', 'Walls', 'Floors', 'Roofs',
+           'Structural Columns', 'Structural Foundations', 'Structural Framing']
 
+    # First category
+    choice1 = forms.CommandSwitchWindow.show(ops, message='Select First Category to join')
+    try:
+        elements1 = catlist[choice1].WhereElementIsNotElementType().ToElements()
+    except:
+        sys.exit()
 
-	# TODO: Supress "Highlighted elements are joined but do not intersect." warning
+    # Second category (now allows same category)
+    choice2 = forms.CommandSwitchWindow.show(ops, message='Select Second Category (can be same)')
+    try:
+        elements2 = catlist[choice2].WhereElementIsNotElementType().ToElements()
+    except:
+        sys.exit()
 
-	results = []
-	transaction.Start('Multiple Join')
-	for A in elements1:
-		for B in elements2:
-			try:
-				result = Autodesk.Revit.DB.JoinGeometryUtils.JoinGeometry(doc,A,B)
-				results.append(result)
-			except:
-				pass
+    # Avoid double-joins and self-joins
+    processed_pairs = set()
 
-	transaction.Commit()
+    transaction.Start('Batch Join')
+
+    for A in elements1:
+        for B in elements2:
+            # Skip joining element with itself
+            if A.Id == B.Id:
+                continue
+
+            # Prevent duplicate A-B and B-A joins
+            pair_key = tuple(sorted([A.Id.IntegerValue, B.Id.IntegerValue]))
+            if pair_key in processed_pairs:
+                continue
+            processed_pairs.add(pair_key)
+
+            try:
+                JoinGeometryUtils.JoinGeometry(doc, A, B)
+            except:
+                pass
+
+    transaction.Commit()
+
 
 if __name__ == '__main__':
     main()
