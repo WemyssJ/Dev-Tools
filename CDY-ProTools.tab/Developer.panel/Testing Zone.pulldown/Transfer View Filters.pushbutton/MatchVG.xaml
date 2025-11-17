@@ -5,7 +5,7 @@
         Background="#FAFAFA" Foreground="#222"
         ResizeMode="NoResize"
         Topmost="False"
-        FontFamily="Mona-Sans Light" FontSize="13"
+        FontFamily="Mona-Sans Light" FontSize="13">
 
     <DockPanel Margin="10">
         <!-- Top Banner -->
@@ -52,4 +52,5 @@
         </Grid>
     </DockPanel>
 </Window>
+
 
