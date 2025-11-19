@@ -1,6 +1,6 @@
 title:
   en_us: Manipulate Grids
 tooltip: 
-  en_us: Change grids to 2D / 3D constraints or add bubbles to both ends
+  en_us: Control grids 2D/3D extents and bubbles
 authors: >-
-  Joe Wemyss, James Scrivens
+  Joe Wemyss, James Scrivens, Mohamed Asli
