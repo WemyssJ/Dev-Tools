@@ -1,6 +1,6 @@
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Grid Extents Options" Height="320" Width="700"
+        Title="Grid Extents Options" Height="360" Width="500"
         WindowStartupLocation="CenterScreen"
         Background="#FAFAFA" Foreground="#222"
         ResizeMode="NoResize"
@@ -24,25 +24,33 @@
         </StackPanel>
 
         <!-- Option Buttons -->
-        <Border DockPanel.Dock="Top" Padding="20" Margin="0,10,0,0"
-                Background="White" CornerRadius="6" BorderBrush="#DDD" BorderThickness="1">
-            <StackPanel Orientation="Vertical" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0">
+        <ScrollViewer DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto">
+            <Border Padding="20" Margin="0,10,0,0"
+                    Background="White" CornerRadius="6" BorderBrush="#DDD" BorderThickness="1">
+                <StackPanel Orientation="Vertical" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0">
 
-                <TextBlock Text="Select an Option:" Margin="0,0,0,15" FontWeight="SemiBold"/>
+                    <TextBlock Text="Select an Option:" Margin="0,0,0,15" FontWeight="SemiBold"/>
 
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                    <Button Name="btn2D" Content="Set to 2D (ViewSpecific)" Width="200" Height="50" Margin="5"
-                            Background="#E1F5FE" Foreground="#0078D7" FontWeight="SemiBold"
-                            BorderBrush="#81D4FA" BorderThickness="1" Cursor="Hand"/>
-                    <Button Name="btn3D" Content="Set to 3D (Model)" Width="150" Height="50" Margin="5"
-                            Background="#FFF3E0" Foreground="#FB8C00" FontWeight="SemiBold"
-                            BorderBrush="#FFB74D" BorderThickness="1" Cursor="Hand"/>
-                    <Button Name="btnBubbles" Content="Keep extents, bubbles both ends" Width="220" Height="50" Margin="5"
-                            Background="#FCE4EC" Foreground="#C2185B" FontWeight="SemiBold"
-                            BorderBrush="#F48FB1" BorderThickness="1" Cursor="Hand"/>
+                    <!-- First Row of Buttons -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button Name="btn2D" Content="Set to 2D (ViewSpecific)" Width="200" Height="50" Margin="5"
+                                Background="#E1F5FE" Foreground="#0078D7" FontWeight="SemiBold"
+                                BorderBrush="#81D4FA" BorderThickness="1" Cursor="Hand"/>
+                        <Button Name="btn3D" Content="Set to 3D (Model)" Width="150" Height="50" Margin="5"
+                                Background="#FFF3E0" Foreground="#FB8C00" FontWeight="SemiBold"
+                                BorderBrush="#FFB74D" BorderThickness="1" Cursor="Hand"/>
+                    </StackPanel>
+
+                    <!-- Second Row: NEW Advanced Button -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,5,0,0">
+                        <Button Name="btnCoordinate" Content="Toggle Bubbles (Advanced)" Width="360" Height="50" Margin="5"
+                                Background="#E8F5E9" Foreground="#2E7D32" FontWeight="SemiBold"
+                                BorderBrush="#A5D6A7" BorderThickness="1" Cursor="Hand"/>
+                    </StackPanel>
+
                 </StackPanel>
+            </Border>
+        </ScrollViewer>
 
-            </StackPanel>
-        </Border>
     </DockPanel>
 </Window>
