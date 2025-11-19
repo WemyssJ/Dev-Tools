@@ -1,3 +1,5 @@
+highlight: new
+
 engine: 
   clean: true
 title:
@@ -6,5 +8,6 @@ tooltip:
   en_us: Bulk Split beams along reference planes / grids
 authors: >-
   Joe Wemyss
+
 
 
