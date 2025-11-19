@@ -1,3 +1,5 @@
+highlight: new
+
 title:
   en_us: Export Parameters to Excel
   de_de: Parameter nach Excel exportieren
@@ -58,4 +60,5 @@ tooltip:
     - выбор
 
 author: wurschdhaud
+
 min_revit_version: 2022
