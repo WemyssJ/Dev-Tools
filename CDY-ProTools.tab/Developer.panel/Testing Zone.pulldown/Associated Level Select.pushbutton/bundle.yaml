@@ -1,3 +1,5 @@
+highlight: new
+
 engine: 
   clean: true
 title:
@@ -6,4 +8,5 @@ tooltip:
   en_us: Selects all elements attached to associted level / work plane
 authors: >-
   Joe Wemyss & Max Bressington
+
 
