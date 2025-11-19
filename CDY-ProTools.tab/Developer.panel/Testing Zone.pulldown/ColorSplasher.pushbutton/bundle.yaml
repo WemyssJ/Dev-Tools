@@ -1,3 +1,5 @@
+highlight: new
+
 title:
   fr_fr:  |-
     Color
@@ -52,3 +54,4 @@ engine:
   clean: true
   persistent: true
   full_frame: true
+
