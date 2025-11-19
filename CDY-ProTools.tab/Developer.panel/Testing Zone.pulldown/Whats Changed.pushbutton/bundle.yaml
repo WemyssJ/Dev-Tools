@@ -1,3 +1,5 @@
+highlight: new
+
 engine: 
   clean: true
 title:
@@ -6,3 +8,4 @@ tooltip:
   en_us: Compare 2 models
 authors: >-
   Joe Wemyss
+
