@@ -1,3 +1,5 @@
+highlight: new
+
 title:
   en_us: Import Parameters from Excel
   de_de: Parameter aus Excel importieren
@@ -26,4 +28,5 @@ tooltip:
     Параметры только для чтения и неподдерживаемые параметры будут пропущены. Статус редактируемости пользователем игнорируется.
 
 author: wurschdhaud
+
 min_revit_version: 2022
