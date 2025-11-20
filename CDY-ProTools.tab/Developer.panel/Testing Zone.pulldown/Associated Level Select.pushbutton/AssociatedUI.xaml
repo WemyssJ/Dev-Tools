@@ -11,7 +11,7 @@
         <!-- Header -->
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="50" Background="#0078D7">
             <Image Name="headerIcon" Width="24" Height="24" Margin="10,8"/>
-            <TextBlock Text="Master Selection Tool" FontSize="16" FontWeight="Bold"
+            <TextBlock Text="Associated Level / Plane Selector" FontSize="16" FontWeight="Bold"
                        VerticalAlignment="Center" Foreground="White" Margin="10,0"/>
         </StackPanel>
 
@@ -43,3 +43,4 @@
 
     </DockPanel>
 </Window>
+
