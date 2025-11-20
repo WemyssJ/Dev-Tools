@@ -97,17 +97,15 @@ def select_grids():
 # Button click handlers
 # -----------------------------
 def on_2D(sender, args):
-    global result, grids
+    global result
     result = "2D"
-    select_grids()
-    window.Close()
+    window.Close()   # <-- close immediately
 
 def on_3D(sender, args):
-    global result, grids
+    global result
     result = "3D"
-    select_grids()
-    window.Close()
-
+    window.Close()   # <-- close immediately
+    
 def on_coordinate(sender, args):
     """Advanced coordinate selector logic"""
     global result
