@@ -1,15 +1,25 @@
 # -*- coding: utf-8 -*-
 """
-CDY-ProTools Toggle Toolbar Colors
-- Works in IronPython 2.7 / PyRevit 5
-- Adds/removes background colors in panel YAMLs
-- Reloads pyRevit using standard safe reload logic
+CDY-ProTools Toggle Toolbar Colors (UI via XAML)
+- Nothing runs until a button is pressed
 """
 
 import os
+import clr
+
+clr.AddReference("PresentationFramework")
+clr.AddReference("WindowsBase")
+clr.AddReference("System.Xaml")
+
+from System.IO import FileStream, FileMode
+from System.Windows.Markup import XamlReader
+from System.Windows import Application
+from System import Uri
+from System.Windows.Media.Imaging import BitmapImage, BitmapCacheOption
+
 from pyrevit import script, forms, EXEC_PARAMS
-clr = __import__('clr')
 from pyrevit.loader import sessionmgr, sessioninfo
+
 
 # --- Config ---
 EXT_PATH = os.path.join(
@@ -20,8 +30,7 @@ EXT_PATH = os.path.join(
     "CDY-ProTools.tab"
 )
 
-# Colors to apply for each panel
-PANEL_COLORS = {
+PANEL_COLORS_LIGHT = {
     "General": {"panel": "fffbfb", "title": "fff3f3", "slideout": "ffffff"},
     "Quality Assurance": {"panel": "fbfffb", "title": "f3fff3", "slideout": "ffffff"},
     "Model Management": {"panel": "fefbff", "title": "fef3ff", "slideout": "ffffff"},
@@ -30,35 +39,48 @@ PANEL_COLORS = {
     "Developer": {"panel": "f5f5f5", "title": "ededed", "slideout": "ffffff"}
 }
 
-# State file location (safe folder)
-STATE_FOLDER = os.path.join(os.getenv("APPDATA"), "CDY-ProTools")
-if not os.path.exists(STATE_FOLDER):
-    os.makedirs(STATE_FOLDER)
-STATE_FILE = os.path.join(STATE_FOLDER, "color_toggle_state.txt")
 
-# --- Helper Functions ---
+# --- Helpers ---
+def darken_hex_color_simple(hex_color, amount=150):
+    """Subtract fixed value from RGB channels to make darker."""
+    hex_color = hex_color.lstrip("#")
+    r = max(0, int(hex_color[0:2], 16) - amount)
+    g = max(0, int(hex_color[2:4], 16) - amount)
+    b = max(0, int(hex_color[4:6], 16) - amount)
+    return "{:02x}{:02x}{:02x}".format(r, g, b)
+
+
+# Dark mode colors generated from light mode
+PANEL_COLORS_DARK = {
+    panel: {
+        "panel": darken_hex_color_simple(colors["panel"]),
+        "title": darken_hex_color_simple(colors["title"]),
+        "slideout": darken_hex_color_simple(colors["slideout"])
+    }
+    for panel, colors in PANEL_COLORS_LIGHT.items()
+}
+
+
 def colors_to_yaml_block(colors):
-    """Convert a color dict to a YAML text block"""
     lines = [
         "background:",
-        "  panel: '" + colors["panel"] + "'",
-        "  title: '" + colors["title"] + "'",
-        "  slideout: '" + colors["slideout"] + "'"
+        "  panel: '{}'".format(colors["panel"]),
+        "  title: '{}'".format(colors["title"]),
+        "  slideout: '{}'".format(colors["slideout"])
     ]
     return "\n".join(lines)
 
-def update_panel_yaml(panel_name, apply_colors=True):
-    """Add or remove background block in YAML as text"""
+
+def update_panel_yaml(panel_name, colors=None):
     yaml_file = os.path.join(EXT_PATH, panel_name + ".panel", "bundle.yaml")
     if not os.path.exists(yaml_file):
         script.get_logger().info("YAML not found: " + yaml_file)
         return
 
-    # Read YAML as text
     with open(yaml_file, "r") as f:
         lines = f.readlines()
 
-    # Remove existing background block
+    # Remove existing background: block
     new_lines = []
     skip = False
     for line in lines:
@@ -72,54 +94,68 @@ def update_panel_yaml(panel_name, apply_colors=True):
                 skip = False
         new_lines.append(line.rstrip("\n"))
 
-    # Add background if applying colors
-    if apply_colors:
-        new_lines.append(colors_to_yaml_block(PANEL_COLORS[panel_name]))
+    # Add block if specified
+    if colors:
+        new_lines.append(colors_to_yaml_block(colors))
 
-    # Write YAML back
     with open(yaml_file, "w") as f:
         f.write("\n".join(new_lines) + "\n")
 
-# --- Main ---
-# Determine toggle state (applied or removed)
-apply_colors = True
-if os.path.exists(STATE_FILE):
-    with open(STATE_FILE, "r") as f:
-        state = f.read().strip()
-    apply_colors = state != "applied"
 
-# Update all panels
-for panel_name in PANEL_COLORS:
-    update_panel_yaml(panel_name, apply_colors=apply_colors)
+def apply_colors(option):
+    """Apply light, dark, or none → then reload."""
+    if option == "light":
+        colors_dict = PANEL_COLORS_LIGHT
+    elif option == "dark":
+        colors_dict = PANEL_COLORS_DARK
+    else:  # none
+        colors_dict = {k: None for k in PANEL_COLORS_LIGHT}
 
-# Save new state
-with open(STATE_FILE, "w") as f:
-    f.write("applied" if apply_colors else "removed")
+    for panel in colors_dict:
+        update_panel_yaml(panel, colors_dict[panel])
 
-# --- Reload pyRevit safely ---
-res = True
-if EXEC_PARAMS.executed_from_ui:
-    res = forms.alert('Reloading increases the memory footprint and is '
-                      'automatically called by pyRevit when necessary.\n\n'
-                      'pyRevit developers can manually reload when:\n'
-                      '    - New buttons are added.\n'
-                      '    - Buttons have been removed.\n'
-                      '    - Button icons have changed.\n'
-                      '    - Base C# code has changed.\n'
-                      '    - Value of pyRevit parameters\n'
-                      '      (e.g. __title__, __doc__, ...) have changed.\n'
-                      '    - Cached engines need to be cleared.\n\n'
-                      'Are you sure you want to reload?',
-                      ok=False, yes=True, no=True)
+    if EXEC_PARAMS.executed_from_ui:
+        res = forms.alert(
+            "Colors updated! PyRevit needs to reload to apply changes.",
+            ok=False, yes=True, no=True
+        )
+        if res:
+            logger = script.get_logger()
+            results = script.get_results()
+            logger.info("Reloading PyRevit...")
+            sessionmgr.reload_pyrevit()
+            results.newsession = sessioninfo.get_session_uuid()
 
-if res:
-    logger = script.get_logger()
-    results = script.get_results()
 
-    # re-load pyrevit session.
-    logger.info('Reloading....')
-    sessionmgr.reload_pyrevit()
+# --- Load XAML Window ---
+xaml_path = os.path.join(os.path.dirname(__file__), "ToolbarColors.xaml")
+with FileStream(xaml_path, FileMode.Open) as fs:
+    window = XamlReader.Load(fs)
 
-    results.newsession = sessioninfo.get_session_uuid()
 
-script.get_logger().info("CDY-ProTools toolbar colors " + ("applied" if apply_colors else "removed") + ".")
+# --- Load Logo into headerIcon ---
+logo_path = os.path.join(os.path.dirname(__file__), "icon.png")
+if os.path.exists(logo_path):
+    bmp = BitmapImage()
+    bmp.BeginInit()
+    bmp.UriSource = Uri(logo_path)
+    bmp.CacheOption = BitmapCacheOption.OnLoad
+    bmp.EndInit()
+
+    header_icon = window.FindName("headerIcon")
+    if header_icon:
+        header_icon.Source = bmp
+
+
+# --- Bind Buttons ---
+window.FindName("btnLight").Click += lambda s, e: apply_colors("light") or window.Close()
+window.FindName("btnDark").Click += lambda s, e: apply_colors("dark") or window.Close()
+window.FindName("btnNone").Click += lambda s, e: apply_colors("none") or window.Close()
+
+
+# --- Show Window ---
+app = Application.Current
+if not app:
+    app = Application()
+
+window.ShowDialog()
