@@ -9,12 +9,13 @@ import clr
 
 clr.AddReference("PresentationFramework")
 clr.AddReference("WindowsBase")
+clr.AddReference("PresentationCore")   # <-- REQUIRED for System.Windows.Media.Imaging
 clr.AddReference("System.Xaml")
 
+import System
 from System.IO import FileStream, FileMode
 from System.Windows.Markup import XamlReader
 from System.Windows import Application
-from System import Uri
 from System.Windows.Media.Imaging import BitmapImage, BitmapCacheOption
 
 from pyrevit import script, forms, EXEC_PARAMS
@@ -42,7 +43,6 @@ PANEL_COLORS_LIGHT = {
 
 # --- Helpers ---
 def darken_hex_color_simple(hex_color, amount=150):
-    """Subtract fixed value from RGB channels to make darker."""
     hex_color = hex_color.lstrip("#")
     r = max(0, int(hex_color[0:2], 16) - amount)
     g = max(0, int(hex_color[2:4], 16) - amount)
@@ -50,7 +50,7 @@ def darken_hex_color_simple(hex_color, amount=150):
     return "{:02x}{:02x}{:02x}".format(r, g, b)
 
 
-# Dark mode colors generated from light mode
+# Generate dark set
 PANEL_COLORS_DARK = {
     panel: {
         "panel": darken_hex_color_simple(colors["panel"]),
@@ -80,7 +80,6 @@ def update_panel_yaml(panel_name, colors=None):
     with open(yaml_file, "r") as f:
         lines = f.readlines()
 
-    # Remove existing background: block
     new_lines = []
     skip = False
     for line in lines:
@@ -94,7 +93,6 @@ def update_panel_yaml(panel_name, colors=None):
                 skip = False
         new_lines.append(line.rstrip("\n"))
 
-    # Add block if specified
     if colors:
         new_lines.append(colors_to_yaml_block(colors))
 
@@ -103,12 +101,11 @@ def update_panel_yaml(panel_name, colors=None):
 
 
 def apply_colors(option):
-    """Apply light, dark, or none → then reload."""
     if option == "light":
         colors_dict = PANEL_COLORS_LIGHT
     elif option == "dark":
         colors_dict = PANEL_COLORS_DARK
-    else:  # none
+    else:
         colors_dict = {k: None for k in PANEL_COLORS_LIGHT}
 
     for panel in colors_dict:
@@ -135,16 +132,16 @@ with FileStream(xaml_path, FileMode.Open) as fs:
 
 # --- Load Logo into headerIcon ---
 logo_path = os.path.join(os.path.dirname(__file__), "icon.png")
-if os.path.exists(logo_path):
+header_icon = window.FindName("headerIcon")
+
+if header_icon and os.path.exists(logo_path):
     bmp = BitmapImage()
     bmp.BeginInit()
-    bmp.UriSource = Uri(logo_path)
+    bmp.UriSource = System.Uri(logo_path)       # FIXED: System.Uri works everywhere
     bmp.CacheOption = BitmapCacheOption.OnLoad
     bmp.EndInit()
-
-    header_icon = window.FindName("headerIcon")
-    if header_icon:
-        header_icon.Source = bmp
+    bmp.Freeze()
+    header_icon.Source = bmp
 
 
 # --- Bind Buttons ---
