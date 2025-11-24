@@ -1,0 +1,8 @@
+engine: 
+  clean: true
+title:
+  en_us: Toolbar Colours
+tooltip: 
+  en_us: Toggles toolbar colours on/off. WARNING! Revit will slow down slightly every time this is ran.
+authors: >-
+  Joe Wemyss
