@@ -1,5 +1,3 @@
-highlight: new
-
 engine: 
   clean: true
 title:
@@ -10,4 +8,3 @@ tooltip:
     WARNING! Revit will slow down slightly every time this is ran.
 authors: >-
   Joe Wemyss
-

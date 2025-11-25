@@ -16,6 +16,15 @@
                        Margin="10,10,6,10" VerticalAlignment="Center" Foreground="White"/>
         </StackPanel>
 
+        <!-- Extension Selection -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
+            <TextBlock Text="Select Extension:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <ComboBox x:Name="extensionComboBox" Width="300"/>
+        </StackPanel>
+
+        <!-- Panel Grid Container -->
+        <StackPanel x:Name="panelGridContainer" Margin="0,0,0,12"/>
+
         <!-- Main Buttons + Previews -->
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10" Orientation="Vertical" >
 
@@ -27,6 +36,9 @@
                 </ScrollViewer>
             </Border>
 
+            <!-- Divider -->
+            <Rectangle Height="1" Fill="#DDD" Margin="0,0,0,8"/>
+
             <!-- Dark -->
             <Button x:Name="btnDark" Content="Apply Dark Mode Colours" Height="36" Margin="0,0,0,4"/>
             <Border Background="#3B4453" BorderBrush="#DDD" BorderThickness="1" CornerRadius="6" Padding="4" Margin="0,0,0,8">
@@ -35,22 +47,28 @@
                 </ScrollViewer>
             </Border>
 
-            <!-- Custom -->
-            <Button x:Name="btnApplyCustom" Content="Apply Custom Colours" Height="36" Margin="0,0,0,4"/>
+            <!-- Divider -->
+            <Rectangle Height="1" Fill="#DDD" Margin="0,0,0,8"/>
 
+            <!-- Custom -->
+            <Button x:Name="btnCustom" Content="Apply Custom Colours" Height="36" Margin="0,0,0,4"/>
             <Border Background="#EFEFEF" BorderBrush="#DDD" BorderThickness="1" CornerRadius="6" Padding="4" Margin="0,0,0,8">
                 <ScrollViewer Height="140" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
                     <StackPanel x:Name="customPreviewContainer"/>
                 </ScrollViewer>
             </Border>
 
+            <!-- Divider -->
+            <Rectangle Height="1" Fill="#DDD" Margin="0,0,0,8"/>
+
             <!-- None -->
             <Button x:Name="btnNone" Content="Remove All Colours" Height="36" Margin="0,0,0,4"/>
 
         </StackPanel>
 
-        <!-- Close Button -->
+        <!-- Reload Button -->
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,0">
+            <Button x:Name="btnReloadPyRevit" Width="200" Height="36" Margin="5" Content="Reload pyRevit with New Colours"/>
             <Button x:Name="closeBtn" Width="90" Height="28" Margin="5" Content="Close"/>
         </StackPanel>
     </DockPanel>
