@@ -1,25 +1,34 @@
 # -*- coding: utf-8 -*-
 """
 CDY-ProTools Toggle Toolbar Colors (UI via XAML)
-Displays previews for all panels in light/dark modes in a grid layout.
+Click a custom preview swatch to open the standard Windows color dialog (RGB).
+Apply Custom Colors writes the chosen colors into each panel's bundle.yaml.
 """
 
 import os
 import clr
 
+# WPF references
 clr.AddReference("PresentationFramework")
 clr.AddReference("WindowsBase")
 clr.AddReference("PresentationCore")
 clr.AddReference("System.Xaml")
 
+# Windows Forms for ColorDialog (Option A)
+clr.AddReference("System.Windows.Forms")
+clr.AddReference("System.Drawing")
+
 import System
 from System.IO import FileStream, FileMode
 from System.Windows.Markup import XamlReader
-from System.Windows import Application, Thickness, HorizontalAlignment, VerticalAlignment
+from System.Windows import Application, Thickness
 from System.Windows.Controls import StackPanel, TextBlock, Grid
-from System.Windows.Media import SolidColorBrush, Color
+from System.Windows.Media import SolidColorBrush, Color, ColorConverter
 from System.Windows.Media.Imaging import BitmapImage, BitmapCacheOption
 from System.Windows.Shapes import Rectangle
+
+import System.Windows.Forms as WinForms  # ColorDialog
+import System.Drawing as Drawing        # Sys drawing color
 
 from pyrevit import script, forms, EXEC_PARAMS
 from pyrevit.loader import sessionmgr, sessioninfo
@@ -60,15 +69,24 @@ PANEL_COLORS_DARK = {
     } for panel, colors in PANEL_COLORS_LIGHT.items()
 }
 
-# --- YAML update functions ---
+# Initialize custom colors as copies of light colors
+PANEL_COLORS_CUSTOM = {panel: colors.copy() for panel, colors in PANEL_COLORS_LIGHT.items()}
+
+# --- Helper functions ---
+def rgb_to_hex(r, g, b):
+    """Ensure valid 2-digit hex per channel."""
+    r = max(0, min(255, int(r)))
+    g = max(0, min(255, int(g)))
+    b = max(0, min(255, int(b)))
+    return "{:02x}{:02x}{:02x}".format(r, g, b)
+
 def colors_to_yaml_block(colors):
-    lines = [
+    return "\n".join([
         "background:",
-        "  panel: '{}'".format(colors["panel"]),
-        "  title: '{}'".format(colors["title"]),
-        "  slideout: '{}'".format(colors["slideout"])
-    ]
-    return "\n".join(lines)
+        "  panel: '{}'".format(colors["panel"].strip()),
+        "  title: '{}'".format(colors["title"].strip()),
+        "  slideout: '{}'".format(colors["slideout"].strip())
+    ])
 
 def update_panel_yaml(panel_name, colors=None):
     yaml_file = os.path.join(EXT_PATH, panel_name + ".panel", "bundle.yaml")
@@ -99,11 +117,19 @@ def apply_colors(option):
         colors_dict = PANEL_COLORS_LIGHT
     elif option == "dark":
         colors_dict = PANEL_COLORS_DARK
+    elif option == "custom":
+        colors_dict = PANEL_COLORS_CUSTOM
+    elif option == "none":
+        colors_dict = None
     else:
-        colors_dict = {k: {"panel":"ffffff","title":"ffffff","slideout":"ffffff"} for k in PANEL_ORDER}
+        colors_dict = PANEL_COLORS_CUSTOM
 
-    for panel in colors_dict:
-        update_panel_yaml(panel, colors_dict[panel])
+    if colors_dict is None:
+        for panel in PANEL_ORDER:
+            update_panel_yaml(panel, None)
+    else:
+        for panel in colors_dict:
+            update_panel_yaml(panel, colors_dict[panel])
 
     if EXEC_PARAMS.executed_from_ui:
         res = forms.alert(
@@ -135,18 +161,18 @@ if header_icon and os.path.exists(logo_path):
     header_icon.Source = bmp
 
 # --- Add panel grid previews ---
-def add_panel_grid(container, colors_dict, dark_mode=False):
+def add_panel_grid(container, colors_dict, dark_mode=False, custom_clickable=False):
+    container.Children.Clear()
     grid = Grid()
-    grid.Margin = Thickness(4, 4, 4, 4)
+    grid.Margin = Thickness(4,4,4,4)
 
-    # Columns: first for row labels + one per panel
+    # Column and row setup
     col_count = len(PANEL_ORDER) + 1
     for i in range(col_count):
         col = System.Windows.Controls.ColumnDefinition()
-        col.Width = System.Windows.GridLength(120 if i > 0 else 60)
+        col.Width = System.Windows.GridLength(120 if i>0 else 60)
         grid.ColumnDefinitions.Add(col)
 
-    # Rows: 1 header + 3 for Panel / Title / Slideout
     for r in range(4):
         row = System.Windows.Controls.RowDefinition()
         row.Height = System.Windows.GridLength(30)
@@ -156,79 +182,106 @@ def add_panel_grid(container, colors_dict, dark_mode=False):
     for row_index, label in enumerate(["", "Panel", "Title", "Slideout"]):
         tb = TextBlock(
             Text=label,
-            HorizontalAlignment=HorizontalAlignment.Center,
-            VerticalAlignment=VerticalAlignment.Center,
+            HorizontalAlignment=System.Windows.HorizontalAlignment.Center,
+            VerticalAlignment=System.Windows.VerticalAlignment.Center,
             FontWeight=System.Windows.FontWeights.Bold,
-            Foreground=SolidColorBrush(Color.FromRgb(255, 255, 255) if dark_mode else Color.FromRgb(0, 0, 0))
+            Foreground=SolidColorBrush(Color.FromRgb(255,255,255) if dark_mode else Color.FromRgb(0,0,0))
         )
-        Grid.SetRow(tb, row_index)
-        Grid.SetColumn(tb, 0)
+        System.Windows.Controls.Grid.SetRow(tb,row_index)
+        System.Windows.Controls.Grid.SetColumn(tb,0)
         grid.Children.Add(tb)
 
-    # Fill headers and color boxes
-    for col_index, panel in enumerate(PANEL_ORDER, start=1):
-        # Panel header
+    # Columns & swatches
+    for col_index, panel in enumerate(PANEL_ORDER,start=1):
         tb = TextBlock(
             Text=panel,
-            HorizontalAlignment=HorizontalAlignment.Center,
-            VerticalAlignment=VerticalAlignment.Center,
+            HorizontalAlignment=System.Windows.HorizontalAlignment.Center,
+            VerticalAlignment=System.Windows.VerticalAlignment.Center,
             FontWeight=System.Windows.FontWeights.Bold,
-            Foreground=SolidColorBrush(Color.FromRgb(255, 255, 255) if dark_mode else Color.FromRgb(0, 0, 0))
+            Foreground=SolidColorBrush(Color.FromRgb(255,255,255) if dark_mode else Color.FromRgb(0,0,0))
         )
-        Grid.SetRow(tb, 0)
-        Grid.SetColumn(tb, col_index)
+        System.Windows.Controls.Grid.SetRow(tb,0)
+        System.Windows.Controls.Grid.SetColumn(tb,col_index)
         grid.Children.Add(tb)
 
-        # Color boxes with bold inner text
-        for row_index, key in enumerate(["panel", "title", "slideout"], start=1):
+        for row_index, key in enumerate(["panel","title","slideout"],start=1):
             rect = Rectangle()
             rect.Width = 100
             rect.Height = 25
             rect.RadiusX = 5
             rect.RadiusY = 5
-            rect.Margin = Thickness(2, 2, 2, 2)
-            color_hex = colors_dict[panel][key]
-            c = Color.FromRgb(
-                int(color_hex[0:2], 16),
-                int(color_hex[2:4], 16),
-                int(color_hex[4:6], 16)
-            )
-            rect.Fill = SolidColorBrush(c)
+            rect.Margin = Thickness(2,2,2,2)
+
+            # static color for light/dark previews
+            hex_color = colors_dict[panel][key]
+            try:
+                wpf_color = ColorConverter.ConvertFromString("#{}".format(hex_color))
+                rect.Fill = SolidColorBrush(wpf_color)
+            except Exception:
+                rect.Fill = SolidColorBrush(Color.FromRgb(220,220,220))
 
             tb_inner = TextBlock(
                 Text=key.capitalize(),
-                HorizontalAlignment=HorizontalAlignment.Center,
-                VerticalAlignment=VerticalAlignment.Center,
-                FontWeight=System.Windows.FontWeights.Bold,  # bold
-                Foreground=SolidColorBrush(
-                    Color.FromRgb(255, 255, 255) if dark_mode else Color.FromRgb(0, 0, 0)
-                )
+                HorizontalAlignment=System.Windows.HorizontalAlignment.Center,
+                VerticalAlignment=System.Windows.VerticalAlignment.Center,
+                FontWeight=System.Windows.FontWeights.Bold,
+                Foreground=SolidColorBrush(Color.FromRgb(255,255,255) if dark_mode else Color.FromRgb(0,0,0))
             )
 
-            grid_overlay = Grid()
-            grid_overlay.Children.Add(rect)
-            grid_overlay.Children.Add(tb_inner)
+            overlay = Grid()
+            overlay.Children.Add(rect)
+            overlay.Children.Add(tb_inner)
 
-            Grid.SetRow(grid_overlay, row_index)
-            Grid.SetColumn(grid_overlay, col_index)
-            grid.Children.Add(grid_overlay)
+            # Only attach click handler if this is the CUSTOM preview
+            if custom_clickable:
+                def make_handler(rect_ref, p=panel, k=key):
+                    def handler(sender, args):
+                        dlg = WinForms.ColorDialog()
+                        try:
+                            hex_val = PANEL_COLORS_CUSTOM[p][k]
+                            r = int(hex_val[0:2],16)
+                            g = int(hex_val[2:4],16)
+                            b = int(hex_val[4:6],16)
+                            dlg.Color = Drawing.Color.FromArgb(r,g,b)
+                        except:
+                            pass
+                        if dlg.ShowDialog() == WinForms.DialogResult.OK:
+                            chosen = dlg.Color
+                            PANEL_COLORS_CUSTOM[p][k] = rgb_to_hex(chosen.R, chosen.G, chosen.B)
+                            rect_ref.Fill = SolidColorBrush(Color.FromRgb(chosen.R, chosen.G, chosen.B))
+                    return handler
+                overlay.MouseLeftButtonUp += make_handler(rect)
+
+            System.Windows.Controls.Grid.SetRow(overlay,row_index)
+            System.Windows.Controls.Grid.SetColumn(overlay,col_index)
+            grid.Children.Add(overlay)
 
     container.Children.Add(grid)
 
-
-# --- Containers in XAML ---
+# --- Containers ---
 light_container = window.FindName("lightPreviewContainer")
 dark_container  = window.FindName("darkPreviewContainer")
-# none_container  = window.FindName("nonePreviewContainer")  # removed completely
+custom_container = window.FindName("customPreviewContainer")
 
-# Add previews only for light and dark modes
-add_panel_grid(light_container, PANEL_COLORS_LIGHT, dark_mode=False)
-add_panel_grid(dark_container, PANEL_COLORS_DARK, dark_mode=True)
+# initial previews
+add_panel_grid(light_container, PANEL_COLORS_LIGHT, dark_mode=False, custom_clickable=False)
+add_panel_grid(dark_container, PANEL_COLORS_DARK, dark_mode=True, custom_clickable=False)
+add_panel_grid(custom_container, PANEL_COLORS_CUSTOM, dark_mode=False, custom_clickable=True)
 
-# --- Bind Buttons ---
-window.FindName("btnLight").Click += lambda s,e: apply_colors("light") or window.Close()
-window.FindName("btnDark").Click  += lambda s,e: apply_colors("dark")  or window.Close()
-window.FindName("btnNone").Click  += lambda s,e: apply_colors("none")  or window.Close()  # button still works
+# --- Wire buttons & events ---
+btn_apply_custom = window.FindName("btnApplyCustom")
+if btn_apply_custom:
+    btn_apply_custom.Click += lambda s,e: (apply_colors("custom") or window.Close())
+
+if window.FindName("btnLight"):
+    window.FindName("btnLight").Click  += lambda s,e: (apply_colors("light") or window.Close())
+if window.FindName("btnDark"):
+    window.FindName("btnDark").Click   += lambda s,e: (apply_colors("dark") or window.Close())
+if window.FindName("btnNone"):
+    window.FindName("btnNone").Click   += lambda s,e: (apply_colors("none") or window.Close())
+
+if window.FindName("closeBtn"):
+    window.FindName("closeBtn").Click  += lambda s,e: window.Close()
 
 # --- Show Window ---
 app = Application.Current

@@ -3,9 +3,8 @@ engine:
 title:
   en_us: Toolbar Colours
 tooltip: 
-  en_us: Toggles toolbar colours Light Mode / Dark Mode / Off. 
+  en_us: Toggles toolbar colours Light Mode / Dark Mode / Custom / Off.
   
     WARNING! Revit will slow down slightly every time this is ran.
 authors: >-
   Joe Wemyss
-
