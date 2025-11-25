@@ -1,6 +1,6 @@
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="CDY-ProTools Toolbar Colors"
+        Title="CDY-ProTools Toolbar Colours"
         Height="900" Width="900"
         WindowStartupLocation="CenterScreen"
         Background="#FAFAFA" Foreground="#222"
@@ -12,7 +12,7 @@
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="48"
                     Background="#0078D7" Margin="0,0,0,10">
             <Image Name="headerIcon" Width="24" Height="24" Margin="10,8"/>
-            <TextBlock Text="Toolbar Colors" FontSize="16" FontWeight="Bold"
+            <TextBlock Text="Toolbar Colours" FontSize="16" FontWeight="Bold"
                        Margin="10,10,6,10" VerticalAlignment="Center" Foreground="White"/>
         </StackPanel>
 
@@ -20,7 +20,7 @@
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10" Orientation="Vertical" >
 
             <!-- Light -->
-            <Button x:Name="btnLight" Content="Apply Light Mode Colors" Height="36" Margin="0,0,0,4"/>
+            <Button x:Name="btnLight" Content="Apply Light Mode Colours" Height="36" Margin="0,0,0,4"/>
             <Border Background="#F5F5F5" BorderBrush="#DDD" BorderThickness="1" CornerRadius="6" Padding="4" Margin="0,0,0,8">
                 <ScrollViewer Height="140" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
                     <StackPanel x:Name="lightPreviewContainer"/>
@@ -28,7 +28,7 @@
             </Border>
 
             <!-- Dark -->
-            <Button x:Name="btnDark" Content="Apply Dark Mode Colors" Height="36" Margin="0,0,0,4"/>
+            <Button x:Name="btnDark" Content="Apply Dark Mode Colours" Height="36" Margin="0,0,0,4"/>
             <Border Background="#3B4453" BorderBrush="#DDD" BorderThickness="1" CornerRadius="6" Padding="4" Margin="0,0,0,8">
                 <ScrollViewer Height="140" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
                     <StackPanel x:Name="darkPreviewContainer"/>
@@ -36,7 +36,7 @@
             </Border>
 
             <!-- Custom -->
-            <Button x:Name="btnApplyCustom" Content="Apply Custom Colors" Height="36" Margin="0,0,0,4"/>
+            <Button x:Name="btnApplyCustom" Content="Apply Custom Colours" Height="36" Margin="0,0,0,4"/>
 
             <Border Background="#EFEFEF" BorderBrush="#DDD" BorderThickness="1" CornerRadius="6" Padding="4" Margin="0,0,0,8">
                 <ScrollViewer Height="140" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
@@ -45,7 +45,7 @@
             </Border>
 
             <!-- None -->
-            <Button x:Name="btnNone" Content="Remove All Colors" Height="36" Margin="0,0,0,4"/>
+            <Button x:Name="btnNone" Content="Remove All Colours" Height="36" Margin="0,0,0,4"/>
 
         </StackPanel>
 

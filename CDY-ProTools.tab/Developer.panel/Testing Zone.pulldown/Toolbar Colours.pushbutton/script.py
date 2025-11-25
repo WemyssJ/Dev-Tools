@@ -2,11 +2,18 @@
 """
 CDY-ProTools Toggle Toolbar Colors (UI via XAML)
 Click a custom preview swatch to open the standard Windows color dialog (RGB).
-Apply Custom Colors writes the chosen colors into each panel's bundle.yaml.
+Apply Custom Colors writes the chosen colors into each panel's bundle.yaml and saves them to CDY-ProToolsColors.ini.
 """
 
 import os
 import clr
+import json
+
+# --- ConfigParser compatibility for IronPython ---
+try:
+    import configparser  # Python 3
+except ImportError:
+    import ConfigParser as configparser  # Python 2 / IronPython
 
 # WPF references
 clr.AddReference("PresentationFramework")
@@ -14,7 +21,7 @@ clr.AddReference("WindowsBase")
 clr.AddReference("PresentationCore")
 clr.AddReference("System.Xaml")
 
-# Windows Forms for ColorDialog (Option A)
+# Windows Forms for ColorDialog
 clr.AddReference("System.Windows.Forms")
 clr.AddReference("System.Drawing")
 
@@ -22,18 +29,18 @@ import System
 from System.IO import FileStream, FileMode
 from System.Windows.Markup import XamlReader
 from System.Windows import Application, Thickness
-from System.Windows.Controls import StackPanel, TextBlock, Grid
+from System.Windows.Controls import Grid, TextBlock
 from System.Windows.Media import SolidColorBrush, Color, ColorConverter
 from System.Windows.Media.Imaging import BitmapImage, BitmapCacheOption
 from System.Windows.Shapes import Rectangle
 
-import System.Windows.Forms as WinForms  # ColorDialog
-import System.Drawing as Drawing        # Sys drawing color
+import System.Windows.Forms as WinForms
+import System.Drawing as Drawing
 
 from pyrevit import script, forms, EXEC_PARAMS
 from pyrevit.loader import sessionmgr, sessioninfo
 
-# --- Config ---
+# --- Paths ---
 EXT_PATH = os.path.join(
     os.getenv("APPDATA"),
     "pyRevit",
@@ -42,9 +49,12 @@ EXT_PATH = os.path.join(
     "CDY-ProTools.tab"
 )
 
+CONFIG_PATH = os.path.join(os.getenv("APPDATA"), "pyRevit", "CDY-ProToolsColors.ini")
+
 PANEL_ORDER = ["General", "Quality Assurance", "Model Management",
                "Drawing Tools", "References", "Developer"]
 
+# --- Default Colors ---
 PANEL_COLORS_LIGHT = {
     "General": {"panel": "fffbfb", "title": "fff3f3", "slideout": "ffffff"},
     "Quality Assurance": {"panel": "fbfffb", "title": "f3fff3", "slideout": "ffffff"},
@@ -69,12 +79,43 @@ PANEL_COLORS_DARK = {
     } for panel, colors in PANEL_COLORS_LIGHT.items()
 }
 
-# Initialize custom colors as copies of light colors
+# --- Load saved custom colors ---
 PANEL_COLORS_CUSTOM = {panel: colors.copy() for panel, colors in PANEL_COLORS_LIGHT.items()}
 
-# --- Helper functions ---
+def load_custom_colors():
+    if os.path.exists(CONFIG_PATH):
+        config = configparser.ConfigParser()
+        config.read(CONFIG_PATH)
+        section = "ToolbarColors"
+        if config.has_section(section):
+            for panel in PANEL_ORDER:
+                if config.has_option(section, panel):
+                    val = config.get(section, panel)
+                    try:
+                        PANEL_COLORS_CUSTOM[panel] = json.loads(val)
+                    except:
+                        pass
+
+load_custom_colors()
+
+def save_custom_colors():
+    ini_dir = os.path.dirname(CONFIG_PATH)
+    if not os.path.exists(ini_dir):
+        os.makedirs(ini_dir)
+
+    config = configparser.ConfigParser()
+    section = "ToolbarColors"
+    if os.path.exists(CONFIG_PATH):
+        config.read(CONFIG_PATH)
+    if not config.has_section(section):
+        config.add_section(section)
+    for panel, colors in PANEL_COLORS_CUSTOM.items():
+        config.set(section, panel, json.dumps(colors))
+    with open(CONFIG_PATH, "w") as f:
+        config.write(f)
+
+# --- Helpers ---
 def rgb_to_hex(r, g, b):
-    """Ensure valid 2-digit hex per channel."""
     r = max(0, min(255, int(r)))
     g = max(0, min(255, int(g)))
     b = max(0, min(255, int(b)))
@@ -119,6 +160,7 @@ def apply_colors(option):
         colors_dict = PANEL_COLORS_DARK
     elif option == "custom":
         colors_dict = PANEL_COLORS_CUSTOM
+        save_custom_colors()
     elif option == "none":
         colors_dict = None
     else:
@@ -160,13 +202,12 @@ if header_icon and os.path.exists(logo_path):
     bmp.Freeze()
     header_icon.Source = bmp
 
-# --- Add panel grid previews ---
+# --- Panel Grid Preview ---
 def add_panel_grid(container, colors_dict, dark_mode=False, custom_clickable=False):
     container.Children.Clear()
     grid = Grid()
     grid.Margin = Thickness(4,4,4,4)
 
-    # Column and row setup
     col_count = len(PANEL_ORDER) + 1
     for i in range(col_count):
         col = System.Windows.Controls.ColumnDefinition()
@@ -178,7 +219,6 @@ def add_panel_grid(container, colors_dict, dark_mode=False, custom_clickable=Fal
         row.Height = System.Windows.GridLength(30)
         grid.RowDefinitions.Add(row)
 
-    # Row labels
     for row_index, label in enumerate(["", "Panel", "Title", "Slideout"]):
         tb = TextBlock(
             Text=label,
@@ -191,7 +231,6 @@ def add_panel_grid(container, colors_dict, dark_mode=False, custom_clickable=Fal
         System.Windows.Controls.Grid.SetColumn(tb,0)
         grid.Children.Add(tb)
 
-    # Columns & swatches
     for col_index, panel in enumerate(PANEL_ORDER,start=1):
         tb = TextBlock(
             Text=panel,
@@ -212,12 +251,11 @@ def add_panel_grid(container, colors_dict, dark_mode=False, custom_clickable=Fal
             rect.RadiusY = 5
             rect.Margin = Thickness(2,2,2,2)
 
-            # static color for light/dark previews
             hex_color = colors_dict[panel][key]
             try:
                 wpf_color = ColorConverter.ConvertFromString("#{}".format(hex_color))
                 rect.Fill = SolidColorBrush(wpf_color)
-            except Exception:
+            except:
                 rect.Fill = SolidColorBrush(Color.FromRgb(220,220,220))
 
             tb_inner = TextBlock(
@@ -232,7 +270,6 @@ def add_panel_grid(container, colors_dict, dark_mode=False, custom_clickable=Fal
             overlay.Children.Add(rect)
             overlay.Children.Add(tb_inner)
 
-            # Only attach click handler if this is the CUSTOM preview
             if custom_clickable:
                 def make_handler(rect_ref, p=panel, k=key):
                     def handler(sender, args):
@@ -263,12 +300,11 @@ light_container = window.FindName("lightPreviewContainer")
 dark_container  = window.FindName("darkPreviewContainer")
 custom_container = window.FindName("customPreviewContainer")
 
-# initial previews
 add_panel_grid(light_container, PANEL_COLORS_LIGHT, dark_mode=False, custom_clickable=False)
 add_panel_grid(dark_container, PANEL_COLORS_DARK, dark_mode=True, custom_clickable=False)
 add_panel_grid(custom_container, PANEL_COLORS_CUSTOM, dark_mode=False, custom_clickable=True)
 
-# --- Wire buttons & events ---
+# --- Wire Buttons ---
 btn_apply_custom = window.FindName("btnApplyCustom")
 if btn_apply_custom:
     btn_apply_custom.Click += lambda s,e: (apply_colors("custom") or window.Close())
