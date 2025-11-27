@@ -66,6 +66,7 @@
       - v1.2.14: Coming Soon tools updated
       - v1.2.15: Beam tools added + UI improvements
       - v1.2.16: QSelect + Theme testing
+      - v1.2.17: Rocket Mode Enabled
 
 
 

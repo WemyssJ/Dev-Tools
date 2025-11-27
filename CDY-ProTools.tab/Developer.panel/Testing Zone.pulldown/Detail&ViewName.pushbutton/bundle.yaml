@@ -1,5 +1,3 @@
-engine: 
-  clean: true
 title:
   en_us: Detail&ViewName
 tooltip: 
