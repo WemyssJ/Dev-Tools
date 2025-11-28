@@ -25,6 +25,7 @@ uidoc = revit.uidoc
 
 PARAMS_TO_CHECK = ["Type Name", "Type", "Height", "Perimeter", "Length", "Width", "Depth"]
 
+
 # ---------------- Helper Functions ----------------
 def make_color(r, g, b):
     return DB.Color(r, g, b)
@@ -125,11 +126,27 @@ def prepare_view(view3d, doc):
     view3d.IsSectionBoxActive = True
     return view3d
 
+
 # ---------------- UI ----------------
 def show_ui(xaml_path):
     fs = FileStream(xaml_path, FileMode.Open, FileAccess.Read)
     window = XamlReader.Load(fs)
     fs.Close()
+
+    # --- Load header icon (FIXED LOCATION) ---
+    icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
+    if os.path.exists(icon_path):
+        try:
+            bmp = BitmapImage()
+            bmp.BeginInit()
+            bmp.UriSource = Uri(icon_path)
+            bmp.CacheOption = BitmapCacheOption.OnLoad
+            bmp.EndInit()
+            header_img = window.FindName("headerIcon")
+            if header_img is not None:
+                header_img.Source = bmp
+        except:
+            pass
 
     # --- UI Controls ---
     cancelBtn = window.FindName("cancelBtn")
@@ -149,6 +166,10 @@ def show_ui(xaml_path):
     loadConfigBtn = window.FindName("loadConfigBtn")
     exportForm = window.FindName("exportForm")
     importForm = window.FindName("importForm")
+
+    # (EVERYTHING BELOW THIS BLOCK REMAINS IDENTICAL TO YOUR ORIGINAL SCRIPT)
+    # ----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
 
     # --- Auto-fill Job Info ---
     project_info = doc.ProjectInformation
@@ -390,30 +411,18 @@ def show_ui(xaml_path):
     window.ShowDialog()
     return getattr(window, "Tag", None)
 
+
 # ---------------- MAIN ----------------
 xaml_path = os.path.join(script.get_script_path(), "whats_changed_ui.xaml")
 result = show_ui(xaml_path)
 if not result:
     script.exit()
-    
+
 action, file_path, new_col, moved_col, changed_col, model_choice = result
 output.print_md("**Action:** {} | **File:** {}".format(action, file_path))
 
-# --- Load header icon ---
-icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
-if os.path.exists(icon_path):
-    bmp = BitmapImage()
-    bmp.BeginInit()
-    bmp.UriSource = Uri(icon_path)
-    bmp.CacheOption = BitmapCacheOption.OnLoad
-    bmp.EndInit()
-    header_img = window.FindName("headerIcon")
-    if header_img is not None:
-        header_img.Source = bmp
 
-
-
-# Handle linked document selection
+# --- LINKED DOCUMENT HANDLING ---
 target_doc = doc
 if action == "Export" and model_choice and model_choice != "This Model":
     base_choice = model_choice.replace(" (unloaded)", "")
