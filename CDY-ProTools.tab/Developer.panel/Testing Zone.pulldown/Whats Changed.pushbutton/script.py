@@ -131,19 +131,7 @@ def show_ui(xaml_path):
     window = XamlReader.Load(fs)
     fs.Close()
 
-    # --- Load header icon ---
-    icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
-    if os.path.exists(icon_path):
-        bmp = BitmapImage()
-        bmp.BeginInit()
-        bmp.UriSource = Uri(icon_path)
-        bmp.CacheOption = BitmapCacheOption.OnLoad
-        bmp.EndInit()
-        header_img = window.FindName("headerIcon")
-        if header_img is not None:
-            header_img.Source = bmp
-
-    # --- Find controls ---
+    # --- UI Controls ---
     cancelBtn = window.FindName("cancelBtn")
     okBtn = window.FindName("okBtn")
     importToggle = window.FindName("importToggle")
@@ -162,38 +150,241 @@ def show_ui(xaml_path):
     exportForm = window.FindName("exportForm")
     importForm = window.FindName("importForm")
 
-    # --- Default values ---
-    exportForm.Visibility = Visibility.Collapsed
+    # --- Auto-fill Job Info ---
+    project_info = doc.ProjectInformation
+
+    def get_param_value(el, param_name, fallback=""):
+        try:
+            p = el.LookupParameter(param_name)
+            if p and p.HasValue:
+                val = p.AsString()
+                if val and val.strip():
+                    return val.strip()
+        except:
+            pass
+        return fallback
+
+    craddys_job = get_param_value(project_info, "Craddys Job Number")
+    project_number = get_param_value(project_info, "Project Number")
+    job_name_default = get_param_value(project_info, "Project Name", fallback="TBC")
+
+    parts = []
+    if craddys_job:
+        parts.append(craddys_job)
+    if project_number:
+        parts.append(project_number)
+
+    job_number_default = "_".join(parts)
+    jobBox.Text = job_name_default
+    jobNumberBox.Text = job_number_default
+
+    # --- Filename Preview & Hover ---
+    def get_item_text(item, fallback=""):
+        if item is None:
+            return fallback
+        try:
+            return str(item.Content)
+        except AttributeError:
+            return str(item)
+
+    def get_filename_parts():
+        prefix = jobNumberBox.Text.strip() or "TBC_"
+        job_name = jobBox.Text.strip() or "TBC"
+        revision = revisionBox.Text.strip() or "P00"
+        discipline = get_item_text(disciplineBox.SelectedItem, fallback="Discipline")
+        model_name = get_item_text(modelSourceBox.SelectedItem, fallback="This Model")
+        model_name_clean = model_name.replace(".rvt", "").replace(" (unloaded)", "")
+        return {
+            "prefix": prefix,
+            "discipline": discipline,
+            "job": job_name,
+            "revision": revision,
+            "model": model_name_clean
+        }
+
+    def update_filename_display(highlight=None, *args):
+        parts = get_filename_parts()
+        separator = "_"
+        anticipatedFileName.Inlines.Clear()
+        keys = ["prefix", "discipline", "job", "revision", "model"]
+        for i, key in enumerate(keys):
+            run = Run()
+            run.Text = parts[key]
+            if highlight == key:
+                run.Foreground = Brushes.Red
+            anticipatedFileName.Inlines.Add(run)
+            if i < len(keys) - 1:
+                anticipatedFileName.Inlines.Add(Run(separator))
+
+    def attach_hover(ctrl, key):
+        def enter(sender, e):
+            update_filename_display(highlight=key)
+        def leave(sender, e):
+            update_filename_display(highlight=None)
+        ctrl.MouseEnter += MouseEventHandler(enter)
+        ctrl.MouseLeave += MouseEventHandler(leave)
+
+    update_filename_display()
+    attach_hover(jobNumberBox, "prefix")
+    attach_hover(disciplineBox, "discipline")
+    attach_hover(jobBox, "job")
+    attach_hover(revisionBox, "revision")
+    attach_hover(modelSourceBox, "model")
+
+    jobNumberBox.TextChanged += update_filename_display
+    jobBox.TextChanged += update_filename_display
+    revisionBox.TextChanged += update_filename_display
+    modelSourceBox.SelectionChanged += update_filename_display
+    disciplineBox.SelectionChanged += update_filename_display
+
+    # --- Discipline dropdown ---
+    disciplineBox.Items.Clear()
+    for d in ["Structures", "Architect", "M&E"]:
+        disciplineBox.Items.Add(d)
+    disciplineBox.SelectedIndex = 0
+
+    # --- Model source dropdown ---
+    modelSourceBox.Items.Clear()
+    item_this = ComboBoxItem()
+    item_this.Content = "This Model"
+    item_this.IsEnabled = True
+    modelSourceBox.Items.Add(item_this)
+
+    link_instances = list(DB.FilteredElementCollector(doc).OfClass(DB.RevitLinkInstance))
+    seen = set()
+    for link in link_instances:
+        try:
+            lname = link.Name
+            if lname in seen:
+                lname = "{} ({})".format(lname, link.Id.IntegerValue)
+            seen.add(lname)
+            try:
+                linked_doc = link.GetLinkDocument()
+            except:
+                linked_doc = None
+            ci = ComboBoxItem()
+            if linked_doc:
+                ci.Content = lname
+                ci.IsEnabled = True
+            else:
+                ci.Content = lname + " (unloaded)"
+                ci.IsEnabled = False
+            modelSourceBox.Items.Add(ci)
+        except:
+            continue
+
+    modelSourceBox.SelectedIndex = 0
     importToggle.IsChecked = True
-    exportToggle.IsChecked = False
+    exportForm.Visibility = Visibility.Collapsed
 
     # --- UI Event Handlers ---
+    def toggle_export(sender, e):
+        exportForm.Visibility = Visibility.Visible
+        importToggle.IsChecked = False
+        importForm.Visibility = Visibility.Collapsed
+        saveConfigBtn.Visibility = Visibility.Collapsed
+        loadConfigBtn.Visibility = Visibility.Collapsed
+
+    def toggle_import(sender, e):
+        exportForm.Visibility = Visibility.Collapsed
+        exportToggle.IsChecked = False
+        importForm.Visibility = Visibility.Visible
+        saveConfigBtn.Visibility = Visibility.Visible
+        loadConfigBtn.Visibility = Visibility.Visible
+
+    exportToggle.Checked += toggle_export
+    importToggle.Checked += toggle_import
+
+    colors = {"new": (0, 255, 0), "moved": (255, 165, 0), "changed": (0, 100, 255)}
+
+    def pick_color(key, rect):
+        dlg = ColorDialog()
+        dlg.FullOpen = True
+        if dlg.ShowDialog() == DialogResult.OK:
+            val = dlg.Color
+            colors[key] = (val.R, val.G, val.B)
+            rect.Background = SolidColorBrush(Color.FromRgb(val.R, val.G, val.B))
+
+    newRect.MouseLeftButtonDown += lambda s, e: pick_color("new", newRect)
+    movedRect.MouseLeftButtonDown += lambda s, e: pick_color("moved", movedRect)
+    changedRect.MouseLeftButtonDown += lambda s, e: pick_color("changed", changedRect)
+
+    config_path = os.path.join(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                               "pyRevit", "WhatChangedColourConfig.json")
+
+    def save_config(colors):
+        colors_json = {}
+        for k in colors:
+            colors_json[k] = []
+            for c in colors[k]:
+                colors_json[k].append(int(c))
+        folder = os.path.dirname(config_path)
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        with codecs.open(config_path, 'w', 'utf-8') as f:
+            json.dump(colors_json, f, indent=2)
+
+    def load_config():
+        if not os.path.exists(config_path):
+            forms.alert("⚠️ No saved configuration found.", title="What's Changed?", ok=True)
+            return None
+        with codecs.open(config_path, 'r', 'utf-8') as f:
+            colors_json = json.load(f)
+        loaded_colors = {}
+        for k in colors_json:
+            loaded_colors[k] = tuple(colors_json[k])
+        return loaded_colors
+
+    saveConfigBtn.Click += lambda s, e: save_config(colors)
+
+    def load_click(s, e):
+        loaded = load_config()
+        if loaded:
+            for k in loaded:
+                colors[k] = loaded[k]
+            newRect.Background = SolidColorBrush(Color.FromRgb(*colors["new"]))
+            movedRect.Background = SolidColorBrush(Color.FromRgb(*colors["moved"]))
+            changedRect.Background = SolidColorBrush(Color.FromRgb(*colors["changed"]))
+
+    loadConfigBtn.Click += load_click
+
     def cancel_click(sender, e):
         window.Tag = None
         window.Close()
 
-    cancelBtn.Click += cancel_click
-
-    # --- OK button ---
-    def get_item_text(item, fallback="This Model"):
-        try:
-            return str(item.Content)
-        except:
-            return str(item) if item else fallback
-
     def ok_click(sender, args):
-        selected_model = get_item_text(modelSourceBox.SelectedItem)
+        selected_model = get_item_text(modelSourceBox.SelectedItem, fallback="This Model")
         dlg_type = "Export" if exportToggle.IsChecked else "Import"
-        window.Tag = (
-            dlg_type,
-            "",  # placeholder for file path
-            (0, 255, 0),
-            (255, 165, 0),
-            (0, 100, 255),
-            selected_model
-        )
+        filename_parts = get_filename_parts()
+        safe_model_name = re.sub(r'[<>:"/\\|?*]', '_', filename_parts["model"])
+        prefix = "{}".format(filename_parts["prefix"])
+
+        if dlg_type == "Export":
+            dlg = FolderBrowserDialog()
+            if dlg.ShowDialog() == DialogResult.OK:
+                folder = dlg.SelectedPath
+                filename = "{}{}_{}_{}_({}).json".format(
+                    prefix,
+                    filename_parts["discipline"],
+                    filename_parts["job"],
+                    filename_parts["revision"],
+                    safe_model_name
+                )
+                dlg_file = os.path.join(folder, filename)
+            else:
+                return
+        elif dlg_type == "Import":
+            dlg = OpenFileDialog()
+            dlg.Filter = "JSON Files|*.json"
+            if dlg.ShowDialog() == DialogResult.OK:
+                dlg_file = dlg.FileName
+            else:
+                return
+
+        window.Tag = (dlg_type, dlg_file, colors["new"], colors["moved"], colors["changed"], selected_model)
         window.Close()
 
+    cancelBtn.Click += cancel_click
     okBtn.Click += ok_click
 
     window.ShowDialog()
@@ -204,9 +395,23 @@ xaml_path = os.path.join(script.get_script_path(), "whats_changed_ui.xaml")
 result = show_ui(xaml_path)
 if not result:
     script.exit()
-
+    
 action, file_path, new_col, moved_col, changed_col, model_choice = result
 output.print_md("**Action:** {} | **File:** {}".format(action, file_path))
+
+# --- Load header icon ---
+icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
+if os.path.exists(icon_path):
+    bmp = BitmapImage()
+    bmp.BeginInit()
+    bmp.UriSource = Uri(icon_path)
+    bmp.CacheOption = BitmapCacheOption.OnLoad
+    bmp.EndInit()
+    header_img = window.FindName("headerIcon")
+    if header_img is not None:
+        header_img.Source = bmp
+
+
 
 # Handle linked document selection
 target_doc = doc
@@ -302,4 +507,3 @@ output.print_html("<b>Moved elements:</b> {} {}".format(rgb_block(moved_col), le
 output.print_html("<b>Parameter changes:</b> {} {}".format(rgb_block(changed_col), len(param_changed_ids)))
 deleted_ids = set(prev_data.keys()) - set(current_data.keys())
 output.print_md("**Deleted elements:** {} ❌".format(len(deleted_ids)))
-
