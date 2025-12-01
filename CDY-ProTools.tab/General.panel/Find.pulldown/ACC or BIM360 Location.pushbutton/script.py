@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 __title__ = 'ACC or BIM360 Location'
 __author__  = 'Tay Othman, Joe Wemyss'
-__doc__ = """Open the Autodesk Construction Cloud (ACC) website for the current project in the default web browser.
-            Author: Tay Othman, Joe Wemyss """
+__doc__ = """Open the Autodesk Construction Cloud (ACC) website for the current project in the default web browser. EU = Normal Click, GB = Shift Click"""
 
 # _________________________________________________________________________________________.NET imports
 import clr
@@ -40,3 +39,4 @@ if revit_version == "2020":
     TaskDialog.Show("Revit Version", "Revit Version is 2020, this tool is compatible with Revit 2022 and Newer")
 else:
     webbrowser.open_new_tab(accurl)
+
