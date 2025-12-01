@@ -16,28 +16,27 @@ import os
 revit_version = __revit__.Application.VersionNumber
 doc = __revit__.ActiveUIDocument.Document
 
+# -----------------------------
+# Determine URL
+# -----------------------------
+hub_id = Document.GetHubId(doc)
+proj_id = Document.GetProjectId(doc)
+hub_str = hub_id[2:]
+proj_str = proj_id[2:]
+
+try:
+    if __shiftclick__:  # Shift-click → GBR region
+        accurl = "https://acc.gbr.autodesk.com/insight/accounts/" + hub_str + "/projects/" + proj_str + "/my-dashboard"
+    else:  # Normal click → EU region
+        accurl = "https://acc.autodesk.eu/insight/accounts/" + hub_str + "/projects/" + proj_str + "/home"
+except NameError:
+    # Fallback if __shiftclick__ is not defined
+    accurl = "https://acc.autodesk.eu/insight/accounts/" + hub_str + "/projects/" + proj_str + "/home"
+
+# -----------------------------
+# Open URL based on Revit version
+# -----------------------------
 if revit_version == "2020":
-    # Show a task dialog with the message
     TaskDialog.Show("Revit Version", "Revit Version is 2020, this tool is compatible with Revit 2022 and Newer")
-elif revit_version == "2022":
-    # Continue running the script
-    doc = __revit__.ActiveUIDocument.Document
-    hub_id = Document.GetHubId(doc)
-    proj_id = Document.GetProjectId(doc)
-    hub_str = hub_id[2:]
-    proj_str = proj_id[2:]
-    accurl = "https://acc.autodesk.eu/insight/accounts/" + hub_str + "/projects/" + proj_str + "/home"
-    # TaskDialog.Show("GetHubId and GetProjectId", accurl)
-    webbrowser.open_new_tab(accurl)
 else:
-    # Continue running the script
-    doc = __revit__.ActiveUIDocument.Document
-    hub_id = Document.GetHubId(doc)
-    proj_id = Document.GetProjectId(doc)
-    hub_str = hub_id[2:]
-    proj_str = proj_id[2:]
-    accurl = "https://acc.autodesk.eu/insight/accounts/" + hub_str + "/projects/" + proj_str + "/home"
-    # TaskDialog.Show("GetHubId and GetProjectId", accurl)
     webbrowser.open_new_tab(accurl)
-
-
