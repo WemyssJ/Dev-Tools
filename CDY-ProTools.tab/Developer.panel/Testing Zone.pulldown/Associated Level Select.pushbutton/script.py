@@ -86,52 +86,66 @@ class MasterSelectWindow(forms.WPFWindow):
         # Close window after operation
         self.Close()
 
-    # ------------------ Level Selection ------------------
+    # ------------------ Level Selection (MULTI-SELECT) ------------------
     def select_by_level(self, sender, args):
         levels = list(FilteredElementCollector(doc).OfClass(Level))
         level_names = [lvl.Name for lvl in levels]
 
-        selected_level_name = forms.SelectFromList.show(
+        selected_level_names = forms.SelectFromList.show(
             level_names,
-            title="Select a Level",
-            multiselect=False
+            title="Select Level(s)",
+            multiselect=True
         )
-        if not selected_level_name:
+        if not selected_level_names:
             forms.alert("Operation cancelled")
             return
 
-        selected_level = next(lvl for lvl in levels if lvl.Name == selected_level_name)
-        selected_level_id = selected_level.Id
+        # Convert names -> Level objects
+        selected_levels = [lvl for lvl in levels if lvl.Name in selected_level_names]
+        selected_level_ids = {lvl.Id for lvl in selected_levels}   # use a set for fast lookup
 
         all_elements = FilteredElementCollector(doc).WhereElementIsNotElementType()
-        elements_on_level = []
+        elements_on_levels = []
 
         for e in all_elements:
+            # Base level
             base_param = e.get_Parameter(BuiltInParameter.LEVEL_PARAM)
+            if base_param and base_param.HasValue and base_param.AsElementId() in selected_level_ids:
+                elements_on_levels.append(e)
+                continue
+
+            # Ref level
             ref_param = e.get_Parameter(BuiltInParameter.INSTANCE_REFERENCE_LEVEL_PARAM)
-
-            if (base_param and base_param.HasValue and base_param.AsElementId() == selected_level_id) \
-                or (ref_param and ref_param.HasValue and ref_param.AsElementId() == selected_level_id):
-                elements_on_level.append(e)
+            if ref_param and ref_param.HasValue and ref_param.AsElementId() in selected_level_ids:
+                elements_on_levels.append(e)
                 continue
 
+            # Wall top constraint
             wall_top = e.get_Parameter(BuiltInParameter.WALL_HEIGHT_TYPE)
-            if wall_top and wall_top.HasValue and wall_top.AsElementId() == selected_level_id:
-                elements_on_level.append(e)
+            if wall_top and wall_top.HasValue and wall_top.AsElementId() in selected_level_ids:
+                elements_on_levels.append(e)
                 continue
 
+            # Generic "Top Level"
             top_level_param = e.LookupParameter("Top Level")
-            if top_level_param and top_level_param.HasValue and top_level_param.AsElementId() == selected_level_id:
-                elements_on_level.append(e)
+            if top_level_param and top_level_param.HasValue and top_level_param.AsElementId() in selected_level_ids:
+                elements_on_levels.append(e)
                 continue
 
-        element_ids = List[ElementId]([e.Id for e in elements_on_level])
+        # Select results in Revit
+        element_ids = List[ElementId]([e.Id for e in elements_on_levels])
         uidoc.Selection.SetElementIds(element_ids)
 
-        forms.alert("Selected {} elements on level: {}".format(len(elements_on_level), selected_level_name))
+        forms.alert(
+            "Selected {} elements on {} levels:\n{}".format(
+                len(elements_on_levels),
+                len(selected_level_names),
+                ", ".join(selected_level_names)
+            )
+        )
 
-        # Close window after operation
         self.Close()
+
 
     # ------------------ Cancel ------------------
     def cancel(self, sender, args):
