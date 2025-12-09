@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 CAD Layer Quick Override (pyRevit / IronPython)
-- Pick a CAD entity (DWG) and override its DWG layer (subcategory) in the active view
-- Options: Hide, Set Lineweight, Set Color, Set Linestyle, Reset
-- FIX: Preserves previous override settings when applying new ones
+- Pick a CAD entity (DWG) and override its DWG layers in the active view or template
+- Options: Hide, Set Lineweight, Set Color, Set Linestyle, Reset, GreyScale DWG
+- Preserves previous override settings when applying new ones
+- GreyScale DWG now applies to all layers in the selected CAD import
 """
 from pyrevit import forms, revit, DB, script
 from Autodesk.Revit.UI import Selection
@@ -28,7 +29,6 @@ def get_cad_layer_from_pick():
     import_inst = None
     gs_id = None
 
-    # If user picked an ImportInstance, extract geometry
     if isinstance(picked, ImportInstance):
         import_inst = picked
         try:
@@ -37,7 +37,6 @@ def get_cad_layer_from_pick():
         except:
             gs_id = None
     else:
-        # Walk up to parent ImportInstance
         parent = picked
         while parent:
             if isinstance(parent, ImportInstance):
@@ -64,13 +63,30 @@ def get_cad_layer_from_pick():
 
 # -------------------- ACTION --------------------
 def ask_action(layer_name):
-    choices = ["Hide Layer", "Set Lineweight", "Set Color", "Set Linestyle", "Reset Overrides"]
-    res = forms.SelectFromList.show(choices, title="DWG Layer: {}".format(layer_name), multiselect=False)
+    # List of choices in desired order
+    choices = [
+        "[Layer] Hide",
+        "[Layer] Set Lineweight",
+        "[Layer] Set Color",
+        "[Layer] Set Linestyle",
+        "[Layer] Reset Overrides",
+        "[DWG] GreyScale"
+    ]
+    # Corresponding action codes in same order
+    action_codes = ["hide", "lw", "color", "linestyle", "reset", "greyscale"]
+
+    res = forms.SelectFromList.show(
+        choices,
+        title="DWG Layer: {}".format(layer_name),
+        multiselect=False,
+        sort=False  # prevents automatic alphabetical sorting
+    )
     if not res:
         return None
-    mapping = {"Hide Layer": "hide", "Set Lineweight": "lw", "Set Color": "color",
-               "Set Linestyle": "linestyle", "Reset Overrides": "reset"}
-    return mapping.get(res)
+
+    # Map selected choice to action
+    index = choices.index(res)
+    return action_codes[index]
 
 
 # -------------------- USER INPUTS --------------------
@@ -106,12 +122,26 @@ def pick_linestyle():
     return patterns[sel]
 
 
+# -------------------- GREYSCALE ALL LAYERS --------------------
+def greyscale_all_layers(import_inst, view_or_template):
+    root_cat = import_inst.Category
+    if root_cat is None:
+        forms.alert("Could not access import category root.")
+        return
+
+    # Iterate directly over CategoryNameMap
+    for layer_cat in root_cat.SubCategories:
+        ovr = OverrideGraphicSettings()
+        ovr.SetProjectionLineColor(RVColor(192, 192, 192))
+        view_or_template.SetCategoryOverrides(layer_cat.Id, ovr)
+
+
+
 # -------------------- APPLY OVERRIDE (TEMPLATE-SAFE) --------------------
 def apply_override(import_inst, layer_name, action, user_inputs):
     view = doc.ActiveView
     template_id = view.ViewTemplateId
 
-    # Determine target: template if present, otherwise view
     target_view = doc.GetElement(template_id) if template_id != DB.ElementId.InvalidElementId else view
     if template_id != DB.ElementId.InvalidElementId:
         forms.alert(
@@ -123,10 +153,14 @@ def apply_override(import_inst, layer_name, action, user_inputs):
 
 
 def _apply_override_internal(view_or_template, import_inst, layer_name, action, user_inputs):
-    """Internal function that actually applies the override to a view or template object."""
     root_cat = import_inst.Category
     if root_cat is None:
         forms.alert("Could not access import category root.")
+        return
+
+    # Handle greyscale all layers
+    if action == "greyscale":
+        greyscale_all_layers(import_inst, view_or_template)
         return
 
     try:
@@ -138,11 +172,9 @@ def _apply_override_internal(view_or_template, import_inst, layer_name, action, 
         forms.alert("DWG layer not found as a subcategory: {}".format(layer_name))
         return
 
-    # Retrieve existing overrides and duplicate to preserve all previous settings
     existing = view_or_template.GetCategoryOverrides(layer_cat.Id)
     ovr = OverrideGraphicSettings()
 
-    # Copy existing settings
     if existing:
         if existing.ProjectionLineColor.IsValid:
             ovr.SetProjectionLineColor(existing.ProjectionLineColor)
@@ -169,38 +201,32 @@ def _apply_override_internal(view_or_template, import_inst, layer_name, action, 
         if existing.Halftone:
             ovr.SetHalftone(True)
 
-    # Apply action
     if action == "hide":
         view_or_template.SetCategoryHidden(layer_cat.Id, True)
-        return
-
-    if action == "color":
+    elif action == "color":
         rgb = user_inputs.get("color")
         if not rgb:
             forms.alert("No color selected.")
             return
         ovr.SetProjectionLineColor(rgb)
-
+        view_or_template.SetCategoryOverrides(layer_cat.Id, ovr)
     elif action == "lw":
         lw = user_inputs.get("lw")
         if not lw:
             forms.alert("No lineweight selected.")
             return
         ovr.SetProjectionLineWeight(int(lw))
-
+        view_or_template.SetCategoryOverrides(layer_cat.Id, ovr)
     elif action == "linestyle":
         ls_id = user_inputs.get("ls_id")
         if not ls_id:
             forms.alert("No linestyle selected.")
             return
         ovr.SetProjectionLinePatternId(ls_id)
-
+        view_or_template.SetCategoryOverrides(layer_cat.Id, ovr)
     elif action == "reset":
         view_or_template.SetCategoryOverrides(layer_cat.Id, OverrideGraphicSettings())
         view_or_template.SetCategoryHidden(layer_cat.Id, False)
-        return
-
-    view_or_template.SetCategoryOverrides(layer_cat.Id, ovr)
 
 
 # -------------------- MAIN --------------------
@@ -212,7 +238,6 @@ action = ask_action(layer)
 if not action:
     script.exit()
 
-# collect user input before transaction
 user_inputs = {}
 if action == "color":
     c = pick_color()
@@ -230,7 +255,6 @@ elif action == "linestyle":
         script.exit()
     user_inputs["ls_id"] = ls
 
-# perform override
 t = DB.Transaction(doc, "CAD Layer Quick Override")
 t.Start()
 try:
