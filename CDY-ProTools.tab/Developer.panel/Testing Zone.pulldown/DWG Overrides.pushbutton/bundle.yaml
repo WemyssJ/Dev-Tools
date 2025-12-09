@@ -1,0 +1,9 @@
+engine: 
+  clean: true
+title:
+  en_us: DWG Overrides
+tooltip: 
+  en_us: Allows DWG links to be overriden - by layer
+context: zero-doc
+authors: >-
+  Joe Wemyss
