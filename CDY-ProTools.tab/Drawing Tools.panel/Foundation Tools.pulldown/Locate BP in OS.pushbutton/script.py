@@ -6,12 +6,20 @@ import math
 
 output = script.get_output()
 
+
+# --------------------------------------------------------
+# UNIT CONVERSIONS
+# --------------------------------------------------------
 def feet_to_m(feet):
     return feet * 0.3048
 
 def rad_to_deg(radians):
-    return round(radians * (180.0 / math.pi), 3)
+    return round(radians * (180.0 / math.pi), 8)
 
+
+# --------------------------------------------------------
+# GENERIC PARAMETER GETTER
+# --------------------------------------------------------
 def get_param_value(elem, name):
     param = elem.LookupParameter(name)
     if not param:
@@ -28,6 +36,10 @@ def get_param_value(elem, name):
             return param.AsString()
     return None
 
+
+# --------------------------------------------------------
+# OSGB36 easting/northing -> Grid Reference
+# --------------------------------------------------------
 def os_grid_ref(easting, northing, digits=12):
     if not (0 <= easting < 700000 and 0 <= northing < 1300000):
         return ""
@@ -37,7 +49,7 @@ def os_grid_ref(easting, northing, digits=12):
     n100km = int(northing) // 100000
 
     l1 = (19 - n100km) - (19 - n100km) % 5 + int((e100km + 10) / 5)
-    l2 = (19 - n100km) * 5 % 25 + e100km % 5
+    l2 = (19 - n100km) * 5 % 25 + (e100km % 5)
 
     if l1 < 0 or l1 >= len(grid_letters) or l2 < 0 or l2 >= len(grid_letters):
         return ""
@@ -48,7 +60,6 @@ def os_grid_ref(easting, northing, digits=12):
     n_remainder = northing % 100000
     digits_per_coord = digits // 2
 
-    # Scale to required precision
     scale = 10 ** (5 - digits_per_coord)
     e_str = str(int(round(e_remainder / scale))).zfill(digits_per_coord)
     n_str = str(int(round(n_remainder / scale))).zfill(digits_per_coord)
@@ -56,7 +67,68 @@ def os_grid_ref(easting, northing, digits=12):
     return "{}{}{}".format(letters, e_str, n_str)
 
 
-# Get Project Base Point
+# --------------------------------------------------------
+# OSGB36 (E,N) -> WGS84 (lat, lon) using Helmert transform
+# --------------------------------------------------------
+def osgb36_to_wgs84(easting, northing):
+    # Airy 1830 major/minor axes
+    a = 6377563.396
+    b = 6356256.909
+    F0 = 0.9996012717
+    lat0 = math.radians(49)
+    lon0 = math.radians(-2)
+    N0 = -100000
+    E0 = 400000
+    e2 = 1 - (b * b) / (a * a)
+    n = (a - b) / (a + b)
+
+    lat = lat0
+    M = 0
+    while True:
+        lat_prev = lat
+        M = (
+            b * F0
+            * (
+                (1 + n + (5 / 4) * n ** 2 + (5 / 4) * n ** 3) * (lat - lat0)
+                - (3 * n + 3 * n ** 2 + (21 / 8) * n ** 3) * math.sin(lat - lat0) * math.cos(lat + lat0)
+                + ((15 / 8) * n ** 2 + (15 / 8) * n ** 3) * math.sin(2 * (lat - lat0)) * math.cos(2 * (lat + lat0))
+                - (35 / 24) * n ** 3 * math.sin(3 * (lat - lat0)) * math.cos(3 * (lat + lat0))
+            )
+        )
+        lat = (northing - N0 - M) / (a * F0) + lat
+        if abs(lat - lat_prev) < 1e-10:
+            break
+
+    sin_lat = math.sin(lat)
+    cos_lat = math.cos(lat)
+    nu = a * F0 / math.sqrt(1 - e2 * sin_lat ** 2)
+    rho = a * F0 * (1 - e2) / (1 - e2 * sin_lat ** 2) ** 1.5
+    eta2 = nu / rho - 1
+
+    tan_lat = math.tan(lat)
+    sec_lat = 1 / cos_lat
+    E_diff = easting - E0
+
+    lat = (
+        lat
+        - (tan_lat / (2 * rho * nu)) * E_diff ** 2
+        + (tan_lat / (24 * rho * nu ** 3)) * (5 + 3 * tan_lat ** 2 + eta2 - 9 * tan_lat ** 2 * eta2) * E_diff ** 4
+    )
+
+    lon = lon0 + (
+        E_diff * sec_lat / nu
+        - (sec_lat / (6 * nu ** 3)) * (1 + 2 * tan_lat ** 2 + eta2) * E_diff ** 3
+        + (sec_lat / (120 * nu ** 5)) * (5 + 28 * tan_lat ** 2 + 24 * tan_lat ** 4) * E_diff ** 5
+    )
+
+    lat_deg = math.degrees(lat)
+    lon_deg = math.degrees(lon)
+    return lat_deg, lon_deg
+
+
+# --------------------------------------------------------
+# GET PROJECT BASE POINT
+# --------------------------------------------------------
 pbp = None
 for bp in FilteredElementCollector(doc).OfClass(BasePoint):
     if not bp.IsShared:
@@ -73,43 +145,32 @@ elev_raw = get_param_value(pbp, "Elev")
 angle = get_param_value(pbp, "Angle to True North")
 
 if ns_raw is None or ew_raw is None:
-    output.print_md("Error: Missing 'N/S' or 'E/W' parameter.")
+    output.print_md("Error: Missing N/S or E/W.")
     script.exit()
 
 ns_m = feet_to_m(ns_raw)
 ew_m = feet_to_m(ew_raw)
-elev_m = feet_to_m(elev_raw) if elev_raw is not None else None
-angle_deg = rad_to_deg(angle) if angle is not None else None
 
-grid_ref = os_grid_ref(ew_m, ns_m, digits=10)
+grid_ref = os_grid_ref(ew_m, ns_m, digits=12)
 
-# Prepare output table
-table_data = [[
-    "{0:.12f}".format(ns_m),
-    "{0:.12f}".format(ew_m),
-    "{0:.12f}".format(elev_m) if elev_m is not None else "N/A",
-    os_grid_ref(ew_m, ns_m, digits=12),
-    "{0} deg".format(angle_deg) if angle_deg is not None else "N/A"
-]]
+# Convert to WGS84 for Google Earth
+lat, lon = osgb36_to_wgs84(ew_m, ns_m)
+
+# Display output
 
 
-output.print_table(
-    table_data=table_data,
-    title="Project Base Point Coordinates",
-    columns=[
-        "N/S (m)",
-        "E/W (m)",
-        "Elevation (m)",
-        "OS Grid Reference",
-        "Angle to True North"
-    ]
-)
+# UK GRID REFERENCE FINDER
+grf_url = "https://gridreferencefinder.com/#gr={}|{}_{}_{}".format(grid_ref, ew_m, ns_m, 1)
 
-# Open in browser if valid grid reference
-if grid_ref:
-    url = "https://gridreferencefinder.com/#gr={0}|{1:.4f}_s__c__s_{2:.5f}|1".format(
-        grid_ref, ew_m, ns_m)
-    output.print_md("Opening OS Grid Reference in browser...")
-    webbrowser.open(url)
+# GOOGLE EARTH (correct WGS84 coordinates)
+earth_url = "https://earth.google.com/web/@{},{},1000a".format(lat, lon)
+
+# Open both
+if __shiftclick__:
+    output.print_md("Opening both Approximate location on Google Earth...")
+    webbrowser.open(earth_url)
 else:
-    output.print_md("Could not calculate valid OS Grid Reference.")
+    output.print_md("Opening location on UK Grid Finder...")
+    webbrowser.open(grf_url)
+
+
