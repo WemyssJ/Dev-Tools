@@ -176,9 +176,6 @@ def save_settings():
     with open(CONFIG_PATH, "w") as f:
         cfg.write(f)
 
-# initial load
-load_settings()
-
 # --- Misc helpers ---
 def rgb_to_hex(r, g, b):
     return "{:02x}{:02x}{:02x}".format(max(0, min(255, int(r))),
@@ -194,13 +191,52 @@ def colors_to_yaml_block(colors):
         block.append("  {}: '{}'".format(key, val))
     return "\n".join(block)
 
-def update_panel_yaml(panel_path, colors=None):
+def read_panel_yaml(panel_path):
+    """Return dict of colors stored in panel's bundle.yaml."""
     yaml_file = os.path.join(panel_path, "bundle.yaml")
     if not os.path.exists(yaml_file):
-        script.get_logger().info("YAML not found: " + yaml_file)
-        return
+        return {"panel":"f5f5f5","title":"f5f5f5","slideout":"ffffff"}
+    colors = {}
     with open(yaml_file, "r") as f:
         lines = f.readlines()
+    bg_section = False
+    for line in lines:
+        if line.strip().startswith("background:"):
+            bg_section = True
+            continue
+        if bg_section:
+            m = re.match(r"\s*(panel|title|slideout):\s*'([0-9a-fA-F]{6})'", line)
+            if m:
+                colors[m.group(1).lower()] = m.group(2).lower()
+            else:
+                break
+    return colors
+
+def update_panel_yaml(panel_path, colors=None):
+    """
+    Updates or creates a bundle.yaml in the panel folder with the given colors.
+    If colors is None, resets the background section.
+    Compatible with IronPython (no exist_ok argument).
+    """
+    yaml_file = os.path.join(panel_path, "bundle.yaml")
+
+    # If YAML doesn't exist, create minimal default
+    if not os.path.exists(yaml_file):
+        script.get_logger().info("YAML not found, creating: " + yaml_file)
+        # create panel folder if it doesn't exist
+        if not os.path.exists(panel_path):
+            os.makedirs(panel_path)
+        with open(yaml_file, "w") as f:
+            f.write(
+                "name: '{}'\nbackground:\n  panel: 'f5f5f5'\n  title: 'f5f5f5'\n  slideout: 'ffffff'\n".format(
+                    os.path.basename(panel_path).replace(".panel", "")
+                )
+            )
+
+    # Read existing YAML
+    with open(yaml_file, "r") as f:
+        lines = f.readlines()
+
     new_lines = []
     skip = False
     for line in lines:
@@ -213,8 +249,11 @@ def update_panel_yaml(panel_path, colors=None):
             else:
                 skip = False
         new_lines.append(line.rstrip("\n"))
+
+    # Append updated colors
     if colors:
         new_lines.append(colors_to_yaml_block(colors))
+
     with open(yaml_file, "w") as f:
         f.write("\n".join(new_lines) + "\n")
 
@@ -244,7 +283,28 @@ def highlight_buttons_for(ext_name):
         btn = window.FindName(name)
         if not btn:
             continue
-        if mode and name.lower().find(mode.lower()) != -1:
+        highlight = False
+        if name.lower().find("custom") != -1:
+            # highlight only if custom colors match YAML
+            sel_ext = ext_name.lower()
+            matched = True
+            for panel_path in current_panels:
+                panel_name = os.path.basename(panel_path).replace(".panel","").lower()
+                ext_panel_key = sel_ext + "." + panel_name
+                saved_yaml = read_panel_yaml(panel_path)
+                current_custom = CUSTOM_COLORS.get(ext_panel_key, {})
+                # compare keys
+                for k in ["panel","title","slideout"]:
+                    if current_custom.get(k,"") != saved_yaml.get(k,""):
+                        matched = False
+                        break
+                if not matched:
+                    break
+            highlight = matched
+        elif mode and name.lower().find(mode.lower()) != -1:
+            highlight = True
+
+        if highlight:
             btn.Background = SolidColorBrush(Color.FromRgb(200, 230, 255))
         else:
             try:
