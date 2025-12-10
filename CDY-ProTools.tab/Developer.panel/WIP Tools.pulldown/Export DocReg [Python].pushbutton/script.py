@@ -1,46 +1,28 @@
-import clr
 import sys
 import os
 import tempfile
 import datetime
+import re
 
-# Revit API
-clr.AddReference("RevitServices")
-from RevitServices.Persistence import DocumentManager 
+# pyRevit imports
+from pyrevit import forms
+from pyrevit import revit, DB
+from pyrevit import script
 
-clr.AddReference("RevitAPI")
-from Autodesk.Revit.DB import *
-
-# WPF
-clr.AddReference('PresentationFramework')
-clr.AddReference('PresentationCore')
-clr.AddReference('WindowsBase')
-
-from System.Windows.Markup import XamlReader
-from System.IO import FileStream, FileMode, FileAccess
-from System.Windows.Data import Binding
-from System.Windows.Controls import DataGridTextColumn, DataGridLength
-from System.Collections.ObjectModel import ObservableCollection
-from System.Dynamic import ExpandoObject
-
-clr.AddReference("System.Windows.Forms")
-from System.Windows.Forms import Clipboard
-from System.Windows import MessageBox
-from System.Diagnostics import Process
+# Get logger
+logger = script.get_logger()
 
 # -------------------------
 # Document acquisition
 # -------------------------
-try:
-    doc = __revit__.ActiveUIDocument.Document
-except Exception:
-    MessageBox.Show("No active Revit document found. Open a project before running this script.", "Error")
-    sys.exit()
+doc = revit.doc
+if not doc:
+    forms.alert("No active Revit document found. Open a project before running this script.", exitscript=True)
 
 proj_info = doc.ProjectInformation
 project_number = ""
 if proj_info:
-    pn_param = proj_info.get_Parameter(BuiltInParameter.PROJECT_NUMBER)
+    pn_param = proj_info.get_Parameter(DB.BuiltInParameter.PROJECT_NUMBER)
     if pn_param:
         project_number = pn_param.AsString() or ""
 
@@ -49,7 +31,7 @@ if proj_info:
 # -------------------------
 def _safe_lookup_param_as_string(elem, param_name):
     if elem is None:
-        return None
+        return ""
     try:
         p = elem.LookupParameter(param_name)
         if p:
@@ -81,46 +63,66 @@ def is_manual_override_sequence(revision_elem, seq_elem):
             return True
     return False
 
-def generate_craddys_filename(sheet):
-    if sheet is None:
-        return ""
-    parts = [project_number]
-    for p in ("Originator", "Functional Breakdown", "Spatial Breakdown", "Form", "Discipline", "Sheet Number"):
-        val = _safe_lookup_param_as_string(sheet, p)
-        parts.append(val)
-    return "-".join(parts)
+# -------------------------
+# Naming protocol library
+# -------------------------
+class NamingFormat:
+    def __init__(self, name, template, builtin=True):
+        self.name = name
+        self.template = template
+        self.builtin = builtin
+
+def get_default_naming_formats():
+    return [
+        NamingFormat(
+            name='Craddys: BS EN ISO 19650-2-2018 (+A1 2021)',
+            template='{proj_number}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf'
+        ),
+        NamingFormat(
+            name='Craddys: BS EN ISO 19650-2-2018',
+            template='{proj_number}-{sheet_param:Originator}-{sheet_param:Volume or System}-{sheet_param:Levels and Location}-{sheet_param:Type}-{sheet_param:Role}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf'
+        ),
+        NamingFormat(
+            name='Aldi: BS1192:2007+A2:2016 (Old Template)',
+            template='{proj_number}-{sheet_param:PM.Sheet.Title.Creator.Originator}-{sheet_param:PM.Sheet.Title.View.Zone}-{sheet_param:PM.Sheet.Title.View.Level}-{sheet_param:PM.Sheet.Title.View.Type}-{sheet_param:PM.Sheet.Title.Creator.Role}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf'
+        ),
+        NamingFormat(
+            name='Aldi: BS1192:2007+A2:2016 (New Template)',
+            template='{proj_param:PM.Sheet.Title.Number.Project}-{sheet_param:PM.Sheet.Title.Creator.Originator}-{sheet_param:PM.Sheet.Title.View.Zone}-{sheet_param:PM.Sheet.Title.View.Level}-{sheet_param:PM.Sheet.Title.View.Type}-{sheet_param:PM.Sheet.Title.Creator.Role}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf'
+        ),
+        NamingFormat(
+            name='Morgan Sindall: BS EN ISO 19650-2-2018 (+A1 2021)',
+            template='{proj_number}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Sheet Number}_{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}_{rev_number}.pdf'
+        ),
+        NamingFormat(
+            name='Superseded Naming Protocol',
+            template='{proj_number}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf'
+        ),
+    ]
 
 # -------------------------
 # Collect sheets
 # -------------------------
-sheets = FilteredElementCollector(doc)\
-    .OfCategory(BuiltInCategory.OST_Sheets)\
+sheets = DB.FilteredElementCollector(doc)\
+    .OfCategory(DB.BuiltInCategory.OST_Sheets)\
     .WhereElementIsNotElementType()\
     .ToElements()
 
 if not sheets:
-    MessageBox.Show("No sheets found in this document.", "Error")
-    sys.exit()
+    forms.alert("No sheets found in this document.", exitscript=True)
 
 # -------------------------
 # Revisions setup
 # -------------------------
-revSeqs = FilteredElementCollector(doc).OfClass(RevisionNumberingSequence).ToElements()
-revIds = Revision.GetAllRevisionIds(doc)
+revSeqs = DB.FilteredElementCollector(doc).OfClass(DB.RevisionNumberingSequence).ToElements()
+revIds = DB.Revision.GetAllRevisionIds(doc)
 revs = [doc.GetElement(i) for i in revIds if i is not None]
 
-AllDates, DeDupDates = [], []
+DeDupDates = []
 for r in revs:
     if r is None: continue
-    AllDates.append(r.RevisionDate)
     if r.RevisionDate not in DeDupDates:
         DeDupDates.append(r.RevisionDate)
-
-NonUniqueDates = []
-for i in range(1, len(revs)):
-    if revs[i].RevisionDate == revs[i-1].RevisionDate:
-        if revs[i].RevisionDate not in NonUniqueDates:
-            NonUniqueDates.append(revs[i].RevisionDate)
 
 revSeqNames, revCharSeqs = [], []
 for r in revs:
@@ -130,7 +132,7 @@ for r in revs:
     if rs is None: continue
     revSeqNames.append(rs.Name)
     charSequence = []
-    if rs.NumberType == RevisionNumberType.Numeric:
+    if rs.NumberType == DB.RevisionNumberType.Numeric:
         settings = rs.GetNumericRevisionSettings()
         minDigits, prefix, suffix = settings.MinimumDigits, settings.Prefix, settings.Suffix
         for n in range(settings.StartNumber, 99):
@@ -143,99 +145,159 @@ for r in revs:
     revCharSeqs.append(charSequence)
 
 # -------------------------
-# Build rowsOut
+# Build rowsOut using template
 # -------------------------
-def build_rows_out(param_choice):
+def build_rows_out(template):
     sep = "\t"
     rowsOut = []
 
-    for s in sheets:
+    header = ["Document No.", "Document Name"] + [str(d) for d in DeDupDates]
+    rowsOut.append(sep.join(header))
+
+    if "{sheet_param:Sheet Name}" in template:
+        split_idx = template.index("{sheet_param:Sheet Name}")
+        doc_no_template = template[:split_idx]
+        doc_name_template = template[split_idx:]
+    else:
+        doc_no_template = template
+        doc_name_template = ""
+
+    def safe_sheet_number(s):
+        try:
+            return s.SheetNumber
+        except:
+            return ""
+    sorted_sheets = sorted(sheets, key=safe_sheet_number)
+
+    for s in sorted_sheets:
         if s is None: continue
+
+        doc_no = doc_no_template.replace("{proj_number}", project_number)
+        for match in re.findall(r"{sheet_param:([^}]+)}", doc_no):
+            val = _safe_lookup_param_as_string(s, match)
+            doc_no = doc_no.replace("{sheet_param:%s}" % match, val)
+        for match in re.findall(r"{proj_param:([^}]+)}", doc_no):
+            val = _safe_lookup_param_as_string(proj_info, match)
+            doc_no = doc_no.replace("{proj_param:%s}" % match, val)
+        doc_no = re.sub(r"[-_]*\{rev_number\}", "", doc_no)
+        doc_no = re.sub(r"\.pdf$", "", doc_no, flags=re.IGNORECASE)
+        doc_no = doc_no.rstrip("-_ ")
+
+        doc_name = doc_name_template
+        for match in re.findall(r"{sheet_param:([^}]+)}", doc_name):
+            val = _safe_lookup_param_as_string(s, match)
+            doc_name = doc_name.replace("{sheet_param:%s}" % match, val)
+        for match in re.findall(r"{proj_param:([^}]+)}", doc_name):
+            val = _safe_lookup_param_as_string(proj_info, match)
+            doc_name = doc_name.replace("{proj_param:%s}" % match, val)
+        doc_name = re.sub(r"[-_]*\{rev_number\}", "", doc_name)
+        doc_name = re.sub(r"\.pdf$", "", doc_name, flags=re.IGNORECASE)
+        doc_name = doc_name.rstrip("-_ ")
+
+        sheetRevIds = list(s.GetAllRevisionIds()) if s else []
+        rev_values = []
         trackRevs = []
-        sheetRevs = list(s.GetAllRevisionIds()) if s else []
-
-        if param_choice == "Craddys Parameters":
-            rowOut = generate_craddys_filename(s) + sep + s.Name + sep
-        else:
-            rowOut = s.SheetNumber + sep + s.Name + sep
-
-        latestRevChar = ""
-        for i in revIds:
-            if i is None: continue
-            DupeDateCounter = 0
-            r = doc.GetElement(i)
-            if r is None: continue
+        for r in revs:
+            if r is None:
+                rev_values.append("")
+                continue
             rs = doc.GetElement(r.RevisionNumberingSequenceId)
-            if rs is None: continue
-            rsn, SeqNo, SeqDate = rs.Name, r.SequenceNumber, r.RevisionDate
+            if rs is None:
+                rev_values.append("")
+                continue
             manual_override = is_manual_override_sequence(r, rs)
-
             if manual_override:
-                d = sep if latestRevChar else "" + sep
+                rev_values.append("")
+            elif r.Id in sheetRevIds:
+                i_sq = revSeqNames.index(rs.Name)
+                i_ch = trackRevs.count(rs.Name)
+                trackRevs.append(rs.Name)
+                rev_values.append(revCharSeqs[i_sq][i_ch])
             else:
-                if i in sheetRevs:
-                    i_sq = revSeqNames.index(rsn)
-                    i_ch = trackRevs.count(rsn)
-                    trackRevs.append(rsn)
-                    base_char = revCharSeqs[i_sq][i_ch]
-                    d = base_char + sep
-                    latestRevChar = base_char
-                else:
-                    d = "" + sep
+                rev_values.append("")
 
-            if d != "":
-                rowOut += d
-        rowsOut.append(rowOut)
+        rowsOut.append(sep.join([doc_no, doc_name] + rev_values))
 
-    header = "Document No." + sep + "Document Name" + sep + sep.join([str(d) for d in DeDupDates]) + sep
-    rowsOut.insert(0, header)
     return rowsOut
 
 # -------------------------
-# Load external XAML
+# Document class for combo
 # -------------------------
-xaml_path = os.path.join(os.path.dirname(__file__), "PreviewWindow.xaml")
-with FileStream(xaml_path, FileMode.Open, FileAccess.Read) as fs:
-    window = XamlReader.Load(fs)
+class AvailableDoc(object):
+    def __init__(self, name, hash_val, linked):
+        self.Name = name
+        self.Hash = hash_val
+        self.Linked = linked
+
+def get_documents_list():
+    docs = [AvailableDoc(name=doc.Title, hash_val=doc.GetHashCode(), linked=False)]
+    linked_docs = DB.FilteredElementCollector(doc).OfClass(DB.RevitLinkInstance).ToElements()
+    for ld in linked_docs:
+        link_doc = ld.GetLinkDocument()
+        if link_doc:
+            docs.append(AvailableDoc(name=link_doc.Title, hash_val=link_doc.GetHashCode(), linked=True))
+    return docs
 
 # -------------------------
-# WPF window class
+# WPF window class using pyRevit
 # -------------------------
-class NamingPreviewWindow(object):
-    def __init__(self, window, protocols, preview_count=12):
-        self.window = window
-        self.combo = self.window.FindName("NamingProtocolCombo")
-        self.grid = self.window.FindName("PreviewDataGrid")
-        self.ok_btn = self.window.FindName("OkButton")
-        self.cancel_btn = self.window.FindName("CancelButton")
+class RevisionPreviewWindow(forms.WPFWindow):
+    def __init__(self, xaml_file_name, protocols, preview_count=12):
+        forms.WPFWindow.__init__(self, xaml_file_name)
+        
         self.protocols = protocols
         self.preview_count = preview_count
-        self.selected_protocol = None
+        self.selected_template = None
+        self.current_doc = doc
+        
+        # Find controls
+        self.documents_combo = self.FindName("DocumentsCombo")
+        self.naming_combo = self.FindName("NamingProtocolCombo")
+        self.grid = self.FindName("PreviewDataGrid")
+        self.export_btn = self.FindName("ExportButton")
+        
+        # Setup documents list
+        self.docs = get_documents_list()
+        for d in self.docs:
+            self.documents_combo.Items.Add(d.Name)
+        self.documents_combo.SelectedIndex = 0
+        self.documents_combo.SelectionChanged += self.on_document_changed
 
-        for p in protocols:
-            self.combo.Items.Add(p)
-        self.combo.SelectedIndex = 0
-        self.combo.SelectionChanged += self.on_combo_changed
-        self.ok_btn.Click += self.on_ok
-        self.cancel_btn.Click += self.on_cancel
-        self.update_preview(self.combo.SelectedItem)
+        # Setup naming protocols
+        for p in self.protocols:
+            self.naming_combo.Items.Add(p.name)
+        self.naming_combo.SelectedIndex = 0
+        self.naming_combo.SelectionChanged += self.on_protocol_changed
 
-    def show_dialog(self):
-        self.window.ShowDialog()
-        return self.selected_protocol
+        # Export
+        self.export_btn.Click += self.on_export
 
-    def on_combo_changed(self, sender, e):
-        self.update_preview(self.combo.SelectedItem)
+        # Initial preview
+        self.update_preview(self.protocols[0], self.current_doc)
 
-    def update_preview(self, protocol):
-        full = build_rows_out(protocol)
-        if not full:
+    def on_document_changed(self, sender, e):
+        idx = self.documents_combo.SelectedIndex
+        self.current_doc = self.docs[idx]
+        self.update_preview(self.protocols[self.naming_combo.SelectedIndex], self.current_doc)
+
+    def on_protocol_changed(self, sender, e):
+        idx = self.naming_combo.SelectedIndex
+        self.update_preview(self.protocols[idx], self.current_doc)
+
+    def update_preview(self, protocol, selected_doc):
+        from System.Windows.Data import Binding
+        from System.Windows.Controls import DataGridTextColumn, DataGridLength
+        from System.Collections.ObjectModel import ObservableCollection
+        from System.Dynamic import ExpandoObject
+        
+        rows = build_rows_out(protocol.template)
+        if not rows:
             self.grid.ItemsSource = None
             self.grid.Columns.Clear()
             return
 
-        header_row = full[0].split("\t")
-        preview_rows = [r.split("\t") for r in full[1:1+self.preview_count]]
+        header_row = rows[0].split("\t")
+        preview_rows = [r.split("\t") for r in rows[1:1+self.preview_count]]
 
         self.grid.Columns.Clear()
         for idx, head in enumerate(header_row):
@@ -254,30 +316,33 @@ class NamingPreviewWindow(object):
         self.grid.ItemsSource = data
         self.grid.UpdateLayout()
 
-    def on_ok(self, sender, e):
-        self.selected_protocol = self.combo.SelectedItem
-        self.window.Close()
-
-    def on_cancel(self, sender, e):
-        self.selected_protocol = None
-        self.window.Close()
+    def on_export(self, sender, e):
+        idx = self.naming_combo.SelectedIndex
+        self.selected_template = self.protocols[idx].template
+        self.Close()
 
 # -------------------------
 # Show dialog
 # -------------------------
-protocols = ['Aldi Parameters', 'Craddys Parameters']
-wnd = NamingPreviewWindow(window, protocols)
-param_choice = wnd.show_dialog()
-if not param_choice:
-    sys.exit()
+protocols = get_default_naming_formats()
+
+# Get the XAML file path
+xaml_file = script.get_bundle_file('PreviewWindow.xaml')
+
+# Create and show window
+window = RevisionPreviewWindow(xaml_file, protocols)
+selected_template = window.ShowDialog()
+
+if not selected_template:
+    script.exit()
 
 # -------------------------
 # Export TSV & clipboard
 # -------------------------
-rowsOut = build_rows_out(param_choice)
+rowsOut = build_rows_out(selected_template)
 
 try:
-    Clipboard.SetText("\n".join(rowsOut))
+    script.clipboard_copy("\n".join(rowsOut))
 except:
     pass
 
@@ -290,9 +355,9 @@ try:
         for r in rowsOut:
             fh.write(r + "\n")
     try:
-        Process.Start(out_path)
+        os.startfile(out_path)
     except:
         pass
-    MessageBox.Show("Revision table copied to clipboard and exported to:\n{0}".format(out_path), "Success")
+    forms.alert("Revision table copied to clipboard and exported to:\n{0}".format(out_path), title="Success")
 except Exception as ex:
-    MessageBox.Show("Revision table copied to clipboard. Failed to write/open TSV file: {0}".format(str(ex)), "Export")
+    forms.alert("Revision table copied to clipboard. Failed to write/open TSV file: {0}".format(str(ex)), title="Export")
