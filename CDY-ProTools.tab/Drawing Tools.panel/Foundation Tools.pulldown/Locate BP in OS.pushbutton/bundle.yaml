@@ -1,6 +1,7 @@
 title:
   en_us: Locate BP in OS
 tooltip: 
-  en_us: locate project Base Point on UK Grid Finder
+  en_us: locate project Base Point on UK Grid Finder. SHIFT CLICK to open approximate location on Google Earth.
 authors: >-
   Joe Wemyss
+
