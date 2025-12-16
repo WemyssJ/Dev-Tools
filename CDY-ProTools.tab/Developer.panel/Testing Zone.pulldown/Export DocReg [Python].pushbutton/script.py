@@ -499,25 +499,17 @@ window.ShowDialog()
 if not window.selected_template:
     script.exit()
 
+# -------------------------
+# Build revision table and copy to clipboard only
+# -------------------------
 rowsOut = build_rows_out(window.selected_template, window.current_doc_obj)
 
-try:
-    script.clipboard_copy("\n".join(rowsOut))
-except:
-    pass
-
-try:
-    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    temp_dir = tempfile.gettempdir()
-    out_name = "revisions_{0}.tsv".format(ts)
-    out_path = os.path.join(temp_dir, out_name)
-    with open(out_path, "w") as fh:
-        for r in rowsOut:
-            fh.write(r + "\n")
+if rowsOut:
     try:
-        os.startfile(out_path)
-    except:
-        pass
-    forms.alert("Revision table copied to clipboard and exported to:\n{0}".format(out_path), title="Success")
-except Exception as ex:
-    forms.alert("Revision table copied to clipboard. Failed to write/open TSV file: {0}".format(str(ex)), title="Export")
+        script.clipboard_copy("\n".join(rowsOut))
+        forms.alert("Revision table copied to clipboard successfully!", title="Success")
+    except Exception as ex:
+        forms.alert("Failed to copy revision table to clipboard: {}".format(str(ex)), title="Error")
+else:
+    forms.alert("No revision data found to copy.", title="Info")
+
