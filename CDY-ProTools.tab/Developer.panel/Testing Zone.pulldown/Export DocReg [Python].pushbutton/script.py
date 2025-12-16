@@ -237,22 +237,33 @@ def build_rows_out(template, doc_obj):
     sep = "\t"
     rowsOut = []
 
+    def remove_non_ascii(s):
+        if not s:
+            return ""
+        return s.encode('ascii', errors='ignore').decode('ascii')
+
     sheets, revs, revSeqs = collect_sheets_and_revisions(doc_obj)
     if not sheets:
         return []
 
+    # Collect unique revision dates for header
     DeDupDates = []
     for r in revs:
-        if r is None: continue
+        if r is None:
+            continue
         if r.RevisionDate not in DeDupDates:
             DeDupDates.append(r.RevisionDate)
 
+    # Build sequence names and their character sequences
     revSeqNames, revCharSeqs = [], []
     for r in revs:
-        if r is None: continue
+        if r is None:
+            continue
         rsId = r.RevisionNumberingSequenceId
         rs = doc_obj.DocRef.GetElement(rsId)
-        if rs is None: continue
+        if rs is None or rs.Name in revSeqNames:
+            continue
+
         revSeqNames.append(rs.Name)
         charSequence = []
         if rs.NumberType == DB.RevisionNumberType.Numeric:
@@ -267,9 +278,12 @@ def build_rows_out(template, doc_obj):
                 charSequence.append(prefix + a + suffix)
         revCharSeqs.append(charSequence)
 
+    # Build header row
     header = ["Document No.", "Document Name"] + [str(d) for d in DeDupDates]
+    header = [remove_non_ascii(h) for h in header]
     rowsOut.append(sep.join(header))
 
+    # Split template into doc no. and doc name parts
     if "{sheet_param:Sheet Name}" in template:
         split_idx = template.index("{sheet_param:Sheet Name}")
         doc_no_template = template[:split_idx]
@@ -283,11 +297,14 @@ def build_rows_out(template, doc_obj):
             return s.SheetNumber
         except:
             return ""
+
     sorted_sheets = sorted(sheets, key=safe_sheet_number)
 
     for s in sorted_sheets:
-        if s is None: continue
+        if s is None:
+            continue
 
+        # Build document number
         doc_no = doc_no_template.replace("{proj_number}", project_number)
         for match in re.findall(r"{sheet_param:([^}]+)}", doc_no):
             val = _safe_lookup_param_as_string(s, match)
@@ -298,7 +315,9 @@ def build_rows_out(template, doc_obj):
         doc_no = re.sub(r"[-_]*\{rev_number\}", "", doc_no)
         doc_no = re.sub(r"\.pdf$", "", doc_no, flags=re.IGNORECASE)
         doc_no = doc_no.rstrip("-_ ")
+        doc_no = remove_non_ascii(doc_no)
 
+        # Build document name
         doc_name = doc_name_template
         for match in re.findall(r"{sheet_param:([^}]+)}", doc_name):
             val = _safe_lookup_param_as_string(s, match)
@@ -309,32 +328,48 @@ def build_rows_out(template, doc_obj):
         doc_name = re.sub(r"[-_]*\{rev_number\}", "", doc_name)
         doc_name = re.sub(r"\.pdf$", "", doc_name, flags=re.IGNORECASE)
         doc_name = doc_name.rstrip("-_ ")
+        doc_name = remove_non_ascii(doc_name)
 
-        sheetRevIds = list(s.GetAllRevisionIds()) if s else []
+        # Build revision values aligned by date
+        sheetRevIds = set(s.GetAllRevisionIds()) if s else set()
         rev_values = []
-        trackRevs = []
+
+        # Map date to revisions for this sheet
+        date_to_revs = {d: [] for d in DeDupDates}
         for r in revs:
-            if r is None:
-                rev_values.append("")
+            if r is None or r.Id not in sheetRevIds:
                 continue
             rs = doc_obj.DocRef.GetElement(r.RevisionNumberingSequenceId)
             if rs is None:
+                continue
+            if is_manual_override_sequence(r, rs):
+                continue
+            rev_date = r.RevisionDate
+            if rev_date in date_to_revs:
+                date_to_revs[rev_date].append(r)
+
+        # Track sequence counts for correct numbering
+        seq_counters = {name: 0 for name in revSeqNames}
+
+        for d in DeDupDates:
+            revs_on_date = date_to_revs.get(d, [])
+            if not revs_on_date:
                 rev_values.append("")
                 continue
-            manual_override = is_manual_override_sequence(r, rs)
-            if manual_override:
-                rev_values.append("")
-            elif r.Id in sheetRevIds:
-                i_sq = revSeqNames.index(rs.Name)
-                i_ch = trackRevs.count(rs.Name)
-                trackRevs.append(rs.Name)
-                rev_values.append(revCharSeqs[i_sq][i_ch])
-            else:
-                rev_values.append("")
 
+            r = revs_on_date[0]
+            rs = doc_obj.DocRef.GetElement(r.RevisionNumberingSequenceId)
+            i_sq = revSeqNames.index(rs.Name)
+            i_ch = seq_counters[rs.Name]
+            rev_value = revCharSeqs[i_sq][i_ch] if i_ch < len(revCharSeqs[i_sq]) else ""
+            rev_values.append(remove_non_ascii(rev_value))
+            seq_counters[rs.Name] += 1
+
+        # Append row
         rowsOut.append(sep.join([doc_no, doc_name] + rev_values))
 
     return rowsOut
+
 
 # -------------------------
 # WPF window class
