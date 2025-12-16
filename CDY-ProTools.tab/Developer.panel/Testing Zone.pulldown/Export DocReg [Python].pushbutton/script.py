@@ -81,13 +81,7 @@ class NamingFormat:
 
 def get_user_naming_formats_from_pyrevit_config():
     user_formats = []
-
-    config_path = os.path.join(
-        os.environ.get("APPDATA", ""),
-        "pyRevit",
-        "pyRevit_config.ini"
-    )
-
+    config_path = os.path.join(os.environ.get("APPDATA", ""), "pyRevit", "pyRevit_config.ini")
     if not os.path.exists(config_path):
         return user_formats
 
@@ -99,7 +93,6 @@ def get_user_naming_formats_from_pyrevit_config():
 
     if not cp.has_section("Print Sheets_config"):
         return user_formats
-
     if not cp.has_option("Print Sheets_config", "namingformats"):
         return user_formats
 
@@ -115,16 +108,9 @@ def get_user_naming_formats_from_pyrevit_config():
 
     for name, template in data.items():
         if template:
-            user_formats.append(
-                NamingFormat(
-                    name="{}".format(name),
-                    template=template,
-                    builtin=False
-                )
-            )
+            user_formats.append(NamingFormat(name="{}".format(name), template=template, builtin=False))
 
     return user_formats
-
 
 # -------------------------
 # Dynamic .tab discovery & Print Sheets extraction
@@ -151,10 +137,8 @@ def find_print_sheets_script(tab_root):
 
 def extract_naming_formats_from_print_sheets():
     extracted = []
-
     this_script = __file__
     tab_root = find_tab_root(this_script)
-
     if not tab_root:
         logger.warning("No .tab root found above {}".format(this_script))
         return extracted
@@ -176,20 +160,17 @@ def extract_naming_formats_from_print_sheets():
         text,
         re.DOTALL
     )
-
     if not m:
         logger.warning("get_default_naming_formats() not found in Print Sheets script")
         return extracted
 
     block = m.group(1)
-
     pairs = re.findall(
         r"name\s*=\s*['\"]([^'\"]+)['\"].*?"
         r"template\s*=\s*['\"]([^'\"]+)['\"]",
         block,
         re.DOTALL
     )
-
     for name, template in pairs:
         extracted.append(NamingFormat(name=name, template=template, builtin=True))
 
@@ -234,7 +215,7 @@ def collect_sheets_and_revisions(doc_obj):
     return sheets, revs, revSeqs
 
 # -------------------------
-# Build revision rows 
+# Build revision rows
 # -------------------------
 def build_rows_out(template, doc_obj, split_p_c=False):
     import datetime
@@ -382,7 +363,7 @@ def build_rows_out(template, doc_obj, split_p_c=False):
     return rowsOut
 
 # -------------------------
-# WPF window with Split P/C checkbox
+# WPF window with checkboxes
 # -------------------------
 class RevisionPreviewWindow(forms.WPFWindow):
     def __init__(self, xaml_file_name, protocols, preview_count=100):
@@ -399,9 +380,10 @@ class RevisionPreviewWindow(forms.WPFWindow):
         self.export_btn = self.FindName("ExportButton")
         self.naming_format_text = self.FindName("NamingFormatText")
         self.split_pc_checkbox = self.FindName("SplitPCCheckBox")
+        self.hide_no_revisions_checkbox = self.FindName("HideNoRevisionsCheckBox")
 
-        # Make Split P/C checked by default
         self.split_pc_checkbox.IsChecked = True
+        self.hide_no_revisions_checkbox.IsChecked = True
 
         # Populate document combo
         for d in self.docs:
@@ -414,11 +396,13 @@ class RevisionPreviewWindow(forms.WPFWindow):
             self.naming_combo.Items.Add(p.name)
         self.naming_combo.SelectionChanged += self.on_protocol_changed
 
-        # Split P/C checkbox event
-        self.split_pc_checkbox.Checked += self.on_split_pc_changed
-        self.split_pc_checkbox.Unchecked += self.on_split_pc_changed
+        # Checkboxes events
+        self.split_pc_checkbox.Checked += self.on_filter_changed
+        self.split_pc_checkbox.Unchecked += self.on_filter_changed
+        self.hide_no_revisions_checkbox.Checked += self.on_filter_changed
+        self.hide_no_revisions_checkbox.Unchecked += self.on_filter_changed
 
-        # Apply default naming format and update preview using checkbox value
+        # Apply default naming format
         self._apply_projectinfo_naming_format_default()
         self.export_btn.Click += self.on_export
 
@@ -427,13 +411,8 @@ class RevisionPreviewWindow(forms.WPFWindow):
         param = pi.LookupParameter("Naming Format") if pi else None
         param_value = param.AsString() if param else None
 
-        selected_idx = next(
-            (i for i, nf in enumerate(self.protocols) if nf.name == param_value),
-            0
-        )
+        selected_idx = next((i for i, nf in enumerate(self.protocols) if nf.name == param_value), 0)
         self.naming_combo.SelectedIndex = selected_idx
-
-        # Use the checkbox value here to respect Split P/C
         self.update_preview(self.protocols[selected_idx], self.current_doc_obj, self.split_pc_checkbox.IsChecked)
 
     def on_document_changed(self, sender, e):
@@ -445,19 +424,28 @@ class RevisionPreviewWindow(forms.WPFWindow):
         idx = self.naming_combo.SelectedIndex
         self.update_preview(self.protocols[idx], self.current_doc_obj, self.split_pc_checkbox.IsChecked)
 
-    def on_split_pc_changed(self, sender, e):
+    def on_filter_changed(self, sender, e):
         idx = self.naming_combo.SelectedIndex
         self.update_preview(self.protocols[idx], self.current_doc_obj, self.split_pc_checkbox.IsChecked)
 
     def update_preview(self, protocol, doc_obj, split_p_c=False):
         rows = build_rows_out(protocol.template, doc_obj, split_p_c)
+
+        # Filter sheets with no revisions
+        if self.hide_no_revisions_checkbox.IsChecked:
+            header = rows[0].split("\t")
+            filtered_rows = [rows[0]]  # keep header
+            for row in rows[1:]:
+                if any(cell.strip() for cell in row.split("\t")[2:]):  # any revision column
+                    filtered_rows.append(row)
+            rows = filtered_rows
+
         if not rows:
             self.grid.ItemsSource = None
             self.grid.Columns.Clear()
         else:
             header_row = rows[0].split("\t")
             preview_rows = [r.split("\t") for r in rows[1:1+self.preview_count]]
-
             self.grid.Columns.Clear()
             for idx, head in enumerate(header_row):
                 col = DataGridTextColumn()
@@ -478,10 +466,7 @@ class RevisionPreviewWindow(forms.WPFWindow):
 
         marker = "{sheet_param:Sheet Number}"
         idx = protocol.template.find(marker)
-        if idx >= 0:
-            trimmed_template = protocol.template[:idx + len(marker)]
-        else:
-            trimmed_template = protocol.template
+        trimmed_template = protocol.template[:idx + len(marker)] if idx >= 0 else protocol.template
         self.naming_format_text.Text = trimmed_template
 
     def on_export(self, sender, e):
@@ -505,11 +490,15 @@ if not window.selected_template:
     script.exit()
 
 rowsOut = build_rows_out(window.selected_template, window.current_doc_obj, split_p_c=window.split_pc_checkbox.IsChecked)
-if rowsOut:
-    try:
-        script.clipboard_copy("\n".join(rowsOut))
-        forms.alert("Revision table copied to clipboard successfully!", title="Success")
-    except Exception as ex:
-        forms.alert("Failed to copy revision table to clipboard: {}".format(str(ex)), title="Error")
-else:
-    forms.alert("No revision data found to copy.", title="Info")
+
+# Apply hide no revisions filter to exported clipboard
+if window.hide_no_revisions_checkbox.IsChecked:
+    header = rowsOut[0].split("\t")
+    filtered_rows = [rowsOut[0]]  # keep header
+    for row in rowsOut[1:]:
+        if any(cell.strip() for cell in row.split("\t")[2:]):
+            filtered_rows.append(row)
+    rowsOut = filtered_rows
+
+script.copy_to_clipboard("\n".join(rowsOut))
+forms.alert("Preview copied to clipboard.")
