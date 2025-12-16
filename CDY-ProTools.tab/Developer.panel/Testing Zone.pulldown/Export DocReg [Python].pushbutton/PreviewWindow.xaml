@@ -112,8 +112,9 @@
                 </Button>
             </Grid>
             <GroupBox Header="Export Options" Grid.Column="0" Margin="0,10,5,0" Padding="8">
-                <StackPanel>
-                    <CheckBox x:Name="SplitPCCheckBox" IsChecked="True" Content="Split P/C Revisions"/>
+                <StackPanel Orientation="Horizontal" Grid.Row="1" Margin="0,0,0,10">
+                    <CheckBox x:Name="SplitPCCheckBox" Content="Split Rev Type" Margin="0,0,20,0"/>
+                    <CheckBox x:Name="HideNoRevisionsCheckBox" Content="Hide sheets with no revisions"/>
                 </StackPanel>
             </GroupBox>
             <!-- Description text -->
