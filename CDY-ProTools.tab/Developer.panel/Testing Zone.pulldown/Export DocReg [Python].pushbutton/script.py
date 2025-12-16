@@ -11,6 +11,12 @@ from pyrevit import forms
 from pyrevit import revit, DB
 from pyrevit import script
 
+# system imports
+from System.Windows.Data import Binding
+from System.Windows.Controls import DataGridTextColumn, DataGridLength
+from System.Collections.ObjectModel import ObservableCollection
+from System.Dynamic import ExpandoObject
+
 logger = script.get_logger()
 
 # -------------------------
@@ -187,9 +193,6 @@ def extract_naming_formats_from_print_sheets():
     for name, template in pairs:
         extracted.append(NamingFormat(name=name, template=template, builtin=True))
 
-    #logger.info(
-    #    "Imported {} naming formats from Print Sheets ({})".format(len(extracted), os.path.basename(tab_root))
-    #)
     return extracted
 
 # -------------------------
@@ -231,59 +234,17 @@ def collect_sheets_and_revisions(doc_obj):
     return sheets, revs, revSeqs
 
 # -------------------------
-# Build revision rows
+# Build revision rows 
 # -------------------------
-def build_rows_out(template, doc_obj):
+def build_rows_out(template, doc_obj, split_p_c=False):
+    import datetime
     sep = "\t"
     rowsOut = []
-
-    def remove_non_ascii(s):
-        if not s:
-            return ""
-        return s.encode('ascii', errors='ignore').decode('ascii')
 
     sheets, revs, revSeqs = collect_sheets_and_revisions(doc_obj)
     if not sheets:
         return []
 
-    # Collect unique revision dates for header
-    DeDupDates = []
-    for r in revs:
-        if r is None:
-            continue
-        if r.RevisionDate not in DeDupDates:
-            DeDupDates.append(r.RevisionDate)
-
-    # Build sequence names and their character sequences
-    revSeqNames, revCharSeqs = [], []
-    for r in revs:
-        if r is None:
-            continue
-        rsId = r.RevisionNumberingSequenceId
-        rs = doc_obj.DocRef.GetElement(rsId)
-        if rs is None or rs.Name in revSeqNames:
-            continue
-
-        revSeqNames.append(rs.Name)
-        charSequence = []
-        if rs.NumberType == DB.RevisionNumberType.Numeric:
-            settings = rs.GetNumericRevisionSettings()
-            minDigits, prefix, suffix = settings.MinimumDigits, settings.Prefix, settings.Suffix
-            for n in range(settings.StartNumber, 99):
-                charSequence.append(prefix + str(n).rjust(minDigits, "0") + suffix)
-        else:
-            settings = rs.GetAlphanumericRevisionSettings()
-            prefix, suffix = settings.Prefix, settings.Suffix
-            for a in settings.GetSequence():
-                charSequence.append(prefix + a + suffix)
-        revCharSeqs.append(charSequence)
-
-    # Build header row
-    header = ["Document No.", "Document Name"] + [str(d) for d in DeDupDates]
-    header = [remove_non_ascii(h) for h in header]
-    rowsOut.append(sep.join(header))
-
-    # Split template into doc no. and doc name parts
     if "{sheet_param:Sheet Name}" in template:
         split_idx = template.index("{sheet_param:Sheet Name}")
         doc_no_template = template[:split_idx]
@@ -291,6 +252,47 @@ def build_rows_out(template, doc_obj):
     else:
         doc_no_template = template
         doc_name_template = ""
+
+    def normalize_rev_date(r):
+        rev_date = r.RevisionDate
+        if isinstance(rev_date, datetime.datetime):
+            return rev_date.date()
+        elif isinstance(rev_date, datetime.date):
+            return rev_date
+        else:
+            try:
+                return datetime.datetime.strptime(str(rev_date), "%d.%m.%y").date()
+            except:
+                return None
+
+    # Collect unique revisions with optional split P/C
+    date_type_list = []
+    for r in revs:
+        if r is None:
+            continue
+        rs = doc_obj.DocRef.GetElement(r.RevisionNumberingSequenceId)
+        if rs is None or is_manual_override_sequence(r, rs):
+            continue
+        rev_date = normalize_rev_date(r)
+        if not rev_date:
+            continue
+        name_upper = rs.Name.upper() if rs.Name else ""
+        if name_upper.startswith("P"):
+            rev_type = "P"
+        elif name_upper.startswith("C"):
+            rev_type = "C"
+        else:
+            rev_type = "X"
+        key = (rev_date, rev_type) if split_p_c else (rev_date, "All")
+        if key not in date_type_list:
+            date_type_list.append(key)
+
+    # Sort revisions: P before C
+    date_type_list.sort(key=lambda x: (x[0], 0 if x[1]=="P" else (1 if x[1]=="C" else 2)))
+
+    # Header row
+    header = ["Document No.", "Document Name"] + [d[0].strftime("%d.%m.%y") for d in date_type_list]
+    rowsOut.append(sep.join(header))
 
     def safe_sheet_number(s):
         try:
@@ -304,7 +306,6 @@ def build_rows_out(template, doc_obj):
         if s is None:
             continue
 
-        # Build document number
         doc_no = doc_no_template.replace("{proj_number}", project_number)
         for match in re.findall(r"{sheet_param:([^}]+)}", doc_no):
             val = _safe_lookup_param_as_string(s, match)
@@ -315,9 +316,7 @@ def build_rows_out(template, doc_obj):
         doc_no = re.sub(r"[-_]*\{rev_number\}", "", doc_no)
         doc_no = re.sub(r"\.pdf$", "", doc_no, flags=re.IGNORECASE)
         doc_no = doc_no.rstrip("-_ ")
-        doc_no = remove_non_ascii(doc_no)
 
-        # Build document name
         doc_name = doc_name_template
         for match in re.findall(r"{sheet_param:([^}]+)}", doc_name):
             val = _safe_lookup_param_as_string(s, match)
@@ -328,51 +327,62 @@ def build_rows_out(template, doc_obj):
         doc_name = re.sub(r"[-_]*\{rev_number\}", "", doc_name)
         doc_name = re.sub(r"\.pdf$", "", doc_name, flags=re.IGNORECASE)
         doc_name = doc_name.rstrip("-_ ")
-        doc_name = remove_non_ascii(doc_name)
 
-        # Build revision values aligned by date
+        # Map sheet revisions
         sheetRevIds = set(s.GetAllRevisionIds()) if s else set()
-        rev_values = []
-
-        # Map date to revisions for this sheet
-        date_to_revs = {d: [] for d in DeDupDates}
+        rev_map = {}
+        seq_counters = {}
         for r in revs:
             if r is None or r.Id not in sheetRevIds:
                 continue
             rs = doc_obj.DocRef.GetElement(r.RevisionNumberingSequenceId)
-            if rs is None:
+            if rs is None or is_manual_override_sequence(r, rs):
                 continue
-            if is_manual_override_sequence(r, rs):
+            rev_date = normalize_rev_date(r)
+            if not rev_date:
                 continue
-            rev_date = r.RevisionDate
-            if rev_date in date_to_revs:
-                date_to_revs[rev_date].append(r)
+            name_upper = rs.Name.upper() if rs.Name else ""
+            rev_type = "P" if name_upper.startswith("P") else ("C" if name_upper.startswith("C") else "X")
+            key = (rev_date, rev_type) if split_p_c else (rev_date, "All")
+            if key not in rev_map:
+                rev_map[key] = []
+            rev_map[key].append(r)
+            if rs.Name not in seq_counters:
+                seq_counters[rs.Name] = 0
 
-        # Track sequence counts for correct numbering
-        seq_counters = {name: 0 for name in revSeqNames}
-
-        for d in DeDupDates:
-            revs_on_date = date_to_revs.get(d, [])
-            if not revs_on_date:
+        # Build row
+        rev_values = []
+        for dt_key in date_type_list:
+            revs_on_key = rev_map.get(dt_key, [])
+            if not revs_on_key:
                 rev_values.append("")
                 continue
-
-            r = revs_on_date[0]
+            r = revs_on_key[0]
             rs = doc_obj.DocRef.GetElement(r.RevisionNumberingSequenceId)
-            i_sq = revSeqNames.index(rs.Name)
             i_ch = seq_counters[rs.Name]
-            rev_value = revCharSeqs[i_sq][i_ch] if i_ch < len(revCharSeqs[i_sq]) else ""
-            rev_values.append(remove_non_ascii(rev_value))
+
+            char_seq = []
+            if rs.NumberType == DB.RevisionNumberType.Numeric:
+                settings = rs.GetNumericRevisionSettings()
+                minDigits, prefix, suffix = settings.MinimumDigits, settings.Prefix, settings.Suffix
+                for n in range(settings.StartNumber, 99):
+                    char_seq.append(prefix + str(n).rjust(minDigits, "0") + suffix)
+            else:
+                settings = rs.GetAlphanumericRevisionSettings()
+                prefix, suffix = settings.Prefix, settings.Suffix
+                for a in settings.GetSequence():
+                    char_seq.append(prefix + a + suffix)
+
+            rev_value = char_seq[i_ch] if i_ch < len(char_seq) else ""
+            rev_values.append(rev_value)
             seq_counters[rs.Name] += 1
 
-        # Append row
         rowsOut.append(sep.join([doc_no, doc_name] + rev_values))
 
     return rowsOut
 
-
 # -------------------------
-# WPF window class
+# WPF window with Split P/C checkbox
 # -------------------------
 class RevisionPreviewWindow(forms.WPFWindow):
     def __init__(self, xaml_file_name, protocols, preview_count=100):
@@ -387,7 +397,11 @@ class RevisionPreviewWindow(forms.WPFWindow):
         self.naming_combo = self.FindName("NamingProtocolCombo")
         self.grid = self.FindName("PreviewDataGrid")
         self.export_btn = self.FindName("ExportButton")
-        self.naming_format_text = self.FindName("NamingFormatText")  # NEW
+        self.naming_format_text = self.FindName("NamingFormatText")
+        self.split_pc_checkbox = self.FindName("SplitPCCheckBox")
+
+        # Make Split P/C checked by default
+        self.split_pc_checkbox.IsChecked = True
 
         # Populate document combo
         for d in self.docs:
@@ -400,49 +414,43 @@ class RevisionPreviewWindow(forms.WPFWindow):
             self.naming_combo.Items.Add(p.name)
         self.naming_combo.SelectionChanged += self.on_protocol_changed
 
-        # Set default naming format based on Project Information parameter
-        self._apply_projectinfo_naming_format_default()
+        # Split P/C checkbox event
+        self.split_pc_checkbox.Checked += self.on_split_pc_changed
+        self.split_pc_checkbox.Unchecked += self.on_split_pc_changed
 
-        # Connect export button
+        # Apply default naming format and update preview using checkbox value
+        self._apply_projectinfo_naming_format_default()
         self.export_btn.Click += self.on_export
 
-        self.update_preview(self.protocols[0], self.current_doc_obj)
-
-    def on_document_changed(self, sender, e):
-        idx = self.documents_combo.SelectedIndex
-        self.current_doc_obj = self.docs[idx]
-        self.update_preview(self.protocols[self.naming_combo.SelectedIndex], self.current_doc_obj)
-
-    def on_protocol_changed(self, sender, e):
-        idx = self.naming_combo.SelectedIndex
-        self.update_preview(self.protocols[idx], self.current_doc_obj)
-
     def _apply_projectinfo_naming_format_default(self):
-        # Get the Project Information element of the current document
         pi = self.current_doc_obj.DocRef.ProjectInformation if self.current_doc_obj else None
         param = pi.LookupParameter("Naming Format") if pi else None
         param_value = param.AsString() if param else None
 
-        # Look for a protocol with a matching name
         selected_idx = next(
             (i for i, nf in enumerate(self.protocols) if nf.name == param_value),
-            0  # fallback to index 0 if no match
+            0
         )
-
-        # Set the combo selection by index
         self.naming_combo.SelectedIndex = selected_idx
 
-        # Update preview
-        self.update_preview(self.protocols[selected_idx], self.current_doc_obj)
+        # Use the checkbox value here to respect Split P/C
+        self.update_preview(self.protocols[selected_idx], self.current_doc_obj, self.split_pc_checkbox.IsChecked)
 
+    def on_document_changed(self, sender, e):
+        idx = self.documents_combo.SelectedIndex
+        self.current_doc_obj = self.docs[idx]
+        self.update_preview(self.protocols[self.naming_combo.SelectedIndex], self.current_doc_obj, self.split_pc_checkbox.IsChecked)
 
-    def update_preview(self, protocol, doc_obj):
-        from System.Windows.Data import Binding
-        from System.Windows.Controls import DataGridTextColumn, DataGridLength
-        from System.Collections.ObjectModel import ObservableCollection
-        from System.Dynamic import ExpandoObject
+    def on_protocol_changed(self, sender, e):
+        idx = self.naming_combo.SelectedIndex
+        self.update_preview(self.protocols[idx], self.current_doc_obj, self.split_pc_checkbox.IsChecked)
 
-        rows = build_rows_out(protocol.template, doc_obj)
+    def on_split_pc_changed(self, sender, e):
+        idx = self.naming_combo.SelectedIndex
+        self.update_preview(self.protocols[idx], self.current_doc_obj, self.split_pc_checkbox.IsChecked)
+
+    def update_preview(self, protocol, doc_obj, split_p_c=False):
+        rows = build_rows_out(protocol.template, doc_obj, split_p_c)
         if not rows:
             self.grid.ItemsSource = None
             self.grid.Columns.Clear()
@@ -468,10 +476,7 @@ class RevisionPreviewWindow(forms.WPFWindow):
             self.grid.ItemsSource = data
             self.grid.UpdateLayout()
 
-        # -------------------------
-        # Trim naming format text up to {sheet_param:Sheet Number}
-        # -------------------------
-        marker = "{sheet_param:Sheet Number}"  # remove spaces inside braces
+        marker = "{sheet_param:Sheet Number}"
         idx = protocol.template.find(marker)
         if idx >= 0:
             trimmed_template = protocol.template[:idx + len(marker)]
@@ -479,11 +484,11 @@ class RevisionPreviewWindow(forms.WPFWindow):
             trimmed_template = protocol.template
         self.naming_format_text.Text = trimmed_template
 
-
     def on_export(self, sender, e):
         idx = self.naming_combo.SelectedIndex
         self.selected_template = self.protocols[idx].template
         self.Close()
+
 
 # -------------------------
 # Run window
@@ -499,11 +504,7 @@ window.ShowDialog()
 if not window.selected_template:
     script.exit()
 
-# -------------------------
-# Build revision table and copy to clipboard only
-# -------------------------
-rowsOut = build_rows_out(window.selected_template, window.current_doc_obj)
-
+rowsOut = build_rows_out(window.selected_template, window.current_doc_obj, split_p_c=window.split_pc_checkbox.IsChecked)
 if rowsOut:
     try:
         script.clipboard_copy("\n".join(rowsOut))
@@ -512,4 +513,3 @@ if rowsOut:
         forms.alert("Failed to copy revision table to clipboard: {}".format(str(ex)), title="Error")
 else:
     forms.alert("No revision data found to copy.", title="Info")
-
