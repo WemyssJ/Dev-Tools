@@ -3,6 +3,8 @@ import os
 import tempfile
 import datetime
 import re
+import json
+import ConfigParser
 
 # pyRevit imports
 from pyrevit import forms
@@ -71,33 +73,123 @@ class NamingFormat:
         self.template = template
         self.builtin = builtin
 
-def get_default_naming_formats():
-    return [
-        NamingFormat(
-            name='Craddys: BS EN ISO 19650-2-2018 (+A1 2021)',
-            template='{proj_number}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf'
-        ),
-        NamingFormat(
-            name='Craddys: BS EN ISO 19650-2-2018',
-            template='{proj_number}-{sheet_param:Originator}-{sheet_param:Volume or System}-{sheet_param:Levels and Location}-{sheet_param:Type}-{sheet_param:Role}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf'
-        ),
-        NamingFormat(
-            name='Aldi: BS1192:2007+A2:2016 (Old Template)',
-            template='{proj_number}-{sheet_param:PM.Sheet.Title.Creator.Originator}-{sheet_param:PM.Sheet.Title.View.Zone}-{sheet_param:PM.Sheet.Title.View.Level}-{sheet_param:PM.Sheet.Title.View.Type}-{sheet_param:PM.Sheet.Title.Creator.Role}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf'
-        ),
-        NamingFormat(
-            name='Aldi: BS1192:2007+A2:2016 (New Template)',
-            template='{proj_param:PM.Sheet.Title.Number.Project}-{sheet_param:PM.Sheet.Title.Creator.Originator}-{sheet_param:PM.Sheet.Title.View.Zone}-{sheet_param:PM.Sheet.Title.View.Level}-{sheet_param:PM.Sheet.Title.View.Type}-{sheet_param:PM.Sheet.Title.Creator.Role}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf'
-        ),
-        NamingFormat(
-            name='Morgan Sindall: BS EN ISO 19650-2-2018 (+A1 2021)',
-            template='{proj_number}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Sheet Number}_{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}_{rev_number}.pdf'
-        ),
-        NamingFormat(
-            name='Superseded Naming Protocol',
-            template='{proj_number}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf'
-        ),
-    ]
+def get_user_naming_formats_from_pyrevit_config():
+    user_formats = []
+
+    config_path = os.path.join(
+        os.environ.get("APPDATA", ""),
+        "pyRevit",
+        "pyRevit_config.ini"
+    )
+
+    if not os.path.exists(config_path):
+        return user_formats
+
+    cp = ConfigParser.ConfigParser()
+    try:
+        cp.read(config_path)
+    except:
+        return user_formats
+
+    if not cp.has_section("Print Sheets_config"):
+        return user_formats
+
+    if not cp.has_option("Print Sheets_config", "namingformats"):
+        return user_formats
+
+    raw = cp.get("Print Sheets_config", "namingformats")
+    if not raw:
+        return user_formats
+
+    try:
+        data = json.loads(raw)
+    except Exception:
+        logger.warning("Failed to parse namingformats JSON")
+        return user_formats
+
+    for name, template in data.items():
+        if template:
+            user_formats.append(
+                NamingFormat(
+                    name="User: {}".format(name),
+                    template=template,
+                    builtin=False
+                )
+            )
+
+    return user_formats
+
+# -------------------------
+# Dynamic .tab discovery & Print Sheets extraction
+# -------------------------
+def find_tab_root(start_path):
+    cur = os.path.abspath(start_path)
+    while True:
+        if cur.lower().endswith(".tab"):
+            return cur
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            return None
+        cur = parent
+
+def find_print_sheets_script(tab_root):
+    if not tab_root or not os.path.exists(tab_root):
+        return None
+    for root, dirs, files in os.walk(tab_root):
+        if root.lower().endswith("print sheets.pushbutton"):
+            script_path = os.path.join(root, "script.py")
+            if os.path.exists(script_path):
+                return script_path
+    return None
+
+def extract_naming_formats_from_print_sheets():
+    extracted = []
+
+    this_script = __file__
+    tab_root = find_tab_root(this_script)
+
+    if not tab_root:
+        logger.warning("No .tab root found above {}".format(this_script))
+        return extracted
+
+    script_path = find_print_sheets_script(tab_root)
+    if not script_path:
+        logger.warning("Print Sheets script not found under {}".format(tab_root))
+        return extracted
+
+    try:
+        with open(script_path, "r") as fh:
+            text = fh.read()
+    except Exception as ex:
+        logger.warning("Failed reading Print Sheets script: {}".format(ex))
+        return extracted
+
+    m = re.search(
+        r"@staticmethod\s*\n\s*def\s+get_default_naming_formats\s*\(\s*\)\s*:\s*return\s*\[(.*?)\]\s*",
+        text,
+        re.DOTALL
+    )
+
+    if not m:
+        logger.warning("get_default_naming_formats() not found in Print Sheets script")
+        return extracted
+
+    block = m.group(1)
+
+    pairs = re.findall(
+        r"name\s*=\s*['\"]([^'\"]+)['\"].*?"
+        r"template\s*=\s*['\"]([^'\"]+)['\"]",
+        block,
+        re.DOTALL
+    )
+
+    for name, template in pairs:
+        extracted.append(NamingFormat(name=name, template=template, builtin=True))
+
+    #logger.info(
+    #    "Imported {} naming formats from Print Sheets ({})".format(len(extracted), os.path.basename(tab_root))
+    #)
+    return extracted
 
 # -------------------------
 # Document class for combo
@@ -107,7 +199,7 @@ class AvailableDoc(object):
         self.Name = name
         self.Hash = hash_val
         self.Linked = linked
-        self.DocRef = doc_ref  # store actual DB.Document
+        self.DocRef = doc_ref
 
 def get_documents_list():
     docs = [AvailableDoc(name=doc.Title, hash_val=doc.GetHashCode(), linked=False, doc_ref=doc)]
@@ -119,7 +211,7 @@ def get_documents_list():
     return docs
 
 # -------------------------
-# Collect sheets and revisions (host or linked)
+# Collect sheets and revisions
 # -------------------------
 def collect_sheets_and_revisions(doc_obj):
     doc = doc_obj.DocRef
@@ -130,7 +222,7 @@ def collect_sheets_and_revisions(doc_obj):
         .OfCategory(DB.BuiltInCategory.OST_Sheets)\
         .WhereElementIsNotElementType()\
         .ToElements()
-    
+
     revSeqs = DB.FilteredElementCollector(doc).OfClass(DB.RevisionNumberingSequence).ToElements()
     revIds = DB.Revision.GetAllRevisionIds(doc)
     revs = [doc.GetElement(i) for i in revIds if i is not None]
@@ -259,7 +351,9 @@ class RevisionPreviewWindow(forms.WPFWindow):
         self.naming_combo = self.FindName("NamingProtocolCombo")
         self.grid = self.FindName("PreviewDataGrid")
         self.export_btn = self.FindName("ExportButton")
+        self.naming_format_text = self.FindName("NamingFormatText")  # NEW
 
+        # Populate combos
         for d in self.docs:
             self.documents_combo.Items.Add(d.Name)
         self.documents_combo.SelectedIndex = 0
@@ -292,27 +386,39 @@ class RevisionPreviewWindow(forms.WPFWindow):
         if not rows:
             self.grid.ItemsSource = None
             self.grid.Columns.Clear()
-            return
+        else:
+            header_row = rows[0].split("\t")
+            preview_rows = [r.split("\t") for r in rows[1:1+self.preview_count]]
 
-        header_row = rows[0].split("\t")
-        preview_rows = [r.split("\t") for r in rows[1:1+self.preview_count]]
+            self.grid.Columns.Clear()
+            for idx, head in enumerate(header_row):
+                col = DataGridTextColumn()
+                col.Header = head
+                col.Binding = Binding("Col{0}".format(idx))
+                col.Width = DataGridLength.Auto
+                col.IsReadOnly = True
+                self.grid.Columns.Add(col)
 
-        self.grid.Columns.Clear()
-        for idx, head in enumerate(header_row):
-            col = DataGridTextColumn()
-            col.Header = head
-            col.Binding = Binding("Col{0}".format(idx))
-            col.Width = DataGridLength.Auto
-            self.grid.Columns.Add(col)
+            data = ObservableCollection[object]()
+            for prow in preview_rows:
+                obj = ExpandoObject()
+                for i, v in enumerate(prow):
+                    setattr(obj, "Col{0}".format(i), v or "")
+                data.Add(obj)
+            self.grid.ItemsSource = data
+            self.grid.UpdateLayout()
 
-        data = ObservableCollection[object]()
-        for prow in preview_rows:
-            obj = ExpandoObject()
-            for i, v in enumerate(prow):
-                setattr(obj, "Col{0}".format(i), v or "")
-            data.Add(obj)
-        self.grid.ItemsSource = data
-        self.grid.UpdateLayout()
+        # -------------------------
+        # Trim naming format text up to {sheet_param:Sheet Number}
+        # -------------------------
+        marker = "{sheet_param:Sheet Number}"  # remove spaces inside braces
+        idx = protocol.template.find(marker)
+        if idx >= 0:
+            trimmed_template = protocol.template[:idx + len(marker)]
+        else:
+            trimmed_template = protocol.template
+        self.naming_format_text.Text = trimmed_template
+
 
     def on_export(self, sender, e):
         idx = self.naming_combo.SelectedIndex
@@ -322,7 +428,10 @@ class RevisionPreviewWindow(forms.WPFWindow):
 # -------------------------
 # Run window
 # -------------------------
-protocols = get_default_naming_formats()
+protocols = []
+protocols.extend(extract_naming_formats_from_print_sheets())
+protocols.extend(get_user_naming_formats_from_pyrevit_config())
+
 xaml_file = script.get_bundle_file('PreviewWindow.xaml')
 window = RevisionPreviewWindow(xaml_file, protocols)
 window.ShowDialog()
