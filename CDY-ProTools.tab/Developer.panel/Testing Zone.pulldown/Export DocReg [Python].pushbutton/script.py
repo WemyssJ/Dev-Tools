@@ -16,6 +16,7 @@ from System.Windows.Data import Binding
 from System.Windows.Controls import DataGridTextColumn, DataGridLength
 from System.Collections.ObjectModel import ObservableCollection
 from System.Dynamic import ExpandoObject
+from System.Windows import Clipboard
 
 logger = script.get_logger()
 
@@ -500,5 +501,5 @@ if window.hide_no_revisions_checkbox.IsChecked:
             filtered_rows.append(row)
     rowsOut = filtered_rows
 
-script.copy_to_clipboard("\n".join(rowsOut))
+Clipboard.SetText("\n".join(rowsOut))
 forms.alert("Preview copied to clipboard.")
