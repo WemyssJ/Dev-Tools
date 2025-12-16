@@ -111,13 +111,14 @@ def get_user_naming_formats_from_pyrevit_config():
         if template:
             user_formats.append(
                 NamingFormat(
-                    name="User: {}".format(name),
+                    name="{}".format(name),
                     template=template,
                     builtin=False
                 )
             )
 
     return user_formats
+
 
 # -------------------------
 # Dynamic .tab discovery & Print Sheets extraction
@@ -353,18 +354,23 @@ class RevisionPreviewWindow(forms.WPFWindow):
         self.export_btn = self.FindName("ExportButton")
         self.naming_format_text = self.FindName("NamingFormatText")  # NEW
 
-        # Populate combos
+        # Populate document combo
         for d in self.docs:
             self.documents_combo.Items.Add(d.Name)
         self.documents_combo.SelectedIndex = 0
         self.documents_combo.SelectionChanged += self.on_document_changed
 
+        # Populate naming protocols combo
         for p in self.protocols:
             self.naming_combo.Items.Add(p.name)
-        self.naming_combo.SelectedIndex = 0
         self.naming_combo.SelectionChanged += self.on_protocol_changed
 
+        # Set default naming format based on Project Information parameter
+        self._apply_projectinfo_naming_format_default()
+
+        # Connect export button
         self.export_btn.Click += self.on_export
+
         self.update_preview(self.protocols[0], self.current_doc_obj)
 
     def on_document_changed(self, sender, e):
@@ -375,6 +381,25 @@ class RevisionPreviewWindow(forms.WPFWindow):
     def on_protocol_changed(self, sender, e):
         idx = self.naming_combo.SelectedIndex
         self.update_preview(self.protocols[idx], self.current_doc_obj)
+
+    def _apply_projectinfo_naming_format_default(self):
+        # Get the Project Information element of the current document
+        pi = self.current_doc_obj.DocRef.ProjectInformation if self.current_doc_obj else None
+        param = pi.LookupParameter("Naming Format") if pi else None
+        param_value = param.AsString() if param else None
+
+        # Look for a protocol with a matching name
+        selected_idx = next(
+            (i for i, nf in enumerate(self.protocols) if nf.name == param_value),
+            0  # fallback to index 0 if no match
+        )
+
+        # Set the combo selection by index
+        self.naming_combo.SelectedIndex = selected_idx
+
+        # Update preview
+        self.update_preview(self.protocols[selected_idx], self.current_doc_obj)
+
 
     def update_preview(self, protocol, doc_obj):
         from System.Windows.Data import Binding
