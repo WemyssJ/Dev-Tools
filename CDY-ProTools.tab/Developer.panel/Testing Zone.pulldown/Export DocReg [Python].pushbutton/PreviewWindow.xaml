@@ -48,7 +48,7 @@
                     <ColumnDefinition Width="90" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Stack Document and Naming Protocol vertically -->
+                <!-- Stack Document and Naming Format vertically -->
                 <StackPanel Grid.Column="0" Orientation="Vertical" VerticalAlignment="Top" HorizontalAlignment="Stretch">
 
                     <!-- Document row -->
@@ -73,7 +73,7 @@
                         <ComboBox x:Name="DocumentsCombo" Grid.Column="1" VerticalAlignment="Stretch"/>
                     </Grid>
 
-                    <!-- Naming Protocol row -->
+                    <!-- Naming Format row -->
                     <Grid Height="24">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="150"/>
@@ -88,7 +88,7 @@
                                             SnapsToDevicePixels="True"/>
                                 </Canvas>
                             </Viewbox>
-                            <TextBlock Text="Naming Protocol" FontWeight="Medium" VerticalAlignment="Center" Margin="10,0,10,0" Foreground="White"/>
+                            <TextBlock Text="Naming Format" FontWeight="Medium" VerticalAlignment="Center" Margin="10,0,10,0" Foreground="White"/>
                         </Grid>
 
                         <ComboBox x:Name="NamingProtocolCombo" Grid.Column="1" VerticalAlignment="Stretch"/>
@@ -171,3 +171,4 @@
 
 
 </Window>
+
