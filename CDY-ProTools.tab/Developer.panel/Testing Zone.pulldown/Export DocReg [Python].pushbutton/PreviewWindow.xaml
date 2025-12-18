@@ -88,7 +88,7 @@
                                             SnapsToDevicePixels="True"/>
                                 </Canvas>
                             </Viewbox>
-                            <TextBlock Text="Naming Protocol" FontWeight="Medium" VerticalAlignment="Center" Margin="10,0,10,0" Foreground="White"/>
+                            <TextBlock Text="Naming Format" FontWeight="Medium" VerticalAlignment="Center" Margin="10,0,10,0" Foreground="White"/>
                         </Grid>
 
                         <ComboBox x:Name="NamingProtocolCombo" Grid.Column="1" VerticalAlignment="Stretch"/>
@@ -185,3 +185,4 @@
 
 
 </Window>
+
