@@ -441,7 +441,7 @@ class EditNamingFormatsWindow(forms.WPFWindow):
             ),
             NamingFormat(
                 name='Aldi: BS1192:2007+A2:2016 (New Template)',
-                template='{sheet_param:PM.Sheet.Title.Number.Project}-{sheet_param:PM.Sheet.Title.Creator.Originator}-{sheet_param:PM.Sheet.Title.View.Zone}-{sheet_param:PM.Sheet.Title.View.Level}-{sheet_param:PM.Sheet.Title.View.Type}-{sheet_param:PM.Sheet.Title.Creator.Role}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf',
+                template='{proj_param:PM.Sheet.Title.Number.Project}-{sheet_param:PM.Sheet.Title.Creator.Originator}-{sheet_param:PM.Sheet.Title.View.Zone}-{sheet_param:PM.Sheet.Title.View.Level}-{sheet_param:PM.Sheet.Title.View.Type}-{sheet_param:PM.Sheet.Title.Creator.Role}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf',
                 builtin=True
             ),
             NamingFormat(
@@ -1306,20 +1306,19 @@ class PrintSheetsWindow(forms.WPFWindow):
                                doc=self.selected_doc):
             DB.KeynoteTable.GetKeynoteTable(self.selected_doc).Reload(None)
 
-        with revit.DryTransaction('Set Printer Settings',
-                                  doc=self.selected_doc):
+        with revit.DryTransaction('Set Printer Settings', doc=self.selected_doc):
             try:
                 if not per_sheet_psettings:
-                    print_mgr.PrintSetup.CurrentPrintSetting = \
-                        self.selected_print_setting.print_settings
+                    print_mgr.PrintSetup.CurrentPrintSetting = self.selected_print_setting.print_settings
                 if not (IS_REVIT_2022_OR_NEWER and self.selected_printer == "Revit Internal Printer"):
                     print_mgr.SelectNewPrintDriver(self.selected_printer)
                 print_mgr.PrintRange = DB.PrintRange.Current
+                print_mgr.CombinedFile = False  # <-- ensure per-sheet settings are respected
             except Exception as cpSetEx:
                 forms.alert(
                     "Print setting is incompatible with printer.",
                     expanded=str(cpSetEx)
-                    )
+                )
                 return
             if target_sheets:
                 if self.export_dwg.IsChecked:
@@ -1336,12 +1335,12 @@ class PrintSheetsWindow(forms.WPFWindow):
                                         print_mgr.PrintToFileName = print_filepath
 
                                         # set the per-sheet print settings if required
-                                        if per_sheet_psettings:
-                                            print_mgr.PrintSetup.CurrentPrintSetting = \
-                                                sheet.print_settings
+                                    if per_sheet_psettings and sheet.print_settings:
+                                        print_mgr.PrintSetup.CurrentPrintSetting = sheet.print_settings
+                                    elif not per_sheet_psettings:
+                                        print_mgr.PrintSetup.CurrentPrintSetting = self.selected_print_setting.print_settings
 
-                                        if self._verify_print_filename(sheet.name,
-                                                                    print_filepath):
+                                        if self._verify_print_filename(sheet.name, print_filepath):
                                             try:
                                                 pb1.update_progress(pbCount1, pbTotal1)
                                                 pbCount1 += 1
@@ -1376,31 +1375,23 @@ class PrintSheetsWindow(forms.WPFWindow):
                         pbTotal1 = len(target_sheets)
                         pbCount1 = 1
                         for sheet in target_sheets:
-                            if pb1.cancelled:
-                                break
-                            else:
-                                if sheet.printable:
-                                    if sheet.print_filename:
-                                        print_filepath = op.join(dirPath, sheet.print_filename)
+                            if sheet.printable and sheet.print_filename:
+                                print_filepath = op.join(dirPath, sheet.print_filename)
+                                print_mgr.PrintToFileName = print_filepath
 
-                                        print_mgr.PrintToFileName = print_filepath
+                                # Apply per-sheet print settings
+                                if per_sheet_psettings:
+                                    print_mgr.PrintSetup.CurrentPrintSetting = sheet.print_settings
 
-                                        if per_sheet_psettings:
-                                            print_mgr.PrintSetup.CurrentPrintSetting = \
-                                                sheet.print_settings
-
-                                        if self._verify_print_filename(sheet.name,
-                                                                    print_filepath):
-                                            try:
-                                                pb1.update_progress(pbCount1, pbTotal1)
-                                                pbCount1 += 1
-                                                if IS_REVIT_2022_OR_NEWER and self.selected_printer == "Revit Internal Printer":
-                                                    optspdf = PrintUtils.pdf_opts()
-                                                    PrintUtils.export_sheet_pdf(dirPath, sheet.revit_sheet, optspdf, doc, sheet.print_filename)
-                                                else:
-                                                    print_mgr.SubmitPrint(sheet.revit_sheet)
-                                            except Exception as e:
-                                                logger.error('Failed to export PDF for sheet %s: %s', sheet.number, e)
+                                if self._verify_print_filename(sheet.name, print_filepath):
+                                    try:
+                                        if IS_REVIT_2022_OR_NEWER and self.selected_printer == "Revit Internal Printer":
+                                            optspdf = PrintUtils.pdf_opts()
+                                            PrintUtils.export_sheet_pdf(dirPath, sheet.revit_sheet, optspdf, doc, sheet.print_filename)
+                                        else:
+                                            print_mgr.SubmitPrint(sheet.revit_sheet)
+                                    except Exception as e:
+                                        logger.error('Failed to print sheet %s: %s', sheet.number, e)
 
                                     else:
                                         pbCount1 += 1
