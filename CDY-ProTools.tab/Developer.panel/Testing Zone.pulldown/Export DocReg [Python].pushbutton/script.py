@@ -218,7 +218,7 @@ def collect_sheets_and_revisions(doc_obj):
 # -------------------------
 # Build revision rows
 # -------------------------
-def build_rows_out(template, doc_obj, split_p_c=False):
+def build_rows_out(template, doc_obj, split_p_c=False, hide_unused_revisions=True):
     import datetime
     sep = "\t"
     rowsOut = []
@@ -226,6 +226,19 @@ def build_rows_out(template, doc_obj, split_p_c=False):
     sheets, revs, revSeqs = collect_sheets_and_revisions(doc_obj)
     if not sheets:
         return []
+
+    # -------------------------------------------------
+    # Collect revision ids that are actually on sheets
+    # (ONLY if toggle enabled)
+    # -------------------------------------------------
+    used_revision_ids = set()
+    if hide_unused_revisions:
+        for s in sheets:
+            try:
+                for rid in s.GetAllRevisionIds():
+                    used_revision_ids.add(rid)
+            except:
+                pass
 
     if "{sheet_param:Sheet Name}" in template:
         split_idx = template.index("{sheet_param:Sheet Name}")
@@ -247,17 +260,26 @@ def build_rows_out(template, doc_obj, split_p_c=False):
             except:
                 return None
 
-    # Collect unique revisions with optional split P/C
+    # -------------------------------------------------
+    # Build unique revision columns
+    # -------------------------------------------------
     date_type_list = []
     for r in revs:
         if r is None:
             continue
+
+        # >>> TOGGLEABLE FILTER <<<
+        if hide_unused_revisions and r.Id not in used_revision_ids:
+            continue
+
         rs = doc_obj.DocRef.GetElement(r.RevisionNumberingSequenceId)
         if rs is None or is_manual_override_sequence(r, rs):
             continue
+
         rev_date = normalize_rev_date(r)
         if not rev_date:
             continue
+
         name_upper = rs.Name.upper() if rs.Name else ""
         if name_upper.startswith("P"):
             rev_type = "P"
@@ -265,15 +287,22 @@ def build_rows_out(template, doc_obj, split_p_c=False):
             rev_type = "C"
         else:
             rev_type = "X"
+
         key = (rev_date, rev_type) if split_p_c else (rev_date, "All")
         if key not in date_type_list:
             date_type_list.append(key)
 
-    # Sort revisions: P before C
-    date_type_list.sort(key=lambda x: (x[0], 0 if x[1]=="P" else (1 if x[1]=="C" else 2)))
+    # Sort revisions: date, then P before C
+    date_type_list.sort(
+        key=lambda x: (x[0], 0 if x[1] == "P" else (1 if x[1] == "C" else 2))
+    )
 
-    # Header row
-    header = ["Document No.", "Document Name"] + [d[0].strftime("%d.%m.%y") for d in date_type_list]
+    # -------------------------------------------------
+    # Header
+    # -------------------------------------------------
+    header = ["Document No.", "Document Name"] + [
+        d[0].strftime("%d.%m.%y") for d in date_type_list
+    ]
     rowsOut.append(sep.join(header))
 
     def safe_sheet_number(s):
@@ -284,84 +313,113 @@ def build_rows_out(template, doc_obj, split_p_c=False):
 
     sorted_sheets = sorted(sheets, key=safe_sheet_number)
 
+    # -------------------------------------------------
+    # Build sheet rows
+    # -------------------------------------------------
     for s in sorted_sheets:
         if s is None:
             continue
 
+        # -------------------------------
+        # Document No
+        # -------------------------------
         doc_no = doc_no_template.replace("{proj_number}", project_number)
         for match in re.findall(r"{sheet_param:([^}]+)}", doc_no):
-            val = _safe_lookup_param_as_string(s, match)
-            doc_no = doc_no.replace("{sheet_param:%s}" % match, val)
+            doc_no = doc_no.replace(
+                "{sheet_param:%s}" % match,
+                _safe_lookup_param_as_string(s, match)
+            )
         for match in re.findall(r"{proj_param:([^}]+)}", doc_no):
-            val = _safe_lookup_param_as_string(proj_info, match)
-            doc_no = doc_no.replace("{proj_param:%s}" % match, val)
+            doc_no = doc_no.replace(
+                "{proj_param:%s}" % match,
+                _safe_lookup_param_as_string(proj_info, match)
+            )
         doc_no = re.sub(r"[-_]*\{rev_number\}", "", doc_no)
         doc_no = re.sub(r"\.pdf$", "", doc_no, flags=re.IGNORECASE)
         doc_no = doc_no.rstrip("-_ ")
 
+        # -------------------------------
+        # Document Name
+        # -------------------------------
         doc_name = doc_name_template
         for match in re.findall(r"{sheet_param:([^}]+)}", doc_name):
-            val = _safe_lookup_param_as_string(s, match)
-            doc_name = doc_name.replace("{sheet_param:%s}" % match, val)
+            doc_name = doc_name.replace(
+                "{sheet_param:%s}" % match,
+                _safe_lookup_param_as_string(s, match)
+            )
         for match in re.findall(r"{proj_param:([^}]+)}", doc_name):
-            val = _safe_lookup_param_as_string(proj_info, match)
-            doc_name = doc_name.replace("{proj_param:%s}" % match, val)
+            doc_name = doc_name.replace(
+                "{proj_param:%s}" % match,
+                _safe_lookup_param_as_string(proj_info, match)
+            )
         doc_name = re.sub(r"[-_]*\{rev_number\}", "", doc_name)
         doc_name = re.sub(r"\.pdf$", "", doc_name, flags=re.IGNORECASE)
         doc_name = doc_name.rstrip("-_ ")
 
-        # Map sheet revisions
-        sheetRevIds = set(s.GetAllRevisionIds()) if s else set()
+        # -------------------------------
+        # Map revisions on this sheet
+        # -------------------------------
+        sheetRevIds = set(s.GetAllRevisionIds())
         rev_map = {}
         seq_counters = {}
+
         for r in revs:
             if r is None or r.Id not in sheetRevIds:
                 continue
+
             rs = doc_obj.DocRef.GetElement(r.RevisionNumberingSequenceId)
             if rs is None or is_manual_override_sequence(r, rs):
                 continue
+
             rev_date = normalize_rev_date(r)
             if not rev_date:
                 continue
-            name_upper = rs.Name.upper() if rs.Name else ""
-            rev_type = "P" if name_upper.startswith("P") else ("C" if name_upper.startswith("C") else "X")
-            key = (rev_date, rev_type) if split_p_c else (rev_date, "All")
-            if key not in rev_map:
-                rev_map[key] = []
-            rev_map[key].append(r)
-            if rs.Name not in seq_counters:
-                seq_counters[rs.Name] = 0
 
-        # Build row
+            name_upper = rs.Name.upper() if rs.Name else ""
+            rev_type = "P" if name_upper.startswith("P") else (
+                "C" if name_upper.startswith("C") else "X"
+            )
+
+            key = (rev_date, rev_type) if split_p_c else (rev_date, "All")
+            rev_map.setdefault(key, []).append(r)
+            seq_counters.setdefault(rs.Name, 0)
+
+        # -------------------------------
+        # Emit revision values
+        # -------------------------------
         rev_values = []
         for dt_key in date_type_list:
             revs_on_key = rev_map.get(dt_key, [])
             if not revs_on_key:
                 rev_values.append("")
                 continue
+
             r = revs_on_key[0]
             rs = doc_obj.DocRef.GetElement(r.RevisionNumberingSequenceId)
-            i_ch = seq_counters[rs.Name]
+            idx = seq_counters[rs.Name]
 
             char_seq = []
             if rs.NumberType == DB.RevisionNumberType.Numeric:
                 settings = rs.GetNumericRevisionSettings()
-                minDigits, prefix, suffix = settings.MinimumDigits, settings.Prefix, settings.Suffix
                 for n in range(settings.StartNumber, 99):
-                    char_seq.append(prefix + str(n).rjust(minDigits, "0") + suffix)
+                    char_seq.append(
+                        settings.Prefix +
+                        str(n).rjust(settings.MinimumDigits, "0") +
+                        settings.Suffix
+                    )
             else:
                 settings = rs.GetAlphanumericRevisionSettings()
-                prefix, suffix = settings.Prefix, settings.Suffix
                 for a in settings.GetSequence():
-                    char_seq.append(prefix + a + suffix)
+                    char_seq.append(settings.Prefix + a + settings.Suffix)
 
-            rev_value = char_seq[i_ch] if i_ch < len(char_seq) else ""
-            rev_values.append(rev_value)
+            rev_values.append(char_seq[idx] if idx < len(char_seq) else "")
             seq_counters[rs.Name] += 1
 
         rowsOut.append(sep.join([doc_no, doc_name] + rev_values))
 
     return rowsOut
+
+
 
 # -------------------------
 # WPF window with checkboxes
@@ -382,7 +440,9 @@ class RevisionPreviewWindow(forms.WPFWindow):
         self.naming_format_text = self.FindName("NamingFormatText")
         self.split_pc_checkbox = self.FindName("SplitPCCheckBox")
         self.hide_no_revisions_checkbox = self.FindName("HideNoRevisionsCheckBox")
+        self.hide_unused_revisions_checkbox = self.FindName("HideUnusedRevisionsCheckBox")
 
+        self.hide_unused_revisions_checkbox.IsChecked = True
         self.split_pc_checkbox.IsChecked = True
         self.hide_no_revisions_checkbox.IsChecked = True
 
@@ -402,6 +462,8 @@ class RevisionPreviewWindow(forms.WPFWindow):
         self.split_pc_checkbox.Unchecked += self.on_filter_changed
         self.hide_no_revisions_checkbox.Checked += self.on_filter_changed
         self.hide_no_revisions_checkbox.Unchecked += self.on_filter_changed
+        self.hide_unused_revisions_checkbox.Checked += self.on_filter_changed
+        self.hide_unused_revisions_checkbox.Unchecked += self.on_filter_changed
 
         # Apply default naming format
         self._apply_projectinfo_naming_format_default()
@@ -429,51 +491,61 @@ class RevisionPreviewWindow(forms.WPFWindow):
         idx = self.naming_combo.SelectedIndex
         self.update_preview(self.protocols[idx], self.current_doc_obj, self.split_pc_checkbox.IsChecked)
 
-    def update_preview(self, protocol, doc_obj, split_p_c=False):
-        rows = build_rows_out(protocol.template, doc_obj, split_p_c)
+    def on_export(self, sender, e):
+        idx = self.naming_combo.SelectedIndex
+        if idx < 0:
+            return
+        self.selected_template = self.protocols[idx].template
+        self.Close()
 
-        # Filter sheets with no revisions
-        if self.hide_no_revisions_checkbox.IsChecked:
-            header = rows[0].split("\t")
-            filtered_rows = [rows[0]]  # keep header
-            for row in rows[1:]:
-                if any(cell.strip() for cell in row.split("\t")[2:]):  # any revision column
-                    filtered_rows.append(row)
-            rows = filtered_rows
+    def update_preview(self, protocol, doc_obj, split_p_c=False):
+        rows = build_rows_out(
+            protocol.template,
+            doc_obj,
+            split_p_c=split_p_c,
+            hide_unused_revisions=self.hide_unused_revisions_checkbox.IsChecked
+        )
+
+        # Hide sheets with no revisions (row-level filter)
+        if self.hide_no_revisions_checkbox.IsChecked and rows:
+            filtered = [rows[0]]
+            for r in rows[1:]:
+                if any(c.strip() for c in r.split("\t")[2:]):
+                    filtered.append(r)
+            rows = filtered
 
         if not rows:
             self.grid.ItemsSource = None
             self.grid.Columns.Clear()
-        else:
-            header_row = rows[0].split("\t")
-            preview_rows = [r.split("\t") for r in rows[1:1+self.preview_count]]
-            self.grid.Columns.Clear()
-            for idx, head in enumerate(header_row):
-                col = DataGridTextColumn()
-                col.Header = head
-                col.Binding = Binding("Col{0}".format(idx))
-                col.Width = DataGridLength.Auto
-                col.IsReadOnly = True
-                self.grid.Columns.Add(col)
+            return
 
-            data = ObservableCollection[object]()
-            for prow in preview_rows:
-                obj = ExpandoObject()
-                for i, v in enumerate(prow):
-                    setattr(obj, "Col{0}".format(i), v or "")
-                data.Add(obj)
-            self.grid.ItemsSource = data
-            self.grid.UpdateLayout()
+        header_row = rows[0].split("\t")
+        preview_rows = [r.split("\t") for r in rows[1:1+self.preview_count]]
+
+        self.grid.Columns.Clear()
+        for i, h in enumerate(header_row):
+            col = DataGridTextColumn()
+            col.Header = h
+            col.Binding = Binding("Col{}".format(i))
+            col.Width = DataGridLength.Auto
+            col.IsReadOnly = True
+            self.grid.Columns.Add(col)
+
+        data = ObservableCollection[object]()
+        for prow in preview_rows:
+            obj = ExpandoObject()
+            for i, v in enumerate(prow):
+                setattr(obj, "Col{}".format(i), v or "")
+            data.Add(obj)
+
+        self.grid.ItemsSource = data
+        self.grid.UpdateLayout()
 
         marker = "{sheet_param:Sheet Number}"
         idx = protocol.template.find(marker)
-        trimmed_template = protocol.template[:idx + len(marker)] if idx >= 0 else protocol.template
-        self.naming_format_text.Text = trimmed_template
+        trimmed = protocol.template[:idx + len(marker)] if idx >= 0 else protocol.template
+        self.naming_format_text.Text = trimmed
 
-    def on_export(self, sender, e):
-        idx = self.naming_combo.SelectedIndex
-        self.selected_template = self.protocols[idx].template
-        self.Close()
 
 
 # -------------------------
@@ -490,7 +562,12 @@ window.ShowDialog()
 if not window.selected_template:
     script.exit()
 
-rowsOut = build_rows_out(window.selected_template, window.current_doc_obj, split_p_c=window.split_pc_checkbox.IsChecked)
+rowsOut = build_rows_out(
+    window.selected_template,
+    window.current_doc_obj,
+    split_p_c=window.split_pc_checkbox.IsChecked,
+    hide_unused_revisions=window.hide_unused_revisions_checkbox.IsChecked
+)
 
 # Apply hide no revisions filter to exported clipboard
 if window.hide_no_revisions_checkbox.IsChecked:
