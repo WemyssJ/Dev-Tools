@@ -218,7 +218,7 @@ def collect_sheets_and_revisions(doc_obj):
 # -------------------------
 # Build revision rows
 # -------------------------
-def build_rows_out(template, doc_obj, split_p_c=False, hide_unused_revisions=True):
+def build_rows_out(template, doc_obj, split_p_c=False, hide_unused_revisions=True, ga_override=False):
     import datetime
     sep = "\t"
     rowsOut = []
@@ -352,10 +352,19 @@ def build_rows_out(template, doc_obj, split_p_c=False, hide_unused_revisions=Tru
                 "{proj_param:%s}" % match,
                 _safe_lookup_param_as_string(proj_info, match)
             )
+
         doc_name = re.sub(r"[-_]*\{rev_number\}", "", doc_name)
         doc_name = re.sub(r"\.pdf$", "", doc_name, flags=re.IGNORECASE)
         doc_name = doc_name.rstrip("-_ ")
 
+        # >>> GA OVERRIDE <<<
+        if ga_override:
+            doc_name = re.sub(
+                r"\bGENERAL\s+ARRANGEMENT\b",
+                "GA",
+                doc_name,
+                flags=re.IGNORECASE
+            )
         # -------------------------------
         # Map revisions on this sheet
         # -------------------------------
@@ -433,6 +442,7 @@ class RevisionPreviewWindow(forms.WPFWindow):
         self.docs = get_documents_list()
         self.current_doc_obj = self.docs[0]
 
+        # Link Buttons
         self.documents_combo = self.FindName("DocumentsCombo")
         self.naming_combo = self.FindName("NamingProtocolCombo")
         self.grid = self.FindName("PreviewDataGrid")
@@ -441,7 +451,10 @@ class RevisionPreviewWindow(forms.WPFWindow):
         self.split_pc_checkbox = self.FindName("SplitPCCheckBox")
         self.hide_no_revisions_checkbox = self.FindName("HideNoRevisionsCheckBox")
         self.hide_unused_revisions_checkbox = self.FindName("HideUnusedRevisionsCheckBox")
+        self.ga_override_checkbox = self.FindName("GAOverrideCheckBox")
 
+        # Default values
+        self.ga_override_checkbox.IsChecked = False
         self.hide_unused_revisions_checkbox.IsChecked = True
         self.split_pc_checkbox.IsChecked = True
         self.hide_no_revisions_checkbox.IsChecked = True
@@ -464,6 +477,8 @@ class RevisionPreviewWindow(forms.WPFWindow):
         self.hide_no_revisions_checkbox.Unchecked += self.on_filter_changed
         self.hide_unused_revisions_checkbox.Checked += self.on_filter_changed
         self.hide_unused_revisions_checkbox.Unchecked += self.on_filter_changed
+        self.ga_override_checkbox.Checked += self.on_filter_changed
+        self.ga_override_checkbox.Unchecked += self.on_filter_changed
 
         # Apply default naming format
         self._apply_projectinfo_naming_format_default()
@@ -503,7 +518,8 @@ class RevisionPreviewWindow(forms.WPFWindow):
             protocol.template,
             doc_obj,
             split_p_c=split_p_c,
-            hide_unused_revisions=self.hide_unused_revisions_checkbox.IsChecked
+            hide_unused_revisions=self.hide_unused_revisions_checkbox.IsChecked,
+            ga_override=self.ga_override_checkbox.IsChecked
         )
 
         # Hide sheets with no revisions (row-level filter)
@@ -566,7 +582,8 @@ rowsOut = build_rows_out(
     window.selected_template,
     window.current_doc_obj,
     split_p_c=window.split_pc_checkbox.IsChecked,
-    hide_unused_revisions=window.hide_unused_revisions_checkbox.IsChecked
+    hide_unused_revisions=window.hide_unused_revisions_checkbox.IsChecked,
+    ga_override=window.ga_override_checkbox.IsChecked
 )
 
 # Apply hide no revisions filter to exported clipboard

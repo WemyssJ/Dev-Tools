@@ -88,7 +88,7 @@
                                             SnapsToDevicePixels="True"/>
                                 </Canvas>
                             </Viewbox>
-                            <TextBlock Text="Naming Format" FontWeight="Medium" VerticalAlignment="Center" Margin="10,0,10,0" Foreground="White"/>
+                            <TextBlock Text="Naming Protocol" FontWeight="Medium" VerticalAlignment="Center" Margin="10,0,10,0" Foreground="White"/>
                         </Grid>
 
                         <ComboBox x:Name="NamingProtocolCombo" Grid.Column="1" VerticalAlignment="Stretch"/>
@@ -114,15 +114,19 @@
             <GroupBox Header="Export Options" Grid.Column="0" Margin="0,10,5,0" Padding="8">
                 <StackPanel Orientation="Horizontal" Grid.Row="1" Margin="0,0,0,10">
                     <CheckBox x:Name="SplitPCCheckBox"
-                            Content="Split Revisions (P/C)"
+                            Content="Separate P / C revisions"
                             Margin="0,0,20,0"/>
 
                     <CheckBox x:Name="HideNoRevisionsCheckBox"
-                            Content="Hide SHEETS (no revisions)"
+                            Content="Hide SHEETS with no REVS"
                             Margin="0,0,20,0"/>
 
                     <CheckBox x:Name="HideUnusedRevisionsCheckBox"
-                            Content="Hide REVISIONS (no sheets)"/>
+                            Content="Hide REVS with no SHEETS"
+                            Margin="0,0,20,0"/>
+
+                    <CheckBox x:Name="GAOverrideCheckBox"
+                            Content="Abbreviate General Arrangement to GA"/>
                 </StackPanel>
             </GroupBox>
 
@@ -185,4 +189,3 @@
 
 
 </Window>
-
