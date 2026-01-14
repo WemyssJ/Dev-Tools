@@ -218,7 +218,7 @@ def collect_sheets_and_revisions(doc_obj):
 # -------------------------
 # Build revision rows
 # -------------------------
-def build_rows_out(template, doc_obj, split_p_c=False, hide_unused_revisions=True, ga_override=False):
+def build_rows_out(template, doc_obj, split_p_c=False, hide_unused_revisions=True, ga_override=False, show_illegible_dates=True):
     import datetime
     sep = "\t"
     rowsOut = []
@@ -227,10 +227,7 @@ def build_rows_out(template, doc_obj, split_p_c=False, hide_unused_revisions=Tru
     if not sheets:
         return []
 
-    # -------------------------------------------------
-    # Collect revision ids that are actually on sheets
-    # (ONLY if toggle enabled)
-    # -------------------------------------------------
+    # Collect used revision IDs if hiding unused
     used_revision_ids = set()
     if hide_unused_revisions:
         for s in sheets:
@@ -258,17 +255,15 @@ def build_rows_out(template, doc_obj, split_p_c=False, hide_unused_revisions=Tru
             try:
                 return datetime.datetime.strptime(str(rev_date), "%d.%m.%y").date()
             except:
-                return None
+                return str(rev_date)  # keep illegible date as string
 
-    # -------------------------------------------------
     # Build unique revision columns
-    # -------------------------------------------------
     date_type_list = []
     for r in revs:
         if r is None:
             continue
 
-        # >>> TOGGLEABLE FILTER <<<
+        # Skip unused revisions if toggle enabled
         if hide_unused_revisions and r.Id not in used_revision_ids:
             continue
 
@@ -277,7 +272,9 @@ def build_rows_out(template, doc_obj, split_p_c=False, hide_unused_revisions=Tru
             continue
 
         rev_date = normalize_rev_date(r)
-        if not rev_date:
+
+        # Skip illegible dates only if the toggle is set to hide them
+        if not isinstance(rev_date, datetime.date) and not show_illegible_dates:
             continue
 
         name_upper = rs.Name.upper() if rs.Name else ""
@@ -293,15 +290,18 @@ def build_rows_out(template, doc_obj, split_p_c=False, hide_unused_revisions=Tru
             date_type_list.append(key)
 
     # Sort revisions: date, then P before C
-    date_type_list.sort(
-        key=lambda x: (x[0], 0 if x[1] == "P" else (1 if x[1] == "C" else 2))
-    )
+    def sort_key(x):
+        dt, typ = x
+        # make illegible dates go last
+        dt_sort = dt if isinstance(dt, datetime.date) else datetime.date.max
+        return (dt_sort, 0 if typ == "P" else (1 if typ == "C" else 2))
 
-    # -------------------------------------------------
+    date_type_list.sort(key=sort_key)
+
     # Header
-    # -------------------------------------------------
     header = ["Document No.", "Document Name"] + [
-        d[0].strftime("%d.%m.%y") for d in date_type_list
+        d[0].strftime("%d.%m.%y") if isinstance(d[0], datetime.date) else str(d[0])
+        for d in date_type_list
     ]
     rowsOut.append(sep.join(header))
 
@@ -313,61 +313,36 @@ def build_rows_out(template, doc_obj, split_p_c=False, hide_unused_revisions=Tru
 
     sorted_sheets = sorted(sheets, key=safe_sheet_number)
 
-    # -------------------------------------------------
     # Build sheet rows
-    # -------------------------------------------------
     for s in sorted_sheets:
         if s is None:
             continue
 
-        # -------------------------------
-        # Document No
-        # -------------------------------
+        # Document No.
         doc_no = doc_no_template.replace("{proj_number}", project_number)
         for match in re.findall(r"{sheet_param:([^}]+)}", doc_no):
-            doc_no = doc_no.replace(
-                "{sheet_param:%s}" % match,
-                _safe_lookup_param_as_string(s, match)
-            )
+            doc_no = doc_no.replace("{sheet_param:%s}" % match, _safe_lookup_param_as_string(s, match))
         for match in re.findall(r"{proj_param:([^}]+)}", doc_no):
-            doc_no = doc_no.replace(
-                "{proj_param:%s}" % match,
-                _safe_lookup_param_as_string(proj_info, match)
-            )
+            doc_no = doc_no.replace("{proj_param:%s}" % match, _safe_lookup_param_as_string(proj_info, match))
         doc_no = re.sub(r"[-_]*\{rev_number\}", "", doc_no)
         doc_no = re.sub(r"\.pdf$", "", doc_no, flags=re.IGNORECASE)
         doc_no = doc_no.rstrip("-_ ")
 
-        # -------------------------------
         # Document Name
-        # -------------------------------
         doc_name = doc_name_template
         for match in re.findall(r"{sheet_param:([^}]+)}", doc_name):
-            doc_name = doc_name.replace(
-                "{sheet_param:%s}" % match,
-                _safe_lookup_param_as_string(s, match)
-            )
+            doc_name = doc_name.replace("{sheet_param:%s}" % match, _safe_lookup_param_as_string(s, match))
         for match in re.findall(r"{proj_param:([^}]+)}", doc_name):
-            doc_name = doc_name.replace(
-                "{proj_param:%s}" % match,
-                _safe_lookup_param_as_string(proj_info, match)
-            )
-
+            doc_name = doc_name.replace("{proj_param:%s}" % match, _safe_lookup_param_as_string(proj_info, match))
         doc_name = re.sub(r"[-_]*\{rev_number\}", "", doc_name)
         doc_name = re.sub(r"\.pdf$", "", doc_name, flags=re.IGNORECASE)
         doc_name = doc_name.rstrip("-_ ")
 
-        # >>> GA OVERRIDE <<<
+        # GA override
         if ga_override:
-            doc_name = re.sub(
-                r"\bGENERAL\s+ARRANGEMENT\b",
-                "GA",
-                doc_name,
-                flags=re.IGNORECASE
-            )
-        # -------------------------------
+            doc_name = re.sub(r"\bGENERAL\s+ARRANGEMENT\b", "GA", doc_name, flags=re.IGNORECASE)
+
         # Map revisions on this sheet
-        # -------------------------------
         sheetRevIds = set(s.GetAllRevisionIds())
         rev_map = {}
         seq_counters = {}
@@ -381,21 +356,16 @@ def build_rows_out(template, doc_obj, split_p_c=False, hide_unused_revisions=Tru
                 continue
 
             rev_date = normalize_rev_date(r)
-            if not rev_date:
+            if not isinstance(rev_date, datetime.date) and not show_illegible_dates:
                 continue
 
             name_upper = rs.Name.upper() if rs.Name else ""
-            rev_type = "P" if name_upper.startswith("P") else (
-                "C" if name_upper.startswith("C") else "X"
-            )
-
+            rev_type = "P" if name_upper.startswith("P") else ("C" if name_upper.startswith("C") else "X")
             key = (rev_date, rev_type) if split_p_c else (rev_date, "All")
             rev_map.setdefault(key, []).append(r)
             seq_counters.setdefault(rs.Name, 0)
 
-        # -------------------------------
         # Emit revision values
-        # -------------------------------
         rev_values = []
         for dt_key in date_type_list:
             revs_on_key = rev_map.get(dt_key, [])
@@ -411,11 +381,7 @@ def build_rows_out(template, doc_obj, split_p_c=False, hide_unused_revisions=Tru
             if rs.NumberType == DB.RevisionNumberType.Numeric:
                 settings = rs.GetNumericRevisionSettings()
                 for n in range(settings.StartNumber, 99):
-                    char_seq.append(
-                        settings.Prefix +
-                        str(n).rjust(settings.MinimumDigits, "0") +
-                        settings.Suffix
-                    )
+                    char_seq.append(settings.Prefix + str(n).rjust(settings.MinimumDigits, "0") + settings.Suffix)
             else:
                 settings = rs.GetAlphanumericRevisionSettings()
                 for a in settings.GetSequence():
@@ -427,6 +393,7 @@ def build_rows_out(template, doc_obj, split_p_c=False, hide_unused_revisions=Tru
         rowsOut.append(sep.join([doc_no, doc_name] + rev_values))
 
     return rowsOut
+
 
 
 
@@ -452,8 +419,10 @@ class RevisionPreviewWindow(forms.WPFWindow):
         self.hide_no_revisions_checkbox = self.FindName("HideNoRevisionsCheckBox")
         self.hide_unused_revisions_checkbox = self.FindName("HideUnusedRevisionsCheckBox")
         self.ga_override_checkbox = self.FindName("GAOverrideCheckBox")
+        self.hide_illegible_dates_checkbox = self.FindName("HideIllegibleDatesCheckBox")
 
         # Default values
+        self.hide_illegible_dates_checkbox.IsChecked = False
         self.ga_override_checkbox.IsChecked = False
         self.hide_unused_revisions_checkbox.IsChecked = True
         self.split_pc_checkbox.IsChecked = True
@@ -471,6 +440,8 @@ class RevisionPreviewWindow(forms.WPFWindow):
         self.naming_combo.SelectionChanged += self.on_protocol_changed
 
         # Checkboxes events
+        self.hide_illegible_dates_checkbox.Checked += self.on_filter_changed
+        self.hide_illegible_dates_checkbox.Unchecked += self.on_filter_changed
         self.split_pc_checkbox.Checked += self.on_filter_changed
         self.split_pc_checkbox.Unchecked += self.on_filter_changed
         self.hide_no_revisions_checkbox.Checked += self.on_filter_changed
@@ -514,17 +485,20 @@ class RevisionPreviewWindow(forms.WPFWindow):
         self.Close()
 
     def update_preview(self, protocol, doc_obj, split_p_c=False):
+        show_illegible = not self.hide_illegible_dates_checkbox.IsChecked
+
         rows = build_rows_out(
             protocol.template,
             doc_obj,
             split_p_c=split_p_c,
             hide_unused_revisions=self.hide_unused_revisions_checkbox.IsChecked,
-            ga_override=self.ga_override_checkbox.IsChecked
+            ga_override=self.ga_override_checkbox.IsChecked,
+            show_illegible_dates=show_illegible
         )
 
         # Hide sheets with no revisions (row-level filter)
         if self.hide_no_revisions_checkbox.IsChecked and rows:
-            filtered = [rows[0]]
+            filtered = [rows[0]]  # keep header
             for r in rows[1:]:
                 if any(c.strip() for c in r.split("\t")[2:]):
                     filtered.append(r)
@@ -538,6 +512,7 @@ class RevisionPreviewWindow(forms.WPFWindow):
         header_row = rows[0].split("\t")
         preview_rows = [r.split("\t") for r in rows[1:1+self.preview_count]]
 
+        # Build DataGrid columns
         self.grid.Columns.Clear()
         for i, h in enumerate(header_row):
             col = DataGridTextColumn()
@@ -547,6 +522,7 @@ class RevisionPreviewWindow(forms.WPFWindow):
             col.IsReadOnly = True
             self.grid.Columns.Add(col)
 
+        # Build DataGrid items
         data = ObservableCollection[object]()
         for prow in preview_rows:
             obj = ExpandoObject()
@@ -557,10 +533,12 @@ class RevisionPreviewWindow(forms.WPFWindow):
         self.grid.ItemsSource = data
         self.grid.UpdateLayout()
 
+        # Update naming format text display
         marker = "{sheet_param:Sheet Number}"
         idx = protocol.template.find(marker)
         trimmed = protocol.template[:idx + len(marker)] if idx >= 0 else protocol.template
         self.naming_format_text.Text = trimmed
+
 
 
 
