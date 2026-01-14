@@ -373,30 +373,33 @@ def build_rows_out(template, doc_obj, split_p_c=False, hide_unused_revisions=Tru
                 rev_values.append("")
                 continue
 
-            r = revs_on_key[0]
-            rs = doc_obj.DocRef.GetElement(r.RevisionNumberingSequenceId)
-            idx = seq_counters[rs.Name]
+            # For each revision on this sheet/date/type, build its label
+            rev_labels = []
+            for r in revs_on_key:
+                rs = doc_obj.DocRef.GetElement(r.RevisionNumberingSequenceId)
+                idx = seq_counters.get(rs.Name, 0)
 
-            char_seq = []
-            if rs.NumberType == DB.RevisionNumberType.Numeric:
-                settings = rs.GetNumericRevisionSettings()
-                for n in range(settings.StartNumber, 99):
-                    char_seq.append(settings.Prefix + str(n).rjust(settings.MinimumDigits, "0") + settings.Suffix)
-            else:
-                settings = rs.GetAlphanumericRevisionSettings()
-                for a in settings.GetSequence():
-                    char_seq.append(settings.Prefix + a + settings.Suffix)
+                char_seq = []
+                if rs.NumberType == DB.RevisionNumberType.Numeric:
+                    settings = rs.GetNumericRevisionSettings()
+                    for n in range(settings.StartNumber, 99):
+                        char_seq.append(settings.Prefix + str(n).rjust(settings.MinimumDigits, "0") + settings.Suffix)
+                else:
+                    settings = rs.GetAlphanumericRevisionSettings()
+                    for a in settings.GetSequence():
+                        char_seq.append(settings.Prefix + a + settings.Suffix)
 
-            rev_values.append(char_seq[idx] if idx < len(char_seq) else "")
-            seq_counters[rs.Name] += 1
+                # Grab the correct revision value or blank if out of sequence
+                rev_labels.append(char_seq[idx] if idx < len(char_seq) else "")
+                seq_counters[rs.Name] = idx + 1  # increment counter
+
+            # Join multiple revisions with pipe |
+            rev_values.append("|".join(rev_labels))
+
 
         rowsOut.append(sep.join([doc_no, doc_name] + rev_values))
 
     return rowsOut
-
-
-
-
 # -------------------------
 # WPF window with checkboxes
 # -------------------------
@@ -538,10 +541,7 @@ class RevisionPreviewWindow(forms.WPFWindow):
         idx = protocol.template.find(marker)
         trimmed = protocol.template[:idx + len(marker)] if idx >= 0 else protocol.template
         self.naming_format_text.Text = trimmed
-
-
-
-
+        
 # -------------------------
 # Run window
 # -------------------------
