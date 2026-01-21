@@ -1,8 +1,14 @@
 title:
+  en_us: Sync Views
   ru: Синхро-ть виды
   fr_fr: Synchro Vues
-  en_us: Sync Views
 tooltip:
+  en_us: >-
+    Keep views synchronized. This means that as you pan and zoom and
+    switch between Plan and RCP views, this tool will keep the views
+    in the same zoomed area so you can keep working in the same
+    area without the need to zoom and pan again.
+    This tool works best when the views are maximized
   ru: >-
     Синхронизирует виды. Это означает, при панорамировании и масштабировании,
     а так же при переключении между видами плана и отраженный план потолка, 
@@ -15,11 +21,6 @@ tooltip:
      dans la même zone zoomée afin que vous puissiez continuer à travailler dans le même
      zone sans avoir besoin de zoomer et de faire un panoramique à nouveau.
      Cet outil fonctionne mieux lorsque les vues sont maximisées
-  en_us: >-
-    Keep views synchronized. This means that as you pan and zoom and
-    switch between Plan and RCP views, this tool will keep the views
-    in the same zoomed area so you can keep working in the same
-    area without the need to zoom and pan again.
-    This tool works best when the views are maximized
 
 Author: pyRevit
+
