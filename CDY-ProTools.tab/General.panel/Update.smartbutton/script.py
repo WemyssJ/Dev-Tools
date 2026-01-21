@@ -21,7 +21,7 @@ if lib_path not in sys.path:
 import telemetry_auto
 
 tool_name = os.path.basename(os.path.dirname(__file__)) 
-TOOL_NAME = tool_name.replace(".pushbutton", "")
+TOOL_NAME = tool_name.replace(".smartbutton", "")
 telemetry_auto.log_tool_usage(TOOL_NAME)
 ##############################################################################################
 
