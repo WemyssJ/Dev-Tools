@@ -6,8 +6,11 @@ from pyrevit import script
 # Standard imports
 import clr
 
-#####
-# Telemetry imports
+##############################################################################################
+# TELEMETRY IMPORTS #
+##############################################################################################
+# Only works IF specified TELEMETRY_JSON path exists within %AppData%\pyRevit\Extensions\BIMTools.extension\lib\telemetry_auto.py"
+# Records tool usage by date & revit version
 import os, sys
 
 # Add lib folder for telemetry_auto
@@ -17,9 +20,10 @@ if lib_path not in sys.path:
 
 import telemetry_auto
 
-TOOL_NAME = "Red Pen"
+tool_name = os.path.basename(os.path.dirname(__file__)) 
+TOOL_NAME = tool_name.replace(".pushbutton", "")
 telemetry_auto.log_tool_usage(TOOL_NAME)
-######
+##############################################################################################
 
 
 from System.Collections.Generic import List
