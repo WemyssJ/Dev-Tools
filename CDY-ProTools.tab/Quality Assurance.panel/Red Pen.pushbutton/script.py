@@ -5,6 +5,23 @@ from pyrevit import script
 
 # Standard imports
 import clr
+
+#####
+# Telemetry imports
+import os, sys
+
+# Add lib folder for telemetry_auto
+lib_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'lib'))
+if lib_path not in sys.path:
+    sys.path.append(lib_path)
+
+import telemetry_auto
+
+TOOL_NAME = "Red Pen"
+telemetry_auto.log_tool_usage(TOOL_NAME)
+######
+
+
 from System.Collections.Generic import List
 
 # Revit API imports
