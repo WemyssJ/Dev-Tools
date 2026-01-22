@@ -1,7 +1,8 @@
 title:
   en_us: Export DocReg
 tooltip: 
-  en_us: Copies Document Register to clipboard. Paste into Cell B13 on "Structures Input Page" within CPD Doc Reg. ALL REVISION DATES MUST BE IN REV SEQUENTIAL ORDER!!!
+  en_us: Exports doc reg to clipboard
 authors: >-
-  Joe Wemyss & James Scrivens
+  Joe Wemyss
+
 
