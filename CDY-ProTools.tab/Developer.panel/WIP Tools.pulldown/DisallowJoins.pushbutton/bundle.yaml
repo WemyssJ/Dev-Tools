@@ -1,4 +1,5 @@
 
 title: Allow/Disallow Joins (Framing)
-tooltip: If selection exists: Disallow joins at both ends on selected framing. If no selection: UI pops up to choose ends and Allow/Disallow.
+tooltip: If selection exists: Disallow joins at both ends on selected framing. If no selection, UI pops up to choose ends and Allow/Disallow.
 author: Dave Barron
+
