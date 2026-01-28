@@ -350,7 +350,27 @@ def build_rows_out(template, doc_obj, split_p_c=False, hide_unused_revisions=Tru
         # Document Name
         doc_name = doc_name_template
         for match in re.findall(r"{sheet_param:([^}]+)}", doc_name):
-            doc_name = doc_name.replace("{sheet_param:%s}" % match, _safe_lookup_param_as_string(s, match))
+            param_name = match
+            param_value = _safe_lookup_param_as_string(s, param_name)
+
+            if param_value:
+                # GA override at parameter level
+                if ga_override:
+                    param_value = re.sub(
+                        r"\bGENERAL\s+ARRANGEMENT\b",
+                        "GA",
+                        param_value,
+                        flags=re.IGNORECASE
+                    )
+
+                # Leading space for Title 2 / Title 3
+                if param_name in ("Drawing Title 2", "Drawing Title 3"):
+                    param_value = " " + param_value
+
+            doc_name = doc_name.replace(
+                "{sheet_param:%s}" % param_name,
+                param_value or ""
+            )
         for match in re.findall(r"{proj_param:([^}]+)}", doc_name):
             doc_name = doc_name.replace("{proj_param:%s}" % match, _safe_lookup_param_as_string(proj_info, match))
         doc_name = re.sub(r"[-_]*\{rev_number\}", "", doc_name)
