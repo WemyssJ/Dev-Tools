@@ -130,7 +130,7 @@
                             Margin="0,0,20,0"/>
                         
                     <CheckBox x:Name="HideIllegibleDatesCheckBox"
-                            Content="Hide placeholder REVS"
+                            Content="Hide NYI revs"
                             Margin="0,0,20,0"/>
 
                 </StackPanel>
@@ -192,6 +192,7 @@
         </DataGrid>
 
     </DockPanel>
+
 
 
 </Window>
