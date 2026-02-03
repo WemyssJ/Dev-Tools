@@ -1,9 +1,13 @@
 title:
+  en_us: Move Viewports To Other Sheets
   ru: Переместить видовые экраны (модель, узел) на другие листы
   fr_fr: Déplacer les fenêtres sélectionnées vers les feuilles sélectionnées
-  en_us: Move Viewports To Other Sheets
   de_de: Verschiebe platzierte Ansichten auf andere Pläne
 tooltip:
+  en_us: >-
+    Open the source sheet. Run this script and select destination sheet. Select
+    Viewports and push Finish button on the properties bar. The selected views
+    will be MOVED to the destination sheet. Detail number will be maintained where possible.
   ru: >-
     Откройте исходный лист. Запустите данный скрипт и выделите лист назначения.
     Выделите видовые экраны и нажмите кнопку Finish на панели свойств.
@@ -13,10 +17,6 @@ tooltip:
     destination. Sélectionnez les vues et appuyez sur le bouton Terminer dans la
     barre de propriétés. Les vues sélectionnées seront déplacées vers la feuille
     de destination
-  en_us: >-
-    Open the source sheet. Run this script and select destination sheet. Select
-    Viewports and push Finish button on the properties bar. The selected views
-    will be MOVED to the destination sheet. Detail number will be maintained where possible.
   de_de: >-
     Öffnen Sie den Plan auf dem die Ansicht bereits platziert wurde (Quelle). 
     Führen Sie dieses Skript aus und wählen Sie den Plan aus (Ziel) auf den 
@@ -26,5 +26,6 @@ tooltip:
 
 context: active-sheet 
 Author: pyRevit & Joe Wemyss
+
 
 
