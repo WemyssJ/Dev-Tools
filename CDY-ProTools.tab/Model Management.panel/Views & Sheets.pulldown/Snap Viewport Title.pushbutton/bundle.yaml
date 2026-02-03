@@ -1,19 +1,19 @@
 title:
-  fr_fr: |-
-    Déplacer le Titre de la Fenêtre
   en_us: |-
     Snap Viewport Title
+  fr_fr: |-
+    Déplacer le Titre de la Fenêtre
   de_de: |-
     Verschieben des Fenstertitels
   ru: |-
     Переместить метку окна
 
 tooltip:
-  fr_fr: |-
-    Déplacer le Titre de la Fenêtre
-    https://discourse.pyrevitlabs.io/t/i-developed-a-tool-need-help-to-get-it-into-the-new-release-of-pyrevit/7639/3
   en_us: |-
     Move Viewport Label
+    https://discourse.pyrevitlabs.io/t/i-developed-a-tool-need-help-to-get-it-into-the-new-release-of-pyrevit/7639/3
+  fr_fr: |-
+    Déplacer le Titre de la Fenêtre
     https://discourse.pyrevitlabs.io/t/i-developed-a-tool-need-help-to-get-it-into-the-new-release-of-pyrevit/7639/3
   de_de: |-
     Verschieben des Fenstertitels
@@ -28,3 +28,4 @@ authors:
 
 min_revit_version: 2022
 context: active-sheet 
+
