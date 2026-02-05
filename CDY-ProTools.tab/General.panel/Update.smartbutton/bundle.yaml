@@ -7,11 +7,12 @@ tooltip:
       - https://github.com/WemyssJ/BIM-Tools/blob/Master/lib/core/Version%20History.txt
   
       Current Version:
-      - v1.2.18: Lots of WIP Tools + Telemetry
+      - v1.2.19: Compatibility with pyRevit 6 & Revit 2027
 
 context: zero-doc
 
 author: pyRevit
+
 
 
 
