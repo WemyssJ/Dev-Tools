@@ -6,7 +6,7 @@ DevAccess = WIP and potentially unstable/dangerous tools. Password = **password*
 
 To Install:
 
-1.	If you have previously installed pyRevit, please uninstall and **ENSURE** you have the latest version of Revit (2022.1.7, 2023.1.5, 2024.3, 2025.4  – Tried and Tested).
+1.	Ensure you are using the latest version of Revit (tested 2022-2027)
 2.	If Revit is open, close entirely.
 3.	Install pyRevit: https://pyrevitlabs.notion.site/Install-pyRevit-98ca4359920a42c3af5c12a7c99a196d
 4.	Copy "extensions.json" from 'Installation Files' and paste to (overwriting existing file): %AppData%\pyRevit-Master\extensions
