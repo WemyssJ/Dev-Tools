@@ -547,13 +547,26 @@ class CreateFilters(UI.IExternalEventHandler):
                         # Assign color filled region
                         ogs = DB.OverrideGraphicSettings()
                         color = DB.Color(item.n1, item.n2, item.n3)
-                        ogs.SetSurfaceForegroundPatternColor(color)
+
+                        # Make surface color a few shades lighter
+                        def lighten_color(color, amount):
+                            r = min(color.Red + amount, 255)
+                            g = min(color.Green + amount, 255)
+                            b = min(color.Blue + amount, 255)
+                            return DB.Color(r, g, b)
+                        
+                        if hasattr(wndw, "_lighten_checkbox") and wndw._lighten_checkbox.Checked:
+                            surface_color = lighten_color(color, amount=30)
+                        else:
+                            surface_color = color
+
+                        ogs.SetSurfaceForegroundPatternColor(surface_color)
                         ogs.SetCutForegroundPatternColor(color)
                         ogs.SetSurfaceForegroundPatternId(solid_fill_id)
                         ogs.SetCutForegroundPatternId(solid_fill_id)
                         # Get filters apply to view
                         filter_name = (
-                            sel_cat.name + " " + sel_par.name + " - " + item.value
+                            "S_CDY_" + sel_cat.name + "_" + sel_par.name + "_" + item.value
                         )
                         filter_name = filter_name.translate(
                             {ord(i): None for i in "{}[]:\\|?/<>*"}
@@ -842,6 +855,7 @@ class FormCats(Forms.Form):
             | Forms.AnchorStyles.Bottom
             | Forms.AnchorStyles.Right
         )
+        
         self.list_box2.FormattingEnabled = True
         self.list_box2.HorizontalScrollbar = True
         self.list_box2.Location = Drawing.Point(12, 265)
@@ -858,11 +872,36 @@ class FormCats(Forms.Form):
         self.tooltips.SetToolTip(
             self.list_box2, "Reassign colors by clicking on their value."
         )
+
+        table_bottom = self.list_box2.Location.Y + self.list_box2.Height
+
+        # Lighten Surface Pattern Label
+        self._lighten_label = Forms.Label()
+        self._lighten_label.AutoSize = True  # automatically size width/height
+        self._lighten_label.Location = Drawing.Point(12, table_bottom + 5)
+        self._lighten_label.Text = "Lighten Surface Pattern:"
+        self._lighten_label.Font = Drawing.Font(self.Font.FontFamily, 8)
+        self.Controls.Add(self._lighten_label)
+
+        # Lighten Surface Pattern Checkbox
+        self._lighten_checkbox = Forms.CheckBox()
+        self._lighten_checkbox.AutoSize = True  # auto size so it’s visible
+        self._lighten_checkbox.Location = Drawing.Point(
+            self._lighten_label.Location.X + self._lighten_label.PreferredWidth + 5,
+            table_bottom + 8
+        )  # slightly above for vertical alignment with label
+        self._lighten_checkbox.Checked = True
+        self.tooltips.SetToolTip(
+            self._lighten_checkbox,
+            "When checked, surface pattern color will be automatically lightened relative to cut color."
+        )
+
+
         # set_colors_button
         self._button_set_colors.Anchor = (
             Forms.AnchorStyles.Bottom | Forms.AnchorStyles.Right
         )
-        self._button_set_colors.Location = Drawing.Point(222, 632)
+        self._button_set_colors.Location = Drawing.Point(222, 662)
         self._button_set_colors.Name = "button_set_colors"
         self._button_set_colors.Size = Drawing.Size(100, 27)
         self._button_set_colors.Text = "Set Colors"
@@ -876,7 +915,7 @@ class FormCats(Forms.Form):
         self._button_reset_colors.Anchor = (
             Forms.AnchorStyles.Bottom | Forms.AnchorStyles.Left
         )
-        self._button_reset_colors.Location = Drawing.Point(12, 632)
+        self._button_reset_colors.Location = Drawing.Point(12, 662)
         self._button_reset_colors.Name = "button_reset_colors"
         self._button_reset_colors.Size = Drawing.Size(100, 27)
         self._button_reset_colors.Text = "Reset"
@@ -890,7 +929,7 @@ class FormCats(Forms.Form):
         self._button_random_colors.Anchor = (
             Forms.AnchorStyles.Bottom | Forms.AnchorStyles.Right
         )
-        self._button_random_colors.Location = Drawing.Point(167, 538)
+        self._button_random_colors.Location = Drawing.Point(167, 568)
         self._button_random_colors.Name = "button_random_colors"
         self._button_random_colors.Size = Drawing.Size(156, 25)
         self._button_random_colors.Text = "Random Colors"
@@ -903,7 +942,7 @@ class FormCats(Forms.Form):
         self._button_gradient_colors.Anchor = (
             Forms.AnchorStyles.Bottom | Forms.AnchorStyles.Left
         )
-        self._button_gradient_colors.Location = Drawing.Point(11, 538)
+        self._button_gradient_colors.Location = Drawing.Point(11, 568)
         self._button_gradient_colors.Name = "button_gradient_colors"
         self._button_gradient_colors.Size = Drawing.Size(156, 25)
         self._button_gradient_colors.Text = "Gradient Colors"
@@ -917,7 +956,7 @@ class FormCats(Forms.Form):
         self._button_create_legend.Anchor = (
             Forms.AnchorStyles.Bottom | Forms.AnchorStyles.Left
         )
-        self._button_create_legend.Location = Drawing.Point(11, 593)
+        self._button_create_legend.Location = Drawing.Point(11, 623)
         self._button_create_legend.Name = "button_create_legend"
         self._button_create_legend.Size = Drawing.Size(156, 25)
         self._button_create_legend.Text = "Create Legend"
@@ -931,7 +970,7 @@ class FormCats(Forms.Form):
         self._button_create_view_filters.Anchor = (
             Forms.AnchorStyles.Bottom | Forms.AnchorStyles.Right
         )
-        self._button_create_view_filters.Location = Drawing.Point(167, 593)
+        self._button_create_view_filters.Location = Drawing.Point(167, 623)
         self._button_create_view_filters.Name = "button_create_view_filters"
         self._button_create_view_filters.Size = Drawing.Size(156, 25)
         self._button_create_view_filters.Text = "Create View Filters"
@@ -947,7 +986,7 @@ class FormCats(Forms.Form):
             | Forms.AnchorStyles.Right
             | Forms.AnchorStyles.Left
         )
-        self._button_save_load_scheme.Location = Drawing.Point(11, 565)
+        self._button_save_load_scheme.Location = Drawing.Point(11, 595)
         self._button_save_load_scheme.Name = "button_save_load_scheme"
         self._button_save_load_scheme.Size = Drawing.Size(312, 25)
         self._button_save_load_scheme.Text = "Save / Load Color Scheme"
@@ -957,10 +996,11 @@ class FormCats(Forms.Form):
             self._button_save_load_scheme,
             "Save the current color scheme or load an existing one.",
         )
+
         # Form
         self.TopMost = True
         self.ShowInTaskbar = False
-        self.ClientSize = Drawing.Size(334, 672)
+        self.ClientSize = Drawing.Size(334, 722)
         self.MaximizeBox = 0
         self.MinimizeBox = 0
         self.CenterToScreen()
@@ -986,6 +1026,7 @@ class FormCats(Forms.Form):
         self.Controls.Add(self._txt_block5)
         self.Controls.Add(self._list_box1)
         self.Controls.Add(self.list_box2)
+        self.Controls.Add(self._lighten_checkbox)
         self.Name = "Color Elements By Parameter"
         self.Text = "Color Elements By Parameter"
         self.Closing += self.closing_event
