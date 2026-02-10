@@ -1,6 +1,6 @@
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Number Piles" Height="360" Width="500"
+        Title="Number Piles" Height="400" Width="500"
         WindowStartupLocation="CenterScreen"
         Background="#FAFAFA" Foreground="#222"
         ResizeMode="NoResize"
@@ -54,22 +54,28 @@
                 <TextBox Name="prefixBox" Grid.Row="0" Grid.Column="1"
                          Width="150" Height="25" Text="P" Margin="0,0,0,10"/>
 
-                <!-- Padding -->
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="Padding (e.g. 3 for 001):"
+                <!-- Start Number -->
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Starting Number:"
                            VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,10,5"/>
-                <TextBox Name="padBox" Grid.Row="1" Grid.Column="1"
+                <TextBox Name="startBox" Grid.Row="1" Grid.Column="1"
+                         Width="150" Height="25" Text="1" Margin="0,0,0,10"/>
+
+                <!-- Padding -->
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Padding (e.g. 3 for 001):"
+                           VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,10,5"/>
+                <TextBox Name="padBox" Grid.Row="2" Grid.Column="1"
                          Width="150" Height="25" Text="3" Margin="0,0,0,10"/>
 
                 <!-- Category -->
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="Pile Category:"
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="Pile Category:"
                            VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,10,5"/>
-                <ComboBox Name="catCombo" Grid.Row="2" Grid.Column="1"
+                <ComboBox Name="catCombo" Grid.Row="3" Grid.Column="1"
                           Width="150" Height="25" Margin="0,0,0,10"/>
 
                 <!-- Method -->
-                <TextBlock Grid.Row="3" Grid.Column="0" Text="Numbering Method:"
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="Numbering Method:"
                            VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,10,5"/>
-                <ComboBox Name="methodCombo" Grid.Row="3" Grid.Column="1"
+                <ComboBox Name="methodCombo" Grid.Row="4" Grid.Column="1"
                           Width="150" Height="25">
                     <ComboBoxItem Content="By View" IsSelected="True"/>
                     <ComboBoxItem Content="By World Co-ordinates"/>
