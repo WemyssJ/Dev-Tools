@@ -14,8 +14,6 @@ from pyrevit.loader import sessionmgr
 
 # --- Paths & constants ---
 EXT_ROOT = os.path.join(os.getenv("APPDATA"), "pyRevit", "Extensions", "BIMTools.extension")
-PANEL_ORDER = ["General", "Quality Assurance", "Model Management",
-               "Drawing Tools", "References", "Developer"]
 
 DEFAULT_LIGHT = {
     "General": {"panel": "fffbfb", "title": "fff3f3", "slideout": "ffffff"},
