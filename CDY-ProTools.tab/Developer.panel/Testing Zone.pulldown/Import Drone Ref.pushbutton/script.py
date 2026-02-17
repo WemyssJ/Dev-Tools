@@ -12,11 +12,8 @@ from System.Collections.Generic import List
 ##############################################################################################
 # TELEMETRY IMPORTS #
 ##############################################################################################
-# Only works IF specified TELEMETRY_JSON path exists within %AppData%\pyRevit\Extensions\BIMTools.extension\lib\telemetry_auto.py"
-# Records tool usage by date & revit version
 import os, sys
 
-# Add lib folder for telemetry_auto
 lib_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'lib'))
 if lib_path not in sys.path:
     sys.path.append(lib_path)
@@ -50,21 +47,21 @@ def m_to_feet(meters):
 
 def set_param_value(elem, name, value):
     param = elem.LookupParameter(name)
-    if param and not param.IsReadOnly:
-        if param.StorageType == DB.StorageType.Double:
-            param.Set(value)
-        elif param.StorageType == DB.StorageType.String:
-            param.Set(str(value))
-        elif param.StorageType == DB.StorageType.Integer:
-            param.Set(int(value))
+    if not param:
+        return False
+    if param.IsReadOnly:
+        return False
+
+    if param.StorageType == DB.StorageType.Double:
+        param.Set(float(value))
+    elif param.StorageType == DB.StorageType.String:
+        param.Set(str(value))
+    elif param.StorageType == DB.StorageType.Integer:
+        param.Set(int(value))
+    return True
 
 def get_param_value(elem, name):
     param = elem.LookupParameter(name)
-    if not param:
-        for p in elem.Parameters:
-            if p.Definition.Name.strip() == name.strip():
-                param = p
-                break
     if param:
         if param.StorageType == DB.StorageType.Double:
             return param.AsDouble()
@@ -107,15 +104,15 @@ with open(csv_file_path) as csvfile:
     reader = csv.DictReader(csvfile)
     rows = list(reader)
 
+if not rows:
+    output.print_md("No data found in CSV. Exiting.")
+    script.exit()
+
 required_headers = ["File", "OS Grid (10)", "Altitude (m)", "Public Sharepoint Link"]
 for h in required_headers:
     if h not in rows[0]:
         output.print_md("Missing header: {}".format(h))
         script.exit()
-
-if not rows:
-    output.print_md("No data found in CSV. Exiting.")
-    script.exit()
 
 # --------------------------------------------------
 # Collect Structural Foundation Families
@@ -192,9 +189,9 @@ if not family_symbol.IsActive:
 # --------------------------------------------------
 pbp = next((bp for bp in DB.FilteredElementCollector(doc).OfClass(DB.BasePoint) if not bp.IsShared), None)
 
-pbp_e_ft = m_to_feet(feet_to_m(get_param_value(pbp, "E/W") or 0.0))
-pbp_n_ft = m_to_feet(feet_to_m(get_param_value(pbp, "N/S") or 0.0))
-pbp_z_ft = m_to_feet(feet_to_m(get_param_value(pbp, "Elev") or 0.0))
+pbp_e_ft = get_param_value(pbp, "E/W") or 0.0
+pbp_n_ft = get_param_value(pbp, "N/S") or 0.0
+pbp_z_ft = get_param_value(pbp, "Elev") or 0.0
 
 # --------------------------------------------------
 # Place Family Instances
@@ -203,6 +200,7 @@ t = DB.Transaction(doc, "Place Structural Foundations")
 t.Start()
 
 placed = []
+photo_index = 1
 
 for row in rows:
     file_name = row["File"]
@@ -226,10 +224,21 @@ for row in rows:
     # Set DroneRef
     set_param_value(inst, "DroneRef", file_name)
 
-    # Set DroneURL from Public Sharepoint Link
+    # Set DroneURL
     public_url = row.get("Public Sharepoint Link", "")
     if public_url:
         set_param_value(inst, "DroneURL", public_url)
+
+    # Set DroneAltitude (handles instance OR type parameter)
+    altitude_ft = m_to_feet(altitude_m)
+
+    if not set_param_value(inst, "DroneAltitude", altitude_ft):
+        # Try setting on Type if not instance
+        set_param_value(inst.Symbol, "DroneAltitude", altitude_ft)
+
+    # Set sequential Mark
+    set_param_value(inst, "DroneMark", "Photo {}".format(photo_index))
+    photo_index += 1
 
     placed.append(file_name)
 
