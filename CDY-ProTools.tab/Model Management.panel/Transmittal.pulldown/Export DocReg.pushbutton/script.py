@@ -443,7 +443,7 @@ def build_rows_out(template, doc_obj, split_p_c=False, hide_unused_revisions=Tru
 # WPF window with checkboxes
 # -------------------------
 class RevisionPreviewWindow(forms.WPFWindow):
-    def __init__(self, xaml_file_name, protocols, preview_count=100):
+    def __init__(self, xaml_file_name, protocols, preview_count=1000):
         forms.WPFWindow.__init__(self, xaml_file_name)
         self.protocols = protocols
         self.preview_count = preview_count
@@ -614,3 +614,4 @@ if window.hide_no_revisions_checkbox.IsChecked:
 
 Clipboard.SetText("\n".join(rowsOut))
 forms.alert("Preview copied to clipboard.")
+
