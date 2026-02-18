@@ -1,0 +1,64 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Transfer Shared Parameters" Height="600" Width="1400"
+        WindowStartupLocation="CenterScreen"
+        Background="#FAFAFA" Foreground="#222"
+        ResizeMode="NoResize" FontFamily="Mona-Sans Light" FontSize="13">
+
+    <!-- Outer Margin -->
+    <DockPanel Margin="20">
+
+        <!-- Header -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="40" Background="#0078D7" Margin="0,0,0,10">
+            <TextBlock Text="Transfer Shared Parameters" FontSize="16" FontWeight="Bold"
+                       VerticalAlignment="Center" Foreground="White" Margin="10,0,0,0"/>
+        </StackPanel>
+
+        <!-- Buttons -->
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal"
+                    HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Button Name="CancelButton" Width="90" Height="28" Margin="5" Content="Cancel"
+                    Background="#EEE" Foreground="#222" BorderBrush="#CCC" BorderThickness="1" Cursor="Hand"/>
+            <Button Name="TransferButton" Width="120" Height="28" Margin="5" Content="Transfer"
+                    Background="#0078D7" Foreground="White" BorderBrush="#005A9E" BorderThickness="1" Cursor="Hand"/>
+        </StackPanel>
+
+        <!-- Copy Formulas Checkbox -->
+        <CheckBox Name="CopyFormulasCheckbox" DockPanel.Dock="Top" Content="Copy Formulas"
+                  FontWeight="SemiBold" Margin="0,0,0,10"/>
+
+        <!-- Lists -->
+        <Grid Margin="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="4*" /> <!-- Source Family -->
+                <ColumnDefinition Width="20" /> <!-- Spacer -->
+                <ColumnDefinition Width="5*" /> <!-- Target Family -->
+                <ColumnDefinition Width="20" /> <!-- Spacer -->
+                <ColumnDefinition Width="5*" /> <!-- Parameters -->
+            </Grid.ColumnDefinitions>
+
+            <!-- Source Family -->
+            <StackPanel Grid.Column="0" HorizontalAlignment="Stretch" Margin="0,0,10,0">
+                <TextBlock Text="Source Family:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                <ListBox Name="SourceListBox" Height="350" HorizontalAlignment="Stretch"/>
+            </StackPanel>
+
+            <!-- Target Family -->
+            <StackPanel Grid.Column="2" HorizontalAlignment="Stretch" Margin="0,0,10,0">
+                <TextBlock Text="Target Family:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                <ListBox Name="TargetListBox" Height="350" HorizontalAlignment="Stretch"/>
+            </StackPanel>
+
+            <!-- Parameters -->
+            <StackPanel Grid.Column="4" HorizontalAlignment="Stretch">
+                <TextBlock Text="Parameters:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                <Border BorderBrush="#CCC" BorderThickness="1" CornerRadius="3" Background="White">
+                    <ScrollViewer Height="350" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Margin="5">
+                        <StackPanel Name="ParamStackPanel" HorizontalAlignment="Left"/>
+                    </ScrollViewer>
+                </Border>
+            </StackPanel>
+        </Grid>
+
+    </DockPanel>
+</Window>
