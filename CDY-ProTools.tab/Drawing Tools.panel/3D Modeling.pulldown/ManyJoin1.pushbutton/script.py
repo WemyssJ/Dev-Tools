@@ -1,19 +1,21 @@
 # -*- coding: utf-8 -*-
 # pylint: skip-file
 
-__doc__ = """Joins multiple elements / Присоединяет множественные элементы"""
+__doc__ = """Batch Join or Unjoin By Category (Shift = Unjoin)"""
 
 __author__ = 'Roman Golev & Joe Wemyss'
-__title__ = "Batch Join By Category"
+__title__ = "Batch Join/Unjoin By Category"
 
 import clr
 clr.AddReference('RevitAPI')
-import Autodesk
 from Autodesk.Revit.DB import *
-from Autodesk.Revit.UI.Selection import ObjectType
+from Autodesk.Revit.DB import JoinGeometryUtils
+import Autodesk
 import sys
+import os
 from core.catlistenum import get_catlist
 from pyrevit import forms
+
 
 ##############################################################################################
 # TELEMETRY IMPORTS #
@@ -38,50 +40,54 @@ uidoc = __revit__.ActiveUIDocument
 doc = __revit__.ActiveUIDocument.Document
 transaction = Autodesk.Revit.DB.Transaction(doc)
 
-
 def main():
     catlist = get_catlist(doc)
-    ops = ['Columns', 'Walls', 'Floors', 'Roofs',
+    ops = ['Walls', 'Floors',
            'Structural Columns', 'Structural Foundations', 'Structural Framing']
 
-    # First category
-    choice1 = forms.CommandSwitchWindow.show(ops, message='Select First Category to join')
-    try:
-        elements1 = catlist[choice1].WhereElementIsNotElementType().ToElements()
-    except:
+    # Ask first category
+    choice1 = forms.SelectFromList.show(ops, title='Select First Category')
+    if not choice1:
         sys.exit()
+    elements1 = catlist[choice1].WhereElementIsNotElementType().ToElements()
 
-    # Second category (now allows same category)
-    choice2 = forms.CommandSwitchWindow.show(ops, message='Select Second Category (can be same)')
-    try:
-        elements2 = catlist[choice2].WhereElementIsNotElementType().ToElements()
-    except:
+    # Ask second category
+    choice2 = forms.SelectFromList.show(ops, title='Select Second Category (can be same)')
+    if not choice2:
         sys.exit()
+    elements2 = catlist[choice2].WhereElementIsNotElementType().ToElements()
 
-    # Avoid double-joins and self-joins
+    # Determine action based on Shift-click
+    if __shiftclick__:
+        action = "Unjoin"
+    else:
+        action = "Join"
+
     processed_pairs = set()
-
-    transaction.Start('Batch Join')
+    transaction.Start("Batch {}".format(action))
 
     for A in elements1:
         for B in elements2:
-            # Skip joining element with itself
             if A.Id == B.Id:
                 continue
 
-            # Prevent duplicate A-B and B-A joins
             pair_key = tuple(sorted([A.Id.IntegerValue, B.Id.IntegerValue]))
             if pair_key in processed_pairs:
                 continue
             processed_pairs.add(pair_key)
 
             try:
-                JoinGeometryUtils.JoinGeometry(doc, A, B)
+                if __shiftclick__:
+                    if JoinGeometryUtils.AreElementsJoined(doc, A, B):
+                        JoinGeometryUtils.UnjoinGeometry(doc, A, B)
+                else:
+                    if not JoinGeometryUtils.AreElementsJoined(doc, A, B):
+                        JoinGeometryUtils.JoinGeometry(doc, A, B)
             except:
                 pass
 
     transaction.Commit()
-
+    forms.alert("Batch {} complete!".format(action), title='Done')
 
 if __name__ == '__main__':
     main()
