@@ -600,7 +600,8 @@ rowsOut = build_rows_out(
     window.current_doc_obj,
     split_p_c=window.split_pc_checkbox.IsChecked,
     hide_unused_revisions=window.hide_unused_revisions_checkbox.IsChecked,
-    ga_override=window.ga_override_checkbox.IsChecked
+    ga_override=window.ga_override_checkbox.IsChecked,
+    show_illegible_dates=not window.hide_illegible_dates_checkbox.IsChecked
 )
 
 # Apply hide no revisions filter to exported clipboard
@@ -614,4 +615,5 @@ if window.hide_no_revisions_checkbox.IsChecked:
 
 Clipboard.SetText("\n".join(rowsOut))
 forms.alert("Preview copied to clipboard.")
+
 
