@@ -455,13 +455,18 @@ class EditNamingFormatsWindow(forms.WPFWindow):
                 builtin=True
             ),
                 NamingFormat(
-                name='{DfE: BS EN ISO 19650-2-2018 (+A1 2021)',
+                name='DfE: BS EN ISO 19650-2-2018 (+A1 2021)',
                 template='{proj_param:Project Name}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf',
                 builtin=True
             ),
                 NamingFormat(
-                name='{DfE: BS EN ISO 19650-2-2018 (+A1 2021) - Dalux)',
+                name='DfE: BS EN ISO 19650-2-2018 (+A1 2021) - Dalux)',
                 template='{proj_param:Project Name}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Sheet Number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}-{rev_number}.pdf',
+                builtin=True
+            ),
+                NamingFormat(
+                name='HG: BS EN ISO 196500-2-2018 (+A1 2021)',
+                template='{proj_number}-{sheet_param:Originator}-{sheet_param:Functional Breakdown}-{sheet_param:Spatial Breakdown}-{sheet_param:Form}-{sheet_param:Discipline}-{sheet_param:Classification}-{sheet_param:Sheet Number}-{rev_number}-{sheet_param:Sheet Name}{sheet_param:Drawing Title 2}{sheet_param:Drawing Title 3}.pdf',
                 builtin=True
             ),
 
@@ -1759,5 +1764,6 @@ if __shiftclick__:  #pylint: disable=E0602
 else:
 
     PrintSheetsWindow('PrintSheets.xaml').ShowDialog()
+
 
 
