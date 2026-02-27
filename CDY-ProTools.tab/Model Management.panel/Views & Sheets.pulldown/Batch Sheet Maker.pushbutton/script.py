@@ -24,22 +24,46 @@ logger = script.get_logger()
 # ----------------- DRAWING NUMBER PARSER -----------------
 def parse_drawing_number(drawing_number):
     """
-    Example drawing number: 13914-CDY-AA-FN-DR-S-101010
-    Returns dictionary mapping to Revit sheet parameters.
-    """
-    parts = drawing_number.split('-')
-    if len(parts) < 7:
-        raise ValueError('Invalid drawing number format: {0}'.format(drawing_number))
+    Supported formats:
 
-    return {
-        "Project Number": parts[0],
-        "Originator": parts[1],
-        "Functional Breakdown": parts[2],
-        "Spatial Breakdown": parts[3],
-        "Form": parts[4],
-        "Discipline": parts[5],
-        "Sheet Number": parts[6]
-    }
+    7-part (legacy):
+    13914-CDY-AA-FN-DR-S-101010
+
+    8-part (with Classification):
+    13914-CDY-AA-FN-DR-S-XX-101010
+    """
+
+    parts = drawing_number.split('-')
+
+    if len(parts) == 7:
+        # Legacy format
+        return {
+            "Project Number": parts[0],
+            "Originator": parts[1],
+            "Functional Breakdown": parts[2],
+            "Spatial Breakdown": parts[3],
+            "Form": parts[4],
+            "Discipline": parts[5],
+            "Sheet Number": parts[6]
+        }
+
+    elif len(parts) == 8:
+        # New format with Classification
+        return {
+            "Project Number": parts[0],
+            "Originator": parts[1],
+            "Functional Breakdown": parts[2],
+            "Spatial Breakdown": parts[3],
+            "Form": parts[4],
+            "Discipline": parts[5],
+            "Classification": parts[6],
+            "Sheet Number": parts[7]
+        }
+
+    else:
+        raise ValueError(
+            'Invalid drawing number format (expected 7 or 8 parts): {0}'.format(drawing_number)
+        )
 
 
 # ----------------- MAIN WINDOW CLASS -----------------
