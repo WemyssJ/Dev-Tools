@@ -149,6 +149,14 @@ class QSelectForm(Form):
         self.lblCat = Label(Text="Step 1: Category", Location=Point(12, 10), Size=Size(300, 20))
         self.Controls.Add(self.lblCat)
 
+        self.btnRefresh = Button(
+            Text="Refresh",
+            Location=Point(15, 100),  # just right of the category combobox (adjust X if needed)
+            Size=Size(80, 30)
+        )
+        self.btnRefresh.Click += self.on_refresh
+        self.Controls.Add(self.btnRefresh)
+
         self.txtCatFilter = TextBox(Location=Point(12, 35), Width=300)
         # don't rely on PlaceholderText in IronPython WinForms; keep blank
         self.txtCatFilter.TextChanged += self.on_cat_search
@@ -184,14 +192,23 @@ class QSelectForm(Form):
         self.listValues.SelectionMode = SelectionMode.MultiExtended
         self.Controls.Add(self.listValues)
 
-        # Buttons
-        self.btnSelect = Button(Text="Select", Location=Point(760, 500), Size=Size(90, 30))
-        self.btnSelect.Click += self.on_select
-        self.Controls.Add(self.btnSelect)
 
-        self.btnCancel = Button(Text="Cancel", Location=Point(860, 500), Size=Size(90, 30))
-        self.btnCancel.Click += self.on_cancel
-        self.Controls.Add(self.btnCancel)
+        # Add buttons
+        self.btnAdd = Button(Text="Add to Selection", Location=Point(445, 500), Size=Size(125, 30))
+        self.btnAdd.Click += self.on_add_to_selection
+        self.Controls.Add(self.btnAdd)
+
+        self.btnNew = Button(Text="New Selection", Location=Point(575, 500), Size=Size(125, 30))
+        self.btnNew.Click += self.on_new_selection
+        self.Controls.Add(self.btnNew)
+
+        self.btnRemove = Button(Text="Remove from Selection", Location=Point(705, 500), Size=Size(160, 30))
+        self.btnRemove.Click += self.on_remove_from_selection
+        self.Controls.Add(self.btnRemove)
+
+        self.btnClose = Button(Text="Close", Location=Point(870, 500), Size=Size(80, 30))
+        self.btnClose.Click += self.on_close
+        self.Controls.Add(self.btnClose)
 
         # status label
         self.lblStatus = Label(Text="", Location=Point(12, 500), Size=Size(720, 30))
@@ -206,9 +223,37 @@ class QSelectForm(Form):
         self.current_filtered_params = []  # list of (display, pname)
         self._checked_param_names = []     # currently checked param names
         self.cached = False
+        
 
         # Start caching categories+param-names synchronously (single-threaded) with pyrevit ProgressBar
         self.cache_categories_paramnames_in_view()
+
+
+    def on_refresh(self, sender, args):
+        """Refresh categories & parameters for the current view."""
+        try:
+            self.lblStatus.Text = "Refreshing categories & parameters..."
+            # Clear cached values
+            for c in self.categories:
+                c["values_cache"] = {}
+            self.categories = []
+            self.cat_lookup = {}
+            self.current_category = None
+            self._checked_param_names = []
+            self.checkedParams.Items.Clear()
+            self.listValues.Items.Clear()
+
+            # Re-cache categories and param names
+            self.cache_categories_paramnames_in_view()
+
+            # Repopulate combobox
+            if self.categories:
+                self.cmbCategories.SelectedIndex = 0
+            self.lblStatus.Text = "Refreshed for current view."
+        except Exception:
+            import traceback, sys
+            traceback.print_exc()
+            forms.alert("Error during refresh: {}".format(sys.exc_info()[1]))
 
     # ---------------- Helper: collect parameter names from a sample element ----------------
     def _collect_param_names_from_element(self, element):
@@ -680,6 +725,83 @@ class QSelectForm(Form):
             except Exception:
                 pass
 
+    # ---------------- New selection helpers ----------------
+    def _get_selected_element_ids(self):
+        """Returns a set of ElementIds from the currently selected values in the ListBox."""
+        sel_indices = list(self.listValues.SelectedIndices)
+        if not sel_indices:
+            return set()
+        matched_ids = set()
+        for idx in sel_indices:
+            item = self.listValues.Items[idx]
+            try:
+                left = item.rsplit("  (", 1)[0]
+                pname, val = left.split(" : ", 1)
+            except Exception:
+                continue
+            val_dict = self.current_category.get("values_cache", {}).get(pname)
+            if val_dict is None:
+                val_dict = self._ensure_values_for_param(pname)
+            elids = val_dict.get(val, [])
+            for eid in elids:
+                if eid is not None:
+                    matched_ids.add(eid)
+        return matched_ids
+
+    def on_add_to_selection(self, sender, args):
+        try:
+            matched_ids = self._get_selected_element_ids()
+            if not matched_ids:
+                forms.alert("No elements selected.")
+                return
+            current_ids = set(uidoc.Selection.GetElementIds())
+            element_ids = List[ElementId]()
+            for eid in current_ids.union(matched_ids):
+                element_ids.Add(eid)
+            uidoc.Selection.SetElementIds(element_ids)
+            forms.alert("Added {} elements to selection.".format(len(matched_ids)))
+        except Exception:
+            import traceback, sys
+            traceback.print_exc()
+            forms.alert("Error: {}".format(sys.exc_info()[1]))
+
+    def on_new_selection(self, sender, args):
+        try:
+            matched_ids = self._get_selected_element_ids()
+            if not matched_ids:
+                forms.alert("No elements selected.")
+                return
+            element_ids = List[ElementId]()
+            for eid in matched_ids:
+                element_ids.Add(eid)
+            uidoc.Selection.SetElementIds(element_ids)
+            forms.alert("Selected {} elements.".format(len(matched_ids)))
+        except Exception:
+            import traceback, sys
+            traceback.print_exc()
+            forms.alert("Error: {}".format(sys.exc_info()[1]))
+
+    def on_remove_from_selection(self, sender, args):
+        try:
+            matched_ids = self._get_selected_element_ids()
+            if not matched_ids:
+                forms.alert("No elements selected to remove.")
+                return
+            current_ids = set(uidoc.Selection.GetElementIds())
+            remaining_ids = current_ids - matched_ids
+            element_ids = List[ElementId]()
+            for eid in remaining_ids:
+                element_ids.Add(eid)
+            uidoc.Selection.SetElementIds(element_ids)
+            forms.alert("Removed {} elements from selection.".format(len(matched_ids)))
+        except Exception:
+            import traceback, sys
+            traceback.print_exc()
+            forms.alert("Error: {}".format(sys.exc_info()[1]))
+
+    def on_close(self, sender, args):
+        self.Close()
+
     def on_value_search(self, sender, args):
         self.populate_values()
 
@@ -747,14 +869,28 @@ class QSelectForm(Form):
 
 
 # ---- Run ----
-def main():
-    try:
-        f = QSelectForm()
-        f.ShowDialog()
-    except Exception:
-        traceback.print_exc()
-        forms.alert("Unhandled error: {}".format(sys.exc_info()[1]))
+import clr
+clr.AddReference("System.Windows.Forms")
+from System.Windows.Forms import Application
 
+_qselect_form = None
+
+def main():
+    global _qselect_form
+    from pyrevit import forms
+    
+    if _qselect_form and not _qselect_form.IsDisposed:
+        _qselect_form.BringToFront()
+        return
+
+    # Create your QSelectForm (full class stays the same)
+    _qselect_form = QSelectForm()
+
+    # Modeless show
+    _qselect_form.Show()
+
+    # Force WinForms message loop to keep form alive
+    Application.DoEvents()
 
 if __name__ == "__main__":
     main()
