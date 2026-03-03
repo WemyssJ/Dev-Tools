@@ -1,0 +1,53 @@
+# -*- coding: utf-8 -*-
+__doc__ = "Window-select groups and expand selection to their member elements"
+
+import clr
+
+clr.AddReference("RevitAPI")
+clr.AddReference("RevitAPIUI")
+clr.AddReference("System")
+
+from Autodesk.Revit.DB import Group, ElementId
+from Autodesk.Revit.UI.Selection import ObjectType
+from Autodesk.Revit.Exceptions import OperationCanceledException
+from System.Collections.Generic import List
+
+from pyrevit import revit, forms
+
+uidoc = revit.uidoc
+doc = revit.doc
+
+try:
+    # Window selection
+    refs = uidoc.Selection.PickObjects(
+        ObjectType.Element,
+        "Window-select groups"
+    )
+
+    if not refs:
+        forms.alert("No elements selected.", exitscript=True)
+
+    member_ids = set()
+
+    for ref in refs:
+        element = doc.GetElement(ref.ElementId)
+
+        if isinstance(element, Group):
+            for mid in element.GetMemberIds():
+                member_ids.add(mid)
+
+    if not member_ids:
+        forms.alert("No groups were selected.", exitscript=True)
+
+    # Convert to .NET ICollection<ElementId>
+    id_list = List[ElementId]()
+    for mid in member_ids:
+        id_list.Add(mid)
+
+    uidoc.Selection.SetElementIds(id_list)
+
+except OperationCanceledException:
+    pass
+
+except Exception as ex:
+    forms.alert("Error:\n{}".format(str(ex)))
