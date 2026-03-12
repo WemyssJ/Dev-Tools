@@ -1,10 +1,11 @@
 layout:
   - Update
-  - DevAccess
   - -----
   - Find
   - -----
   - Toggles
+  - ">>>>>"
+  - DevAccess
 background:
   panel: 'fffbfb'
   title: 'fff3f3'

@@ -1,6 +1,7 @@
 layout:
   - Pick Detail Elements
   - Pick Model Elements
+  - Pick Grouped Elements
   - -----
   - Grid Manager
   - Flip Level Ends

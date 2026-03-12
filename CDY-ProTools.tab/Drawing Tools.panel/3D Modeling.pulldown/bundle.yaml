@@ -1,7 +1,5 @@
 layout:
   - ManyJoin1
   - -----
-  - Bypass Group
-  - -----
   - ViewRange
 
