@@ -1,4 +1,6 @@
 layout:
+  - Associated Level Selector
+  - QSelect
   - ManyJoin1
   - -----
   - ViewRange
