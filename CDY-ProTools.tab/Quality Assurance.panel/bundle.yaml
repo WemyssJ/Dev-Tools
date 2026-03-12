@@ -1,7 +1,8 @@
 layout:
   - Red Pen
   - -----
-  - Pin Grid&Level&Links
+  - Pin GL&L
+  - Find Untagged
   
 background:
   panel: 'fbfffb'
