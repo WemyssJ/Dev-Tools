@@ -7,11 +7,12 @@ tooltip:
       - https://github.com/WemyssJ/BIM-Tools/blob/Master/lib/core/Version%20History.txt
   
       Current Version:
-      - v1.2.19: Compatibility with pyRevit 6 & Revit 2027
+      - v1.2.20: Several new QoL updates released
 
 context: zero-doc
 
 author: pyRevit
+
 
 
 
