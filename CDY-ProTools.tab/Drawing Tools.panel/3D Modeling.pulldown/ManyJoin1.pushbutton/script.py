@@ -1,93 +1,100 @@
 # -*- coding: utf-8 -*-
-# pylint: skip-file
+__title__ = "Join Intersecting\nSelection"
+__author__ = "Craddys Tools"
 
-__doc__ = """Batch Join or Unjoin By Category (Shift = Unjoin)"""
-
-__author__ = 'Roman Golev & Joe Wemyss'
-__title__ = "Batch Join/Unjoin By Category"
-
-import clr
-clr.AddReference('RevitAPI')
 from Autodesk.Revit.DB import *
-from Autodesk.Revit.DB import JoinGeometryUtils
-import Autodesk
-import sys
-import os
-from core.catlistenum import get_catlist
-from pyrevit import forms
+from Autodesk.Revit.UI.Selection import ObjectType
+from Autodesk.Revit.Exceptions import OperationCanceledException
+from pyrevit import revit, script
 
 
-##############################################################################################
-# TELEMETRY IMPORTS #
-##############################################################################################
-# Only works IF specified TELEMETRY_JSON path exists within %AppData%\pyRevit\Extensions\BIMTools.extension\lib\telemetry_auto.py"
-# Records tool usage by date & revit version
-import os, sys
+doc = revit.doc
+uidoc = revit.uidoc
 
-# Add lib folder for telemetry_auto
-lib_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'lib'))
-if lib_path not in sys.path:
-    sys.path.append(lib_path)
 
-import telemetry_auto
+# -----------------------------------------------------------
+# Bounding box intersection test
+# -----------------------------------------------------------
+def bboxes_intersect(bb1, bb2):
 
-tool_name = os.path.basename(os.path.dirname(__file__)) 
-TOOL_NAME = tool_name.replace(".pushbutton", "")
-telemetry_auto.log_tool_usage(TOOL_NAME)
-##############################################################################################
+    if not bb1 or not bb2:
+        return False
 
-uidoc = __revit__.ActiveUIDocument
-doc = __revit__.ActiveUIDocument.Document
-transaction = Autodesk.Revit.DB.Transaction(doc)
+    return (bb1.Min.X <= bb2.Max.X and bb1.Max.X >= bb2.Min.X and
+            bb1.Min.Y <= bb2.Max.Y and bb1.Max.Y >= bb2.Min.Y and
+            bb1.Min.Z <= bb2.Max.Z and bb1.Max.Z >= bb2.Min.Z)
 
-def main():
-    catlist = get_catlist(doc)
-    ops = ['Walls', 'Floors',
-           'Structural Columns', 'Structural Foundations', 'Structural Framing']
 
-    # Ask first category
-    choice1 = forms.SelectFromList.show(ops, title='Select First Category')
-    if not choice1:
-        sys.exit()
-    elements1 = catlist[choice1].WhereElementIsNotElementType().ToElements()
+# -----------------------------------------------------------
+# Range selection (window / multi select)
+# -----------------------------------------------------------
+try:
 
-    # Ask second category
-    choice2 = forms.SelectFromList.show(ops, title='Select Second Category (can be same)')
-    if not choice2:
-        sys.exit()
-    elements2 = catlist[choice2].WhereElementIsNotElementType().ToElements()
+    refs = uidoc.Selection.PickObjects(
+        ObjectType.Element,
+        "Window select elements or groups. Click Finish when done."
+    )
 
-    # Determine action based on Shift-click
-    if __shiftclick__:
-        action = "Unjoin"
+except OperationCanceledException:
+    script.exit()
+
+
+elements = []
+
+for ref in refs:
+
+    el = doc.GetElement(ref.ElementId)
+
+    if isinstance(el, Group):
+
+        for id in el.GetMemberIds():
+            member = doc.GetElement(id)
+            if member:
+                elements.append(member)
+
     else:
-        action = "Join"
+        elements.append(el)
 
-    processed_pairs = set()
-    transaction.Start("Batch {}".format(action))
 
-    for A in elements1:
-        for B in elements2:
-            if A.Id == B.Id:
-                continue
+# remove duplicates
+elements = list(set(elements))
 
-            pair_key = tuple(sorted([A.Id.IntegerValue, B.Id.IntegerValue]))
-            if pair_key in processed_pairs:
-                continue
-            processed_pairs.add(pair_key)
+if len(elements) < 2:
+    script.exit()
 
-            try:
-                if __shiftclick__:
-                    if JoinGeometryUtils.AreElementsJoined(doc, A, B):
-                        JoinGeometryUtils.UnjoinGeometry(doc, A, B)
-                else:
-                    if not JoinGeometryUtils.AreElementsJoined(doc, A, B):
-                        JoinGeometryUtils.JoinGeometry(doc, A, B)
-            except:
-                pass
 
-    transaction.Commit()
-    forms.alert("Batch {} complete!".format(action), title='Done')
+# -----------------------------------------------------------
+# Join geometry
+# -----------------------------------------------------------
+joined = 0
 
-if __name__ == '__main__':
-    main()
+t = Transaction(doc, "Join Intersecting Elements")
+t.Start()
+
+for i in range(len(elements)):
+
+    e1 = elements[i]
+    bb1 = e1.get_BoundingBox(None)
+
+    for j in range(i + 1, len(elements)):
+
+        e2 = elements[j]
+        bb2 = e2.get_BoundingBox(None)
+
+        if not bboxes_intersect(bb1, bb2):
+            continue
+
+        try:
+
+            if not JoinGeometryUtils.AreElementsJoined(doc, e1, e2):
+
+                JoinGeometryUtils.JoinGeometry(doc, e1, e2)
+                joined += 1
+
+        except:
+            pass
+
+
+t.Commit()
+
+print("{} joins created.".format(joined))
