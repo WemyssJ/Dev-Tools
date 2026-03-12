@@ -1,3 +1,6 @@
+min_revit_version: 2025
+max_revit_version: 2029
+
 title:
   en_us: QSelect
 tooltip: 
