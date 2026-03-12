@@ -14,15 +14,13 @@ class CoordinateSystemSelector(forms.WPFWindow):
 
         # Find controls
         self.all_grids = self.FindName("all_grids")
-        self.radio_true_north = self.FindName("radio_true_north")
-        self.radio_project_north = self.FindName("radio_project_north")
         self.radio_view_orientation = self.FindName("radio_view_orientation")
         self.angle_slider = self.FindName("angle_slider")
         self.angle_display = self.FindName("angle_display")
         self.angle_description = self.FindName("angle_description")
 
         # Set initial values
-        self.all_grids.IsChecked = True
+        self.radio_view_orientation.IsChecked = True
         self.angle_slider.Value = 1
         self.update_angle_display()
 
@@ -54,13 +52,9 @@ class CoordinateSystemSelector(forms.WPFWindow):
         """Get the selected coordinate system."""
         if self.all_grids.IsChecked:
             return "all_grids"
-        elif self.radio_true_north.IsChecked:
-            return "true_north"
-        elif self.radio_project_north.IsChecked:
-            return "project_north"
         elif self.radio_view_orientation.IsChecked:
             return "view"
-        return "true_north"  # fallback
+        return "all_grids"  # fallback
 
     def proceed(self, sender, args):
         """Handle Continue button click."""
@@ -94,10 +88,8 @@ def show_coordinate_system_selector(
     dialog = CoordinateSystemSelector(xamlfile)
 
     if previous_system:
-        if previous_system == "true_north":
+        if previous_system == "all_grids":
             dialog.radio_true_north.IsChecked = True
-        elif previous_system == "project_north":
-            dialog.radio_project_north.IsChecked = True
         elif previous_system == "view":
             dialog.radio_view_orientation.IsChecked = True
 

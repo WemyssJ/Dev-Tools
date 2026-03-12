@@ -50,17 +50,6 @@
                              Margin="0,8,0,5" FontWeight="Normal" FontSize="12"/>
                 <TextBlock Text="Toggles all grids in the active view"
                            FontSize="10" Foreground="#FF666666" Margin="20,0,0,8"/>
-
-                <RadioButton x:Name="radio_true_north" GroupName="CoordSystem" Content="True North"
-                             Margin="0,5,0,5" FontWeight="Normal" FontSize="12"/>
-                <TextBlock Text="Uses true north orientation"
-                           FontSize="10" Foreground="#FF666666" Margin="20,0,0,8"/>
-
-                <RadioButton x:Name="radio_project_north" GroupName="CoordSystem" Content="Project North"
-                             Margin="0,8,0,5" FontWeight="Normal" FontSize="12"/>
-                <TextBlock Text="Uses project coordinate system (applies the 'Angle to True North')"
-                           FontSize="10" Foreground="#FF666666" Margin="20,0,0,8"/>
-
                 <RadioButton x:Name="radio_view_orientation" GroupName="CoordSystem" Content="View/Scope Box Orientation"
                              Margin="0,5,0,5" FontWeight="Normal" FontSize="12"/>
                 <TextBlock Text="Uses current view orientation and scope boxes"
