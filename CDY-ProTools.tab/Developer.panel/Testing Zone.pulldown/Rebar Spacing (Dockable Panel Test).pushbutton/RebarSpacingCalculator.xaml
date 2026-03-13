@@ -1,55 +1,146 @@
 <Page xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-      Background="White">
+      Background="#F3F3F3">
 
-    <DockPanel Margin="10">
+    <DockPanel Margin="12">
 
+        <!-- MAIN INPUT AREA -->
         <StackPanel DockPanel.Dock="Top">
 
-            <!-- Spacing Input -->
-            <TextBlock Text="Spacing (mm):" Margin="0,0,0,5"/>
-            <ComboBox Name="spacingBox" IsEditable="True" Text="200" Margin="0,0,0,10">
-                <ComboBoxItem Content="100"/>
-                <ComboBoxItem Content="150"/>
-                <ComboBoxItem Content="200"/>
-                <ComboBoxItem Content="250"/>
-                <ComboBoxItem Content="300"/>
-            </ComboBox>
+            <!-- Title -->
+            <TextBlock Text="Bar Spacing Calculator"
+                       FontSize="15"
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,12"/>
 
-            <!-- Cover Input -->
-            <TextBlock Text="Cover (mm):" Margin="0,0,0,5"/>
-            <TextBox Name="coverBox" Text="50" Margin="0,0,0,10"/>
+            <!-- INPUT CARD -->
+            <Border Background="White"
+                    BorderBrush="#D6D6D6"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="10"
+                    Margin="0,0,0,12">
 
-            <!-- Buttons -->
-            <Grid Margin="0,0,0,10">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="8"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Button Grid.Column="0" Name="measureBtn" Content="Measure" Click="measureBtn_Click" Height="30"/>
-                <Button Grid.Column="2" Name="clearBtn" Content="Clear" Click="clearBtn_Click" Height="30"/>
-            </Grid>
-
-            <!-- Results -->
-            <Border Background="#F5F5F5" CornerRadius="4" Padding="8" Margin="0,0,0,10">
                 <StackPanel>
-                    <TextBlock Name="distanceText" Text="Distance: —" Margin="0,0,0,2"/>
-                    <TextBlock Name="barsText" Text="Bars: —" Margin="0,0,0,2"/>
-                    <TextBlock Name="roundedText" Text="Rounded Qty: —" FontWeight="Bold" Foreground="Red" Margin="0,0,0,2"/>
+
+                    <!-- Spacing -->
+                    <TextBlock Text="Spacing (mm)"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,4"/>
+
+                    <ComboBox Name="spacingBox"
+                              IsEditable="True"
+                              Text="200"
+                              Height="26"
+                              Margin="0,0,0,10">
+                        <ComboBoxItem Content="100"/>
+                        <ComboBoxItem Content="150"/>
+                        <ComboBoxItem Content="200"/>
+                        <ComboBoxItem Content="250"/>
+                        <ComboBoxItem Content="300"/>
+                    </ComboBox>
+
+                    <!-- Cover -->
+                    <TextBlock Text="Cover (mm)"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,4"/>
+
+                    <TextBox Name="coverBox"
+                             Text="50"
+                             Height="26"
+                             Margin="0,0,0,10"/>
+
+                    <!-- Buttons -->
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Button Grid.Column="0"
+                                Name="measureBtn"
+                                Content="Measure"
+                                Click="measureBtn_Click"
+                                Height="28"
+                                FontWeight="SemiBold"/>
+
+                        <Button Grid.Column="2"
+                                Name="clearBtn"
+                                Content="Clear"
+                                Click="clearBtn_Click"
+                                Height="28"/>
+                    </Grid>
+
                 </StackPanel>
+
             </Border>
 
-            <Separator Margin="0,0,0,5"/>
-            <TextBlock Text="History:" Foreground="Gray" FontSize="11" Margin="0,0,0,5"/>
+            <!-- RESULTS -->
+            <Border Background="White"
+                    BorderBrush="#D6D6D6"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="10"
+                    Margin="0,0,0,10">
+
+                <StackPanel>
+
+                    <TextBlock Text="Results"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,8"/>
+
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0"
+                                   Name="distanceText"
+                                   Text="Distance: —"
+                                   Margin="0,0,0,3"/>
+
+                        <TextBlock Grid.Row="1"
+                                   Name="barsText"
+                                   Text="Bars: —"
+                                   Margin="0,0,0,3"/>
+
+                        <TextBlock Grid.Row="2"
+                                   Name="roundedText"
+                                   Text="Rounded Qty: —"
+                                   FontWeight="Bold"
+                                   Foreground="#C0392B"/>
+                    </Grid>
+
+                </StackPanel>
+
+            </Border>
+
+            <!-- HISTORY LABEL -->
+            <TextBlock Text="History"
+                       FontWeight="SemiBold"
+                       Margin="0,4,0,6"/>
 
         </StackPanel>
 
-        <!-- Console fills remaining space -->
-        <ScrollViewer DockPanel.Dock="Bottom" VerticalScrollBarVisibility="Auto">
-            <TextBlock Name="consoleText" Foreground="Gray" FontSize="11"
-                       FontFamily="Consolas" TextWrapping="Wrap"/>
-        </ScrollViewer>
+        <!-- HISTORY / CONSOLE -->
+        <Border Background="White"
+                BorderBrush="#D6D6D6"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="8">
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <TextBlock Name="consoleText"
+                           Foreground="#555"
+                           FontSize="11"
+                           FontFamily="Consolas"
+                           TextWrapping="Wrap"/>
+            </ScrollViewer>
+
+        </Border>
 
     </DockPanel>
 
