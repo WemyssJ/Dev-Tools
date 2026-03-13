@@ -203,7 +203,7 @@ class RebarSpacingCalculator(forms.WPFPanel):
 # Register panel
 # ----------------------------
 
-if not forms.is_registered_dockable_panel(RebarSpacingCalculator):
-    forms.register_dockable_panel(RebarSpacingCalculator)
-else:
-    print("Skipped registering dockable pane. Already exists.")
+#if not forms.is_registered_dockable_panel(RebarSpacingCalculator):
+#    forms.register_dockable_panel(RebarSpacingCalculator)
+#else:
+#    print("Skipped registering dockable pane. Already exists.")
