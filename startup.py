@@ -17,6 +17,7 @@ import math
 import datetime
 import json
 import subprocess
+import threading
 
 clr.AddReference("AdWindows")
 clr.AddReference("PresentationFramework")
@@ -26,7 +27,7 @@ clr.AddReference("WindowsBase")
 import Autodesk.Windows as AdWindows
 import Autodesk.Revit.DB as DB
 
-from System import EventHandler
+from System import EventHandler, Action
 from System.Windows import Thickness, FontWeights, TextWrapping
 from System.Windows.Controls import (
     StackPanel, TextBox, Button, TextBlock,
@@ -34,7 +35,8 @@ from System.Windows.Controls import (
     ComboBox, ComboBoxItem, CheckBox, Separator
 )
 from System.Windows.Controls import ScrollBarVisibility
-from System.Windows.Media import Brushes
+from System.Windows.Media import Brushes, SolidColorBrush
+from System.Windows import Media
 
 from Autodesk.Revit.UI import IExternalEventHandler, ExternalEvent
 from Autodesk.Revit.UI.Events import IdlingEventArgs
@@ -217,8 +219,6 @@ def _set_status(tb, message, error=False):
 # SELECTION FILTERS
 # =============================================================================
 
-# Categories considered "2D" (view-specific, no solid geometry)
-# Note: only categories confirmed present across Revit 2021-2024 are included
 _2D_CATS_RAW = [
     BuiltInCategory.OST_Lines,
     BuiltInCategory.OST_DetailComponents,
@@ -236,9 +236,6 @@ for _c in _2D_CATS_RAW:
     except:
         pass
 
-# Categories considered "3D" (model elements)
-# Built defensively — each entry is tried individually so unknown names
-# in older/newer API versions are silently skipped rather than crashing.
 _3D_CATS_RAW = [
     BuiltInCategory.OST_StructuralColumns,
     BuiltInCategory.OST_StructuralFraming,
@@ -313,7 +310,6 @@ class OpenHostSheetHandler(IExternalEventHandler):
         except:
             sheet_id = ElementId.InvalidElementId
 
-        # Walk all viewports to find which sheet hosts this view
         host_sheet = None
         vps = FilteredElementCollector(doc).OfClass(DB.Viewport).ToElements()
         for vp in vps:
@@ -365,7 +361,6 @@ class OpenParentViewHandler(IExternalEventHandler):
         uidoc = uiapp.ActiveUIDocument
         doc   = uidoc.Document
         view  = doc.ActiveView
-        # Dependent views carry a GenLevel / GetPrimaryViewId via parameter
         try:
             parent_id = view.GetPrimaryViewId()
         except:
@@ -397,8 +392,7 @@ class Pick2DHandler(IExternalEventHandler):
             els = uidoc.Selection.PickElementsByRectangle(
                 Only2DFilter(), "Box-select 2D elements")
             ids = [e.Id for e in els]
-            uidoc.Selection.SetElementIds(
-                System_List_ElementId(ids))
+            uidoc.Selection.SetElementIds(System_List_ElementId(ids))
             _set_status(self.status, "Selected {} 2D element(s).".format(len(ids)))
         except:
             _set_status(self.status, "Cancelled.")
@@ -417,8 +411,7 @@ class Pick3DHandler(IExternalEventHandler):
             els = uidoc.Selection.PickElementsByRectangle(
                 Only3DFilter(), "Box-select 3D elements")
             ids = [e.Id for e in els]
-            uidoc.Selection.SetElementIds(
-                System_List_ElementId(ids))
+            uidoc.Selection.SetElementIds(System_List_ElementId(ids))
             _set_status(self.status, "Selected {} 3D element(s).".format(len(ids)))
         except:
             _set_status(self.status, "Cancelled.")
@@ -549,7 +542,6 @@ class DimGridsHandler(IExternalEventHandler):
             _set_status(self.status, "Select 2 or more grids first.", error=True)
             return
 
-        # Build a ReferenceArray from grid curves
         ref_arr = ReferenceArray()
         lines   = []
         for g in grids:
@@ -564,8 +556,6 @@ class DimGridsHandler(IExternalEventHandler):
             _set_status(self.status, "Could not resolve grid curves.", error=True)
             return
 
-        # Place the dimension line parallel to the first grid,
-        # offset perpendicularly by 2000mm
         offset_ft = UnitUtils.ConvertToInternalUnits(2000, UnitTypeId.Millimeters)
         l0        = lines[0]
         direction = (l0.GetEndPoint(1) - l0.GetEndPoint(0)).Normalize()
@@ -614,7 +604,6 @@ class DimLevelsHandler(IExternalEventHandler):
             _set_status(self.status, "Could not resolve level curves.", error=True)
             return
 
-        # Dimension line: vertical, offset 2000mm to the left
         offset_ft = UnitUtils.ConvertToInternalUnits(2000, UnitTypeId.Millimeters)
         l0        = lines[0]
         mid       = l0.Evaluate(0.5, True)
@@ -724,10 +713,9 @@ class OpenDWGInAutoCADHandler(IExternalEventHandler):
         if not sel:
             _set_status(self.status, "Select a linked/imported DWG first.", error=True)
             return
-        el = doc.GetElement(sel[0])
+        el   = doc.GetElement(sel[0])
         path = None
         try:
-            # CAD link instance
             link_type_id = el.GetTypeId()
             link_type    = doc.GetElement(link_type_id)
             ext_ref      = link_type.GetExternalFileReference()
@@ -760,14 +748,12 @@ class ReloadDWGHandler(IExternalEventHandler):
             _set_status(self.status, "Select a linked DWG first.", error=True)
             return
         el = doc.GetElement(sel[0])
-        reloaded = 0
         with Transaction(doc, "CDY: Reload DWG") as t:
             t.Start()
             try:
                 link_type_id = el.GetTypeId()
                 link_type    = doc.GetElement(link_type_id)
                 link_type.Reload()
-                reloaded = 1
             except Exception as e:
                 t.RollBack()
                 _set_status(self.status, "Reload failed: {}".format(e), error=True)
@@ -779,6 +765,310 @@ class ReloadDWGHandler(IExternalEventHandler):
         return "CDY Reload DWG"
 
 
+# =============================================================================
+# HELPERS — shared by DWG colour/hide handlers
+# =============================================================================
+
+def _get_import_instance(doc, sel):
+    """Return the first ImportInstance found in the selection."""
+    for eid in sel:
+        el = doc.GetElement(eid)
+        if isinstance(el, DB.ImportInstance):
+            return el
+    return None
+
+
+def _get_override_target(doc, view):
+    """
+    Return (target_view_or_template, display_name).
+    Respects view templates — consistent with Grey Scale buttons.
+    """
+    template_id = view.ViewTemplateId
+    if template_id != DB.ElementId.InvalidElementId:
+        target = doc.GetElement(template_id)
+        return target, "template '{}'".format(target.Name)
+    return view, "active view"
+
+
+# =============================================================================
+# GREYSCALE / REVERT HANDLERS
+# =============================================================================
+
+class GreyScaleDWGHandler(IExternalEventHandler):
+    def __init__(self):
+        self.status = None
+
+    def Execute(self, uiapp):
+        uidoc = uiapp.ActiveUIDocument
+        doc   = uidoc.Document
+        view  = doc.ActiveView
+        sel   = list(uidoc.Selection.GetElementIds())
+
+        if not sel:
+            _set_status(self.status, "Select a linked/imported DWG first.", error=True)
+            return
+
+        import_inst = _get_import_instance(doc, sel)
+        if import_inst is None:
+            _set_status(self.status, "No DWG import/link found in selection.", error=True)
+            return
+
+        target, target_name = _get_override_target(doc, view)
+        root_cat = import_inst.Category
+        if not root_cat:
+            _set_status(self.status, "Could not resolve DWG categories.", error=True)
+            return
+
+        with Transaction(doc, "CDY: Greyscale DWG") as t:
+            t.Start()
+            try:
+                # Halftone must be applied to the root import category —
+                # Revit ignores SetHalftone on DWG subcategories (layers)
+                root_ovr = DB.OverrideGraphicSettings()
+                root_ovr.SetHalftone(True)
+                target.SetCategoryOverrides(root_cat.Id, root_ovr)
+
+                # Black colour override applied per-layer as normal
+                for layer_cat in root_cat.SubCategories:
+                    ovr = DB.OverrideGraphicSettings()
+                    ovr.SetProjectionLineColor(DB.Color(0, 0, 0))
+                    target.SetCategoryOverrides(layer_cat.Id, ovr)
+                t.Commit()
+            except Exception as e:
+                t.RollBack()
+                _set_status(self.status, "Failed: {}".format(e), error=True)
+                return
+
+        _set_status(self.status, "Greyscale applied on {}.".format(target_name))
+
+    def GetName(self):
+        return "CDY Greyscale DWG"
+
+
+class RevertGreyScaleDWGHandler(IExternalEventHandler):
+    def __init__(self):
+        self.status = None
+
+    def Execute(self, uiapp):
+        uidoc = uiapp.ActiveUIDocument
+        doc   = uidoc.Document
+        view  = doc.ActiveView
+        sel   = list(uidoc.Selection.GetElementIds())
+
+        if not sel:
+            _set_status(self.status, "Select a linked/imported DWG first.", error=True)
+            return
+
+        import_inst = _get_import_instance(doc, sel)
+        if import_inst is None:
+            _set_status(self.status, "No DWG import/link found in selection.", error=True)
+            return
+
+        target, target_name = _get_override_target(doc, view)
+        root_cat = import_inst.Category
+        if not root_cat:
+            _set_status(self.status, "Could not resolve DWG categories.", error=True)
+            return
+
+        with Transaction(doc, "CDY: Revert Greyscale DWG") as t:
+            t.Start()
+            try:
+                # Clear root category (halftone lives here)
+                target.SetCategoryOverrides(root_cat.Id, DB.OverrideGraphicSettings())
+                # Clear all layer overrides
+                for layer_cat in root_cat.SubCategories:
+                    target.SetCategoryOverrides(layer_cat.Id, DB.OverrideGraphicSettings())
+                t.Commit()
+            except Exception as e:
+                t.RollBack()
+                _set_status(self.status, "Failed: {}".format(e), error=True)
+                return
+
+        _set_status(self.status, "Greyscale reverted on {}.".format(target_name))
+
+    def GetName(self):
+        return "CDY Revert Greyscale DWG"
+
+
+# =============================================================================
+# HIDE LAYER TOGGLE — pick loop handler
+# =============================================================================
+
+# Mutable flag — shared between the handler and the pick loop so a second
+# button press (Raise → Execute) can signal the loop to stop.
+_hide_layer_active = [False]
+
+
+class HideLayerToggleHandler(IExternalEventHandler):
+    """
+    First click  → turns the button red, enters a PickObject loop.
+                   Each picked DWG geometry resolves its layer and hides it
+                   immediately in a micro-transaction.
+    Second click → sets _hide_layer_active[0] = False, which causes the
+                   loop to exit after its next ESC/pick attempt.
+    ESC on canvas→ exits the loop directly.
+
+    Respects view templates (via _get_override_target), consistent with
+    the Grey Scale buttons.
+    """
+
+    def __init__(self):
+        self.status     = None   # TextBlock for feedback
+        self.toggle_btn = None   # Button ref — repainted to show active state
+
+    # ---- UI helpers (dispatched onto the WPF thread) ------------------------
+
+    def _ui_set_active(self):
+        def _do():
+            if self.toggle_btn:
+                self.toggle_btn.Background = SolidColorBrush(
+                    Media.Color.FromRgb(180, 40, 40))
+                self.toggle_btn.Foreground = Brushes.White
+                self.toggle_btn.Content    = "● Active — Press ESC to Finish"
+            if self.status:
+                _set_status(self.status, "Click DWG layers to hide. ESC to stop.")
+        self.toggle_btn.Dispatcher.Invoke(Action(_do))
+
+    def _ui_set_inactive(self, hidden_count):
+        def _do():
+            if self.toggle_btn:
+                self.toggle_btn.ClearValue(Button.BackgroundProperty)
+                self.toggle_btn.ClearValue(Button.ForegroundProperty)
+                self.toggle_btn.Content = "Hide Layer (Toggle)"
+            if self.status:
+                if hidden_count:
+                    _set_status(
+                        self.status,
+                        "Hide mode off — {} layer(s) hidden.".format(hidden_count))
+                else:
+                    _set_status(self.status, "Hide mode off.")
+        self.toggle_btn.Dispatcher.Invoke(Action(_do))
+
+    def _ui_update_count(self, layer_name, total):
+        def _do():
+            if self.status:
+                _set_status(
+                    self.status,
+                    "Hidden '{}' ({} total). ESC to stop.".format(layer_name, total))
+        self.toggle_btn.Dispatcher.Invoke(Action(_do))
+
+    def _ui_error(self, msg):
+        def _do():
+            if self.status:
+                _set_status(self.status, msg, error=True)
+        self.toggle_btn.Dispatcher.Invoke(Action(_do))
+
+    # ---- main execute -------------------------------------------------------
+
+    def Execute(self, uiapp):
+        # Second click while already active → signal loop to stop
+        if _hide_layer_active[0]:
+            _hide_layer_active[0] = False
+            return
+
+        uidoc = uiapp.ActiveUIDocument
+        doc   = uidoc.Document
+
+        _hide_layer_active[0] = True
+        hidden_count          = 0
+        hidden_names          = set()   # deduplicate within the session
+
+        self._ui_set_active()
+
+        while _hide_layer_active[0]:
+            # ---- pick one point on DWG geometry -----------------------------
+            try:
+                ref = uidoc.Selection.PickObject(
+                    ObjectType.PointOnElement,
+                    "Click a DWG layer to hide it  (ESC to finish)"
+                )
+            except:
+                break   # ESC or any interruption
+
+            elem = doc.GetElement(ref.ElementId)
+
+            # ---- resolve ImportInstance and GraphicsStyle id ----------------
+            import_inst = None
+            gs_id       = None
+
+            if isinstance(elem, DB.ImportInstance):
+                import_inst = elem
+                try:
+                    geom  = import_inst.GetGeometryObjectFromReference(ref)
+                    gs_id = geom.GraphicsStyleId
+                except:
+                    pass
+            else:
+                # Walk up element hierarchy to find owning ImportInstance
+                parent = elem
+                while parent:
+                    if isinstance(parent, DB.ImportInstance):
+                        import_inst = parent
+                        break
+                    try:
+                        host_param = parent.get_Parameter(BuiltInParameter.HOST_ID_PARAM)
+                        parent = doc.GetElement(host_param.AsElementId()) if host_param else None
+                    except:
+                        parent = None
+                if elem:
+                    try:
+                        gs_id = elem.GraphicsStyleId
+                    except:
+                        pass
+
+            if not import_inst or not gs_id:
+                continue
+
+            gs = doc.GetElement(gs_id)
+            if not gs:
+                continue
+
+            layer_name = gs.GraphicsStyleCategory.Name
+            root_cat   = import_inst.Category
+            if not root_cat:
+                continue
+
+            # Skip silently if already hidden this session
+            if layer_name in hidden_names:
+                continue
+
+            try:
+                layer_cat = root_cat.SubCategories.get_Item(layer_name)
+            except:
+                layer_cat = None
+
+            if not layer_cat:
+                continue
+
+            # ---- resolve target (view or template) --------------------------
+            view   = doc.ActiveView
+            target, _target_name = _get_override_target(doc, view)
+
+            # ---- hide in a micro-transaction --------------------------------
+            with Transaction(doc, "CDY: Hide DWG Layer '{}'".format(layer_name)) as t:
+                t.Start()
+                try:
+                    target.SetCategoryHidden(layer_cat.Id, True)
+                    t.Commit()
+                    hidden_names.add(layer_name)
+                    hidden_count += 1
+                    self._ui_update_count(layer_name, hidden_count)
+                except Exception as e:
+                    t.RollBack()
+                    self._ui_error("Could not hide '{}': {}".format(layer_name, e))
+
+        # ---- loop exited ----------------------------------------------------
+        _hide_layer_active[0] = False
+        self._ui_set_inactive(hidden_count)
+
+    def GetName(self):
+        return "CDY Hide Layer Toggle"
+
+
+# =============================================================================
+# REMAINING FILE NAV HANDLERS
+# =============================================================================
+
 class OpenBIM360Handler(IExternalEventHandler):
     def __init__(self):
         self.status = None
@@ -789,9 +1079,7 @@ class OpenBIM360Handler(IExternalEventHandler):
         if not path:
             _set_status(self.status, "File has not been saved.", error=True)
             return
-        # BIM360/ACC paths start with BIM 360:// or similar
         if "BIM 360" in path or "ACC" in path or path.startswith("BIM"):
-            # Open Autodesk Construction Cloud in default browser
             import webbrowser
             webbrowser.open("https://acc.autodesk.com")
             _set_status(self.status, "Opened ACC in browser.")
@@ -855,8 +1143,8 @@ class OpenLocalLocationHandler(IExternalEventHandler):
 # INSTANTIATE ALL HANDLERS & EVENTS
 # =============================================================================
 
-# Helper to build a .NET List[ElementId] from a Python list
 from System.Collections.Generic import List as DotNetList
+
 def System_List_ElementId(ids):
     lst = DotNetList[ElementId]()
     for i in ids:
@@ -898,6 +1186,12 @@ _open_dwg_h         = OpenDWGInAutoCADHandler()
 _open_dwg_e         = ExternalEvent.Create(_open_dwg_h)
 _reload_dwg_h       = ReloadDWGHandler()
 _reload_dwg_e       = ExternalEvent.Create(_reload_dwg_h)
+_greyscale_dwg_h    = GreyScaleDWGHandler()
+_greyscale_dwg_e    = ExternalEvent.Create(_greyscale_dwg_h)
+_revert_grey_dwg_h  = RevertGreyScaleDWGHandler()
+_revert_grey_dwg_e  = ExternalEvent.Create(_revert_grey_dwg_h)
+_hide_layer_h       = HideLayerToggleHandler()
+_hide_layer_e       = ExternalEvent.Create(_hide_layer_h)
 _open_bim360_h      = OpenBIM360Handler()
 _open_bim360_e      = ExternalEvent.Create(_open_bim360_h)
 _open_central_h     = OpenCentralLocationHandler()
@@ -947,8 +1241,7 @@ class CDYToolsPanel(forms.WPFPanel):
         btn.Content = text
         btn.Margin  = Thickness(0, 4, 0, 2)
         btn.Padding = Thickness(6, 4, 6, 4)
-        btn.HorizontalAlignment = \
-            System_HAlign.Stretch
+        btn.HorizontalAlignment = System_HAlign.Stretch
         btn.Click  += handler_fn
         return btn
 
@@ -1011,18 +1304,15 @@ class CDYToolsPanel(forms.WPFPanel):
             small=True))
         p.Children.Add(self._sep())
 
-        p.Children.Add(self._button(
-            "Open Host Sheet", self._on_open_sheet))
+        p.Children.Add(self._button("Open Host Sheet", self._on_open_sheet))
         p.Children.Add(self._label(
             "Opens the sheet that the active view is placed on.", small=True))
 
-        p.Children.Add(self._button(
-            "Open View Selected on Sheet", self._on_open_view_sheet))
+        p.Children.Add(self._button("Open View Selected on Sheet", self._on_open_view_sheet))
         p.Children.Add(self._label(
             "Select a viewport on a sheet, then click to jump to that view.", small=True))
 
-        p.Children.Add(self._button(
-            "Open Parent / Primary View", self._on_open_parent))
+        p.Children.Add(self._button("Open Parent / Primary View", self._on_open_parent))
         p.Children.Add(self._label(
             "Opens the primary view if the active view is a dependent. "
             "Shows a message if already primary.", small=True))
@@ -1048,11 +1338,10 @@ class CDYToolsPanel(forms.WPFPanel):
 
         self._section(p, "Selection Filters")
         p.Children.Add(self._label(
-            "Box-select elements filtered to only 2D or 3D categories.",
-            small=True))
-        p.Children.Add(self._button("Pick 2D Elements",       self._on_pick2d))
-        p.Children.Add(self._button("Pick 3D Elements",       self._on_pick3d))
-        p.Children.Add(self._button("Pick Grouped Elements",  self._on_pick_group))
+            "Box-select elements filtered to only 2D or 3D categories.", small=True))
+        p.Children.Add(self._button("Pick 2D Elements",      self._on_pick2d))
+        p.Children.Add(self._button("Pick 3D Elements",      self._on_pick3d))
+        p.Children.Add(self._button("Pick Grouped Elements", self._on_pick_group))
         p.Children.Add(self._label(
             "For grouped elements: select groups first, then click.", small=True))
 
@@ -1090,20 +1379,15 @@ class CDYToolsPanel(forms.WPFPanel):
         self._section(p, "Auto Dimension")
         p.Children.Add(self._label(
             "Select 2 or more grids or levels, then click. "
-            "Dimensions are placed on the active view.",
-            small=True))
+            "Dimensions are placed on the active view.", small=True))
 
-        p.Children.Add(self._button(
-            "Dimension Selected Gridlines", self._on_dim_grids))
+        p.Children.Add(self._button("Dimension Selected Gridlines", self._on_dim_grids))
         p.Children.Add(self._label(
-            "Places a linear dimension string across all selected grids.",
-            small=True))
+            "Places a linear dimension string across all selected grids.", small=True))
 
-        p.Children.Add(self._button(
-            "Dimension Selected Levels", self._on_dim_levels))
+        p.Children.Add(self._button("Dimension Selected Levels", self._on_dim_levels))
         p.Children.Add(self._label(
-            "Places a vertical dimension string across all selected levels.",
-            small=True))
+            "Places a vertical dimension string across all selected levels.", small=True))
 
         self._dim_status = self._status()
         p.Children.Add(self._dim_status)
@@ -1125,8 +1409,7 @@ class CDYToolsPanel(forms.WPFPanel):
         self._section(p, "Select Untagged Elements")
         p.Children.Add(self._label(
             "Selects all untagged elements of the chosen category in the active view. "
-            "Use with Tag All to finish tagging in one step.",
-            small=True))
+            "Use with Tag All to finish tagging in one step.", small=True))
         p.Children.Add(self._sep())
 
         p.Children.Add(self._label("Category:"))
@@ -1139,8 +1422,7 @@ class CDYToolsPanel(forms.WPFPanel):
         self._tag_cat_combo.SelectedIndex = 0
         p.Children.Add(self._tag_cat_combo)
 
-        p.Children.Add(self._button(
-            "Select Untagged in Active View", self._on_sel_untagged))
+        p.Children.Add(self._button("Select Untagged in Active View", self._on_sel_untagged))
 
         self._tag_status = self._status()
         p.Children.Add(self._tag_status)
@@ -1156,44 +1438,72 @@ class CDYToolsPanel(forms.WPFPanel):
     # -------------------------------------------------------------------------
 
     def _build_file_nav_tab(self):
-        tab, p = self._make_tab("Files")
+        tab, p = self._make_tab("xRef")
 
         self._section(p, "DWG Links")
         p.Children.Add(self._label(
             "Select a linked DWG in the canvas first.", small=True))
+
         p.Children.Add(self._button("Open Selected DWG in AutoCAD", self._on_open_dwg))
-        p.Children.Add(self._button("Reload Selected DWG",          self._on_reload_dwg))
+
+        p.Children.Add(self._button("Reload Selected DWG", self._on_reload_dwg))
+
+        p.Children.Add(self._label(
+            "Overrides all DWG layers to black with halftone in the active view or its view template.", small=True))
+        p.Children.Add(self._button("Grey Scale Selected DWG", self._on_greyscale_dwg))
+
+        p.Children.Add(self._button("Revert Grey Scale", self._on_revert_grey_dwg))
+        p.Children.Add(self._label(
+            "Removes all colour overrides from every layer of the selected DWG, "
+            "restoring Revit defaults.", small=True))
+
+        # Hide Layer toggle — store button ref so handler can repaint it
+        self._hide_layer_btn = self._button(
+            "Hide Layer (Toggle)", self._on_hide_layer_toggle)
+        p.Children.Add(self._hide_layer_btn)
+        p.Children.Add(self._label(
+            "Toggle on (button turns red), then click any DWG geometry to hide "
+            "that layer instantly. Click the button again or press ESC to stop. "
+            "Respects view templates.", small=True))
 
         p.Children.Add(self._sep())
-        self._section(p, "Project Locations")
-        p.Children.Add(self._button("Open BIM360 / ACC",          self._on_open_bim360))
+        self._section(p, "Model Location")
+
+        p.Children.Add(self._button("Open BIM360 / ACC", self._on_open_bim360))
         p.Children.Add(self._label(
-            "Opens ACC in your default browser (BIM360-hosted models only).",
-            small=True))
+            "Opens ACC in your default browser (BIM360-hosted models only).", small=True))
+
         p.Children.Add(self._button("Open Central Model Location", self._on_open_central))
         p.Children.Add(self._label(
-            "Opens the folder containing the central model in Explorer.",
-            small=True))
-        p.Children.Add(self._button("Open Local File Location",    self._on_open_local))
+            "Opens the folder containing the central model in Explorer.", small=True))
+
+        p.Children.Add(self._button("Open Local File Location", self._on_open_local))
         p.Children.Add(self._label(
-            "Opens the folder containing the currently open local file.",
-            small=True))
+            "Opens the folder containing the currently open local file.", small=True))
 
         self._file_status = self._status()
         p.Children.Add(self._file_status)
 
-        _open_dwg_h.status     = self._file_status
-        _reload_dwg_h.status   = self._file_status
-        _open_bim360_h.status  = self._file_status
-        _open_central_h.status = self._file_status
-        _open_local_h.status   = self._file_status
+        # Wire status TextBlocks and the toggle button reference to handlers
+        _open_dwg_h.status        = self._file_status
+        _reload_dwg_h.status      = self._file_status
+        _greyscale_dwg_h.status   = self._file_status
+        _revert_grey_dwg_h.status = self._file_status
+        _hide_layer_h.status      = self._file_status
+        _hide_layer_h.toggle_btn  = self._hide_layer_btn
+        _open_bim360_h.status     = self._file_status
+        _open_central_h.status    = self._file_status
+        _open_local_h.status      = self._file_status
         return tab
 
-    def _on_open_dwg(self, s, a):      _open_dwg_e.Raise()
-    def _on_reload_dwg(self, s, a):    _reload_dwg_e.Raise()
-    def _on_open_bim360(self, s, a):   _open_bim360_e.Raise()
-    def _on_open_central(self, s, a):  _open_central_e.Raise()
-    def _on_open_local(self, s, a):    _open_local_e.Raise()
+    def _on_open_dwg(self, s, a):            _open_dwg_e.Raise()
+    def _on_reload_dwg(self, s, a):          _reload_dwg_e.Raise()
+    def _on_greyscale_dwg(self, s, a):       _greyscale_dwg_e.Raise()
+    def _on_revert_grey_dwg(self, s, a):     _revert_grey_dwg_e.Raise()
+    def _on_hide_layer_toggle(self, s, a):   _hide_layer_e.Raise()
+    def _on_open_bim360(self, s, a):         _open_bim360_e.Raise()
+    def _on_open_central(self, s, a):        _open_central_e.Raise()
+    def _on_open_local(self, s, a):          _open_local_e.Raise()
 
 
 # ── HorizontalAlignment shorthand ────────────────────────────────────────────
