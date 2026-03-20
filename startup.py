@@ -586,7 +586,7 @@ def _scan_scripts(root):
         if not op.basename(dirpath).endswith(".pushbutton"):
             continue
         # Skip anything inside a Developer panel folder
-        if "Developer.panel" in dirpath:
+        if "Developer.panel" in dirpath or any(part == "bin" for part in dirpath.split(op.sep)):
             continue
         tool_name = op.basename(dirpath)[:-len(".pushbutton")]
         results.append({"label": tool_name,
