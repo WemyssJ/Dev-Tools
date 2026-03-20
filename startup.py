@@ -230,6 +230,9 @@ SCRIPTS = {
     "auto_dim_elements":     _script(r"Developer.panel\Pullout Panel.pulldown\AutoDimension.pushbutton\script.py"),
     # -- Tagging --------------------------------------------------------------
     "select_untagged":       _script(r"Developer.panel\Pullout Panel.pulldown\Select Untagged.pushbutton\script.py"),
+    "Highlight_selected":    _script(r"Developer.panel\Pullout Panel.pulldown\Highlight Selected.pushbutton\script.py"),
+    "Reset_all_overrides":   _script(r"Developer.panel\Pullout Panel.pulldown\Reset All Overrides.pushbutton\script.py"),
+    "Reset_sel_overrides":   _script(r"Developer.panel\Pullout Panel.pulldown\Reset Selected Overrides.pushbutton\script.py"),
     # -- DWG / Files ----------------------------------------------------------
     "open_dwg_autocad":      _script(r"Developer.panel\Pullout Panel.pulldown\DWG HotLoader.pushbutton\script.py"),
     "reload_dwg":            _script(r"Developer.panel\Pullout Panel.pulldown\Reload DWG.pushbutton\script.py"),
@@ -253,6 +256,9 @@ TOOL_LABELS = {
     "dim_levels":            "Dimension Selected Levels",
     "auto_dim_elements":     "Auto Dim Elements in Active View",
     "select_untagged":       "Select Untagged in Active View",
+    "Highlight_selected":    "Highlight Selected",
+    "Reset_all_overrides":   "Reset All Overrides",
+    "Reset_sel_overrides":   "Reset Selected Overrides",
     "open_dwg_autocad":      "Open Selected DWG in AutoCAD",
     "reload_dwg":            "Reload Selected DWG",
     "greyscale_dwg":         "Grey Scale Selected DWG",
@@ -262,6 +268,14 @@ TOOL_LABELS = {
     "open_local_location":   "Open Local File Location",
 }
 
+
+# =============================================================================
+# HIGHLIGHT COLOUR STORE
+# Shared between the colour picker button and the highlight script.
+# Defaults to green (0, 200, 0).  The script reads CDY_HIGHLIGHT_COLOR.
+# =============================================================================
+
+CDY_HIGHLIGHT_COLOR = (0, 200, 0)   # (R, G, B) tuple, mutable at runtime
 
 # =============================================================================
 # SECTION 4 - SCRIPT EXECUTION
@@ -385,7 +399,7 @@ def _build_uid_from_path(script_path):
     Flat:   CustomCtrl_%CustomCtrl_%<tab>%<panel>%<btn>
     Nested: CustomCtrl_%CustomCtrl_%<tab>%<panel>%CustomCtrl_%<pulldown>%<btn>
 
-    Uses string splitting on both \ and / so it works regardless of which
+    Uses string splitting on both backslash and / so it works regardless of which
     os.path functions are available (important when running inside Revit on
     Windows where op.dirname may behave unexpectedly with iron-python).
     """
@@ -839,14 +853,99 @@ _h_dim_levels   = ScriptLaunchHandler("dim_levels");        _e_dim_levels   = Ex
 _h_auto_dim     = ScriptLaunchHandler("auto_dim_elements"); _e_auto_dim     = ExternalEvent.Create(_h_auto_dim)
 
 _h_sel_untagged   = ScriptLaunchHandler("select_untagged");         _e_sel_untagged   = ExternalEvent.Create(_h_sel_untagged)
-_h_highlight      = ScriptLaunchHandler("Highlight_selected_green"); _e_highlight      = ExternalEvent.Create(_h_highlight)
-_h_reset_override = ScriptLaunchHandler("Reset_overrides");          _e_reset_override = ExternalEvent.Create(_h_reset_override)
+
+
+class HighlightHandler(IExternalEventHandler):
+    """Runs the highlight script, injecting CDY_HIGHLIGHT_COLOR into its namespace."""
+    def __init__(self):
+        self.status = None
+
+    def Execute(self, uiapp):
+        # CDY_HIGHLIGHT_COLOR is a module-level global in this file — read directly
+        path = SCRIPTS.get("Highlight_selected")
+        if not path or not op.exists(path):
+            if self.status:
+                _set_status(self.status, "Highlight script not found.", error=True)
+            return
+        err = _exec_script_with_globals(
+            path, uiapp, {"CDY_HIGHLIGHT_COLOR": CDY_HIGHLIGHT_COLOR})
+        if self.status and err:
+            _set_status(self.status, err, error=True)
+
+    def GetName(self):
+        return "CDY Highlight"
+
+
+def _exec_script_with_globals(path, uiapp, extra_globals):
+    """Like _exec_script but merges extra_globals into the module before exec."""
+    if not path:
+        return "No path provided."
+    if not op.exists(path):
+        return "Script not found:\n{}".format(path)
+    try:
+        script_dir = op.dirname(path)
+        if script_dir not in sys.path:
+            sys.path.insert(0, script_dir)
+        uidoc = uiapp.ActiveUIDocument if uiapp else None
+        doc   = uidoc.Document if uidoc else None
+        exec_params         = _ExecParams(path)
+        mod_name            = "cdy_script_{:x}".format(abs(hash(path)) & 0xFFFFFF)
+        mod                 = imp.new_module(mod_name)
+        mod.__file__        = path
+        mod.__revit__       = uiapp
+        mod.__uidoc__       = uidoc
+        mod.__doc__         = doc
+        mod.EXEC_PARAMS     = exec_params
+        mod.__commandname__ = exec_params.command_name
+        mod.__commandpath__ = path
+        for k, v in extra_globals.items():
+            setattr(mod, k, v)
+        try:
+            from pyrevit import revit as _pvrevit
+            mod.revit = _pvrevit
+        except Exception:
+            pass
+        try:
+            from pyrevit import script as _pvscript
+            _pvscript.EXEC_PARAMS = exec_params
+            mod.script = _pvscript
+        except Exception:
+            class _ScriptProxy(object):
+                def exit(self): raise SystemExit
+                def get_config(self, section=None):
+                    class _Cfg(object):
+                        def __getattr__(self, n): return None
+                        def __setattr__(self, n, v): pass
+                        def save_changes(self): pass
+                    return _Cfg()
+                def get_logger(self):
+                    import logging
+                    return logging.getLogger(exec_params.command_name)
+                def get_output(self): return None
+            mod.script = _ScriptProxy()
+        sys.modules[mod_name] = mod
+        with open(path, "r") as f:
+            source = f.read()
+        exec(compile(source, path, "exec"), mod.__dict__)
+        return None
+    except SystemExit:
+        return None
+    except Exception:
+        import traceback
+        return traceback.format_exc()
+
+
+_h_highlight = HighlightHandler(); _e_highlight = ExternalEvent.Create(_h_highlight)
+_h_reset_all_override = ScriptLaunchHandler("Reset_all_overrides");  _e_reset_all_override = ExternalEvent.Create(_h_reset_all_override)
+_h_reset_sel_override = ScriptLaunchHandler("Reset_sel_overrides");  _e_reset_sel_override = ExternalEvent.Create(_h_reset_sel_override)
 
 _h_open_dwg     = ScriptLaunchHandler("open_dwg_autocad");  _e_open_dwg     = ExternalEvent.Create(_h_open_dwg)
 _h_reload_dwg   = ScriptLaunchHandler("reload_dwg");        _e_reload_dwg   = ExternalEvent.Create(_h_reload_dwg)
 _h_greyscale    = ScriptLaunchHandler("greyscale_dwg");     _e_greyscale    = ExternalEvent.Create(_h_greyscale)
 _h_revert_grey  = ScriptLaunchHandler("revert_greyscale_dwg"); _e_revert_grey = ExternalEvent.Create(_h_revert_grey)
 _h_hide_layer   = HideLayerToggleHandler();                 _e_hide_layer   = ExternalEvent.Create(_h_hide_layer)
+
+
 class ACCHandler(IExternalEventHandler):
     """Opens ACC in the browser. region = 'eu' or 'gbr'."""
     def __init__(self):
@@ -1344,22 +1443,146 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
         self._section(p, "Graphics Overrides")
         p.Children.Add(self._label(
             "Select elements first, then click to apply or reset colour overrides.", small=True))
-        p.Children.Add(self._fav_row("Highlight Selected Green",
-                                     self._on_highlight, "Highlight_selected_green"))
+        p.Children.Add(self._highlight_row())
         p.Children.Add(self._label(
-            "Overrides selected elements with a solid green fill in the active view.", small=True))
-        p.Children.Add(self._fav_row("Reset Overrides",
-                                     self._on_reset_override, "Reset_overrides"))
+            "Overrides selected elements with the chosen colour in the active view.", small=True))
+        p.Children.Add(self._fav_row("Reset Selected Overrides",
+                                     self._on_reset_sel_override, "Reset_sel_overrides"))
         p.Children.Add(self._label(
             "Removes all graphic overrides from selected elements in the active view.", small=True))
+        p.Children.Add(self._fav_row("Reset All Overrides",
+                                     self._on_reset_all_override, "Reset_all_overrides"))
+        p.Children.Add(self._label(
+            "Removes all graphic overrides from every element in the active view.", small=True))
         st = self._status()
         p.Children.Add(st)
-        _h_sel_untagged.status = _h_highlight.status = _h_reset_override.status = st
+        _h_sel_untagged.status = _h_highlight.status = st
+        _h_reset_sel_override.status = _h_reset_all_override.status = st
         return tab
 
     def _on_sel_untagged(self, s, a):    _e_sel_untagged.Raise()
+    def _highlight_row(self):
+        """Highlight row: [colour swatch picker] [Highlight Selected ★]"""
+        from System.Windows.Controls import ContextMenu, MenuItem
+
+        row = DockPanel()
+        row.Margin        = Thickness(0, 4, 0, 2)
+        row.LastChildFill = True
+
+        # ── star (favourites) ──────────────────────────────────────────────
+        star = Button()
+        star.Width   = 26
+        star.Padding = Thickness(0)
+        star.Margin  = Thickness(4, 0, 0, 0)
+        star.Content = u"★"
+        star.ToolTip = "Add to / remove from Favourites"
+        star.VerticalAlignment = System.Windows.VerticalAlignment.Stretch
+        is_fav = _fav_is_key("Highlight_selected")
+        star.Foreground = SolidColorBrush(
+            Media.Color.FromRgb(218, 165, 32) if is_fav
+            else Media.Color.FromRgb(180, 180, 180))
+        self._star_buttons["Highlight_selected"] = star
+
+        def _on_star(s, a, sb=star):
+            now = _fav_toggle_key("Highlight_selected")
+            sb.Foreground = SolidColorBrush(
+                Media.Color.FromRgb(218, 165, 32) if now
+                else Media.Color.FromRgb(180, 180, 180))
+            self._refresh_fav_tab()
+
+        star.Click += _on_star
+        DockPanel.SetDock(star, Dock.Right)
+        row.Children.Add(star)
+
+        # ── colour swatch picker button ────────────────────────────────────
+        self._highlight_swatch = Button()
+        self._highlight_swatch.Width   = 26
+        self._highlight_swatch.Padding = Thickness(0)
+        self._highlight_swatch.Margin  = Thickness(0, 0, 4, 0)
+        self._highlight_swatch.ToolTip = "Pick highlight colour"
+        self._highlight_swatch.VerticalAlignment = System.Windows.VerticalAlignment.Stretch
+        self._update_swatch()
+
+        # Preset colours in a context menu
+        cm = ContextMenu()
+        presets = [
+            (u"Green  (default)", 0,   200, 0  ),
+            (u"Red",              220, 40,  40  ),
+            (u"Blue",             40,  120, 220 ),
+            (u"Yellow",           255, 210, 0   ),
+            (u"Cyan",             0,   200, 200 ),
+            (u"Magenta",          200, 0,   200 ),
+            (u"Orange",           255, 140, 0   ),
+            (u"White",            255, 255, 255 ),
+            (u"Custom…",     None,None,None),
+        ]
+        for label, r, g, b in presets:
+            mi = MenuItem()
+            mi.Header = label
+            if r is not None:
+                def _pick(s, a, rv=r, gv=g, bv=b):
+                    global CDY_HIGHLIGHT_COLOR
+                    CDY_HIGHLIGHT_COLOR = (rv, gv, bv)
+                    self._update_swatch()
+            else:
+                def _pick(s, a):
+                    self._pick_custom_color()
+            mi.Click += _pick
+            cm.Items.Add(mi)
+
+        self._highlight_swatch.ContextMenu = cm
+        # Left-click also opens the menu
+        def _swatch_click(s, a):
+            self._highlight_swatch.ContextMenu.IsOpen = True
+        self._highlight_swatch.Click += _swatch_click
+
+        DockPanel.SetDock(self._highlight_swatch, Dock.Left)
+        row.Children.Add(self._highlight_swatch)
+
+        # ── main button ────────────────────────────────────────────────────
+        btn = Button()
+        btn.Content = "Highlight Selected"
+        btn.Padding = Thickness(6, 4, 6, 4)
+        btn.HorizontalAlignment = System_HAlign.Stretch
+        btn.Click += self._on_highlight
+        row.Children.Add(btn)
+        return row
+
+    def _update_swatch(self):
+        """Repaint the colour swatch button to reflect CDY_HIGHLIGHT_COLOR."""
+        r, g, b = CDY_HIGHLIGHT_COLOR
+        self._highlight_swatch.Background = SolidColorBrush(
+            Media.Color.FromRgb(r, g, b))
+        # Use black or white text depending on luminance
+        lum = 0.299 * r + 0.587 * g + 0.114 * b
+        self._highlight_swatch.Foreground = SolidColorBrush(
+            Media.Color.FromRgb(0, 0, 0) if lum > 140
+            else Media.Color.FromRgb(255, 255, 255))
+        self._highlight_swatch.Content = u"●"
+
+    def _pick_custom_color(self):
+        """Open the Windows native colour picker dialog."""
+        clr.AddReference("System.Windows.Forms")
+        clr.AddReference("System.Drawing")
+        import System.Windows.Forms as WinForms
+        import System.Drawing as Drawing
+
+        r, g, b = CDY_HIGHLIGHT_COLOR
+        dlg = WinForms.ColorDialog()
+        dlg.FullOpen = True   # show the full picker with custom colours expanded
+        try:
+            dlg.Color = Drawing.Color.FromArgb(r, g, b)
+        except:
+            pass
+        if dlg.ShowDialog() == WinForms.DialogResult.OK:
+            global CDY_HIGHLIGHT_COLOR
+            c = dlg.Color
+            CDY_HIGHLIGHT_COLOR = (int(c.R), int(c.G), int(c.B))
+            self._update_swatch()
+
     def _on_highlight(self, s, a):       _e_highlight.Raise()
-    def _on_reset_override(self, s, a):  _e_reset_override.Raise()
+    def _on_reset_sel_override(self, s, a):  _e_reset_sel_override.Raise()
+    def _on_reset_all_override(self, s, a): _e_reset_all_override.Raise()
 
     # ---------------------------------------------------------------- Tab 5: Files
 
