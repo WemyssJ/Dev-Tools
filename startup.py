@@ -424,7 +424,7 @@ class ScriptLaunchHandler(IExternalEventHandler):
         if not path:
             return
 
-        # PostCommand ONLY — _exec_script corrupts IronPython engine path
+        # Try PostCommand first
         uid = _build_uid_from_path(path)
         if uid:
             try:
@@ -435,10 +435,10 @@ class ScriptLaunchHandler(IExternalEventHandler):
             except Exception:
                 pass
 
-        if self.status:
-            _set_status(self.status,
-                        u"Could not launch (uid: {})".format(uid or "none"),
-                        error=True)
+        # Fall back to direct exec — safe now DocReg uses __file__ not script.get_bundle_file
+        err = _exec_script(path, uiapp)
+        if self.status and err:
+            _set_status(self.status, err, error=True)
 
     def GetName(self):
         return "CDY {}".format(self.script_key)
@@ -859,41 +859,27 @@ class FavLaunchHandler(IExternalEventHandler):
             if uid:
                 self.cmd_name = uid
 
-        if not uid:
-            self._report(u"'{}': could not build command ID from path:\n{}".format(
-                self.label, self.path or "none"))
+        # Try PostCommand if we have a UID
+        if uid:
+            try:
+                cmd_id = RevitCommandId.LookupCommandId(uid)
+                if cmd_id and uiapp.CanPostCommand(cmd_id):
+                    uiapp.PostCommand(cmd_id)
+                    return
+            except Exception:
+                pass
+
+        # PostCommand not available (hidden panel buttons can't be PostCommand'd).
+        # These are safe to exec directly — they are simple scripts with no XAML/WPFWindow.
+        # The DocReg corruption issue is fixed in DocReg itself (uses __file__ not
+        # script.get_bundle_file), so _exec_script is safe to use here again.
+        if self.path:
+            err = _exec_script(self.path, uiapp)
+            if err:
+                self._report(u"'{}' failed:\n{}".format(self.label, err))
             return
 
-        # Look up command
-        try:
-            cmd_id = RevitCommandId.LookupCommandId(uid)
-        except Exception as ex:
-            self._report(u"'{}': LookupCommandId failed\nUID: {}\n{}".format(
-                self.label, uid, ex))
-            return
-
-        if not cmd_id:
-            self._report(u"'{}': command not registered in Revit.\nUID: {}\nIf button is hidden, try running from ribbon first.".format(
-                self.label, uid))
-            return
-
-        # Check CanPostCommand
-        try:
-            can = uiapp.CanPostCommand(cmd_id)
-        except Exception as ex:
-            self._report(u"'{}': CanPostCommand error\n{}".format(self.label, ex))
-            return
-
-        if not can:
-            self._report(u"'{}': Revit cannot accept this command right now.\nClose any open dialogs and try again.".format(
-                self.label))
-            return
-
-        # Fire
-        try:
-            uiapp.PostCommand(cmd_id)
-        except Exception as ex:
-            self._report(u"'{}': PostCommand failed\n{}".format(self.label, ex))
+        self._report(u"No path or command ID for '{}'.".format(self.label))
 
     def GetName(self):
         return "CDY Fav Launch"
@@ -1097,7 +1083,7 @@ from System.Windows.Controls import UserControl
 from System import Guid
 
 _CDY_PANE_ID    = DockablePaneId(Guid("c4e8f127-9d3b-4a71-b6e2-1f0d7c5a8b94"))
-_CDY_PANE_TITLE = "CDY-ProTools"
+_CDY_PANE_TITLE = "CDY Tools"
 
 # Light grey used throughout the panel
 _PANEL_GREY     = Media.Color.FromRgb(235, 235, 235)
