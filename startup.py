@@ -836,7 +836,7 @@ from System.Windows.Controls import UserControl
 from System import Guid
 
 _CDY_PANE_ID    = DockablePaneId(Guid("c4e8f127-9d3b-4a71-b6e2-1f0d7c5a8b94"))
-_CDY_PANE_TITLE = "CDY Tools"
+_CDY_PANE_TITLE = "CDY-ProTools"
 
 # Light grey used throughout the panel
 _PANEL_GREY     = Media.Color.FromRgb(235, 235, 235)
