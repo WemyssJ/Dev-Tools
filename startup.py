@@ -376,6 +376,50 @@ _FAV_FILE = os.path.join(os.getenv("APPDATA"), "pyRevit", "CDY-ProTools-favourit
 _SCRIPT_CMD_MAP = {}
 
 
+
+def _build_uid_from_path(script_path):
+    """
+    Build the correct Revit command UID from a script path, including any
+    .pulldown nesting between .panel and .pushbutton.
+
+    Flat:   CustomCtrl_%CustomCtrl_%<tab>%<panel>%<btn>
+    Nested: CustomCtrl_%CustomCtrl_%<tab>%<panel>%CustomCtrl_%<pulldown>%<btn>
+
+    Uses string splitting on both \ and / so it works regardless of which
+    os.path functions are available (important when running inside Revit on
+    Windows where op.dirname may behave unexpectedly with iron-python).
+    """
+    # Normalise to backslash and split into parts, drop the trailing script.py
+    parts = script_path.replace("/", "\\").split("\\")
+    if parts and parts[-1].lower() == "script.py":
+        parts = parts[:-1]
+
+    btn_name   = ""
+    pulldowns  = []   # collected innermost-first as we walk backwards
+    panel_name = ""
+    tab_name   = ""
+
+    for part in reversed(parts):
+        if part.endswith(".pushbutton") and not btn_name:
+            btn_name = part[:-len(".pushbutton")]
+        elif part.endswith(".pulldown"):
+            pulldowns.append(part[:-len(".pulldown")])
+        elif part.endswith(".panel") and not panel_name:
+            panel_name = part[:-len(".panel")]
+        elif part.endswith(".tab"):
+            tab_name = part[:-len(".tab")]
+            break
+
+    if not (tab_name and panel_name and btn_name):
+        return None
+
+    # pulldowns were innermost-first; reverse so outermost comes first in UID
+    pulldowns.reverse()
+    pulldown_seg = "".join("CustomCtrl_%{}%".format(pd) for pd in pulldowns)
+    uid = "CustomCtrl_%CustomCtrl_%{}%{}%{}{}".format(
+        tab_name, panel_name, pulldown_seg, btn_name)
+    return uid
+
 def _build_command_registry():
     global _SCRIPT_CMD_MAP
 
@@ -402,26 +446,11 @@ def _build_command_registry():
                     continue
                 if not op.basename(dirpath).endswith(".pushbutton"):
                     continue
-                btn_name   = op.basename(dirpath)[:-len(".pushbutton")]
-                panel_name = ""
-                tab_name   = ""
-                node       = op.dirname(dirpath)
-                while node:
-                    base = op.basename(node)
-                    if base.endswith(".panel") and not panel_name:
-                        panel_name = base[:-len(".panel")]
-                    elif base.endswith(".tab"):
-                        tab_name = base[:-len(".tab")]
-                        break
-                    parent = op.dirname(node)
-                    if parent == node:
-                        break
-                    node = parent
-                if tab_name and panel_name and btn_name:
-                    uid = "CustomCtrl_%CustomCtrl_%{}%{}%{}".format(
-                        tab_name, panel_name, btn_name)
-                    key = op.normcase(op.normpath(op.join(dirpath, "script.py")))
-                    if key not in _SCRIPT_CMD_MAP:
+                script_path = op.join(dirpath, "script.py")
+                key = op.normcase(op.normpath(script_path))
+                if key not in _SCRIPT_CMD_MAP:
+                    uid = _build_uid_from_path(script_path)
+                    if uid:
                         _SCRIPT_CMD_MAP[key] = uid
         print("CDY: command registry (total): {} entries".format(len(_SCRIPT_CMD_MAP)))
     except Exception as ex:
@@ -449,24 +478,8 @@ def _get_command_id(script_path):
             pass
         return None, unique_id
 
-    tab_name = panel_name = btn_name = ""
-    node = op.dirname(script_path)
-    while node:
-        base = op.basename(node)
-        if base.endswith(".pushbutton"):
-            btn_name = base[:-len(".pushbutton")]
-        elif base.endswith(".panel") and not panel_name:
-            panel_name = base[:-len(".panel")]
-        elif base.endswith(".tab"):
-            tab_name = base[:-len(".tab")]
-            break
-        parent = op.dirname(node)
-        if parent == node:
-            break
-        node = parent
-
-    if tab_name and panel_name and btn_name:
-        uid = "CustomCtrl_%CustomCtrl_%{}%{}%{}".format(tab_name, panel_name, btn_name)
+    uid = _build_uid_from_path(script_path)
+    if uid:
         _SCRIPT_CMD_MAP[key] = uid
         try:
             cmd_id = RevitCommandId.LookupCommandId(uid)
@@ -503,7 +516,13 @@ def _load_favs():
                     if healed != item["path"]:
                         item["path"] = healed
                         changed = True
-                    if not item.get("command_id"):
+                    # Always recompute the command_id from path so stale
+                    # flat IDs (missing pulldown segments) get corrected.
+                    correct_uid = _build_uid_from_path(item["path"])
+                    if correct_uid and item.get("command_id") != correct_uid:
+                        item["command_id"] = correct_uid
+                        changed = True
+                    elif not item.get("command_id"):
                         _, uid = _get_command_id(item["path"])
                         if uid:
                             item["command_id"] = uid
@@ -586,7 +605,7 @@ def _scan_scripts(root):
         if not op.basename(dirpath).endswith(".pushbutton"):
             continue
         # Skip anything inside a Developer panel folder
-        if "Developer.panel" in dirpath or any(part == "bin" for part in dirpath.split(op.sep)):
+        if "Developer.panel" in dirpath:
             continue
         tool_name = op.basename(dirpath)[:-len(".pushbutton")]
         results.append({"label": tool_name,
@@ -746,17 +765,12 @@ class FavLaunchHandler(IExternalEventHandler):
     def Execute(self, uiapp):
         from Autodesk.Revit.UI import RevitCommandId
 
-        if self.path and "Pullout Panel.pulldown" in self.path:
-            err = _exec_script(self.path, uiapp)
-            if err and self.status_tb:
-                def _show(tb=self.status_tb, e=err):
-                    _set_status(tb, e, error=True)
-                self.status_tb.Dispatcher.Invoke(Action(_show))
-            return
-
+        # ── 1. Try PostCommand via stored/computed command_id ────────────────
         uid = self.cmd_name
-        if not uid:
-            _, uid = _get_command_id(self.path)
+        if not uid and self.path:
+            uid = _build_uid_from_path(self.path)
+            if not uid:
+                _, uid = _get_command_id(self.path)
             if uid:
                 self.cmd_name = uid
 
@@ -769,6 +783,18 @@ class FavLaunchHandler(IExternalEventHandler):
             except Exception:
                 pass
 
+        # ── 2. Fall back to direct script execution ──────────────────────────
+        if self.path:
+            err = _exec_script(self.path, uiapp)
+            if not err:
+                return
+            if self.status_tb:
+                def _show(tb=self.status_tb, e=err):
+                    _set_status(tb, e, error=True)
+                self.status_tb.Dispatcher.Invoke(Action(_show))
+            return
+
+        # ── 3. Nothing worked ────────────────────────────────────────────────
         debug = u"Could not launch '{}' (uid: {})".format(
             self.label, uid or "none")
         if self.status_tb:
@@ -812,14 +838,51 @@ _h_dim_grids    = ScriptLaunchHandler("dim_gridlines");     _e_dim_grids    = Ex
 _h_dim_levels   = ScriptLaunchHandler("dim_levels");        _e_dim_levels   = ExternalEvent.Create(_h_dim_levels)
 _h_auto_dim     = ScriptLaunchHandler("auto_dim_elements"); _e_auto_dim     = ExternalEvent.Create(_h_auto_dim)
 
-_h_sel_untagged = ScriptLaunchHandler("select_untagged");   _e_sel_untagged = ExternalEvent.Create(_h_sel_untagged)
+_h_sel_untagged   = ScriptLaunchHandler("select_untagged");         _e_sel_untagged   = ExternalEvent.Create(_h_sel_untagged)
+_h_highlight      = ScriptLaunchHandler("Highlight_selected_green"); _e_highlight      = ExternalEvent.Create(_h_highlight)
+_h_reset_override = ScriptLaunchHandler("Reset_overrides");          _e_reset_override = ExternalEvent.Create(_h_reset_override)
 
 _h_open_dwg     = ScriptLaunchHandler("open_dwg_autocad");  _e_open_dwg     = ExternalEvent.Create(_h_open_dwg)
 _h_reload_dwg   = ScriptLaunchHandler("reload_dwg");        _e_reload_dwg   = ExternalEvent.Create(_h_reload_dwg)
 _h_greyscale    = ScriptLaunchHandler("greyscale_dwg");     _e_greyscale    = ExternalEvent.Create(_h_greyscale)
 _h_revert_grey  = ScriptLaunchHandler("revert_greyscale_dwg"); _e_revert_grey = ExternalEvent.Create(_h_revert_grey)
 _h_hide_layer   = HideLayerToggleHandler();                 _e_hide_layer   = ExternalEvent.Create(_h_hide_layer)
-_h_bim360       = ScriptLaunchHandler("open_bim360");       _e_bim360       = ExternalEvent.Create(_h_bim360)
+class ACCHandler(IExternalEventHandler):
+    """Opens ACC in the browser. region = 'eu' or 'gbr'."""
+    def __init__(self):
+        self.region = "eu"
+        self.status = None
+
+    def Execute(self, uiapp):
+        import webbrowser
+        doc = uiapp.ActiveUIDocument.Document if uiapp.ActiveUIDocument else None
+        if not doc:
+            return
+        try:
+            hub_str  = DB.Document.GetHubId(doc)[2:]
+            proj_str = DB.Document.GetProjectId(doc)[2:]
+        except Exception as ex:
+            if self.status:
+                def _e(tb=self.status, m=str(ex)):
+                    _set_status(tb, "ACC error: {}".format(m), error=True)
+                self.status.Dispatcher.Invoke(Action(_e))
+            return
+        if self.region == "gbr":
+            url = "https://acc.gbr.autodesk.com/insight/accounts/{}/projects/{}/my-dashboard".format(
+                hub_str, proj_str)
+        else:
+            url = "https://acc.autodesk.eu/insight/accounts/{}/projects/{}/home".format(
+                hub_str, proj_str)
+        webbrowser.open_new_tab(url)
+
+    def GetName(self):
+        return "CDY ACC Open"
+
+
+_h_bim360_eu  = ACCHandler();  _h_bim360_eu.region  = "eu";  _e_bim360_eu  = ExternalEvent.Create(_h_bim360_eu)
+_h_bim360_gbr = ACCHandler();  _h_bim360_gbr.region = "gbr"; _e_bim360_gbr = ExternalEvent.Create(_h_bim360_gbr)
+# Keep legacy alias so any existing references don't break
+_h_bim360 = _h_bim360_eu;  _e_bim360 = _e_bim360_eu
 _h_central      = ScriptLaunchHandler("open_central_location"); _e_central  = ExternalEvent.Create(_h_central)
 _h_local        = ScriptLaunchHandler("open_local_location");   _e_local    = ExternalEvent.Create(_h_local)
 
@@ -836,7 +899,7 @@ from System.Windows.Controls import UserControl
 from System import Guid
 
 _CDY_PANE_ID    = DockablePaneId(Guid("c4e8f127-9d3b-4a71-b6e2-1f0d7c5a8b94"))
-_CDY_PANE_TITLE = "CDY-ProTools"
+_CDY_PANE_TITLE = "CDY Tools"
 
 # Light grey used throughout the panel
 _PANEL_GREY     = Media.Color.FromRgb(235, 235, 235)
@@ -1277,12 +1340,26 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
             "Use with Tag All to finish tagging in one step.", small=True))
         p.Children.Add(self._fav_row("Select Untagged in Active View",
                                      self._on_sel_untagged, "select_untagged"))
+        p.Children.Add(self._sep())
+        self._section(p, "Graphics Overrides")
+        p.Children.Add(self._label(
+            "Select elements first, then click to apply or reset colour overrides.", small=True))
+        p.Children.Add(self._fav_row("Highlight Selected Green",
+                                     self._on_highlight, "Highlight_selected_green"))
+        p.Children.Add(self._label(
+            "Overrides selected elements with a solid green fill in the active view.", small=True))
+        p.Children.Add(self._fav_row("Reset Overrides",
+                                     self._on_reset_override, "Reset_overrides"))
+        p.Children.Add(self._label(
+            "Removes all graphic overrides from selected elements in the active view.", small=True))
         st = self._status()
         p.Children.Add(st)
-        _h_sel_untagged.status = st
+        _h_sel_untagged.status = _h_highlight.status = _h_reset_override.status = st
         return tab
 
-    def _on_sel_untagged(self, s, a): _e_sel_untagged.Raise()
+    def _on_sel_untagged(self, s, a):    _e_sel_untagged.Raise()
+    def _on_highlight(self, s, a):       _e_highlight.Raise()
+    def _on_reset_override(self, s, a):  _e_reset_override.Raise()
 
     # ---------------------------------------------------------------- Tab 5: Files
 
@@ -1307,8 +1384,11 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
 
         p.Children.Add(self._sep())
         self._section(p, "Project Locations")
-        p.Children.Add(self._fav_row("Open BIM360 / ACC",          self._on_bim360,  "open_bim360"))
-        p.Children.Add(self._label("Opens ACC in your default browser (BIM360 models only).", small=True))
+        # ACC button: left-click = EU, right-click context menu = GBR
+        acc_row = self._acc_button_row()
+        p.Children.Add(acc_row)
+        p.Children.Add(self._label(
+            u"Left-click → EU region.  Right-click → GBR region.", small=True))
         p.Children.Add(self._fav_row("Open Central Model Location", self._on_central, "open_central_location"))
         p.Children.Add(self._label("Opens the central model folder in Explorer.", small=True))
         p.Children.Add(self._fav_row("Open Local File Location",    self._on_local,   "open_local_location"))
@@ -1320,7 +1400,10 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
         _h_greyscale.status  = _h_revert_grey.status  = st
         _h_hide_layer.status = st
         _h_hide_layer.toggle_btn = self._hide_layer_btn
-        _h_bim360.status     = _h_central.status = _h_local.status = st
+        self._acc_status     = st
+        _h_bim360_eu.status  = _h_bim360_gbr.status = st
+        _h_bim360.status     = st
+        _h_central.status = _h_local.status = st
         return tab
 
     def _on_open_dwg(self, s, a):    _e_open_dwg.Raise()
@@ -1328,7 +1411,69 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
     def _on_greyscale(self, s, a):   _e_greyscale.Raise()
     def _on_revert_grey(self, s, a): _e_revert_grey.Raise()
     def _on_hide_layer(self, s, a):  _e_hide_layer.Raise()
-    def _on_bim360(self, s, a):      _e_bim360.Raise()
+    def _acc_button_row(self):
+        """ACC button with left-click (EU) and right-click context menu (GBR)."""
+        from System.Windows.Controls import ContextMenu, MenuItem
+
+        row = DockPanel()
+        row.Margin        = Thickness(0, 4, 0, 2)
+        row.LastChildFill = True
+
+        # ── star button (favourites) ───────────────────────────────────────
+        star = Button()
+        star.Width   = 26
+        star.Padding = Thickness(0)
+        star.Margin  = Thickness(4, 0, 0, 0)
+        star.Content = u"★"
+        star.ToolTip = "Add to / remove from Favourites"
+        star.VerticalAlignment = System.Windows.VerticalAlignment.Stretch
+        is_fav = _fav_is_key("open_bim360")
+        star.Foreground = SolidColorBrush(
+            Media.Color.FromRgb(218, 165, 32) if is_fav
+            else Media.Color.FromRgb(180, 180, 180))
+        self._star_buttons["open_bim360"] = star
+
+        def _on_star(s, a, sb=star):
+            now = _fav_toggle_key("open_bim360")
+            sb.Foreground = SolidColorBrush(
+                Media.Color.FromRgb(218, 165, 32) if now
+                else Media.Color.FromRgb(180, 180, 180))
+            self._refresh_fav_tab()
+
+        star.Click += _on_star
+        DockPanel.SetDock(star, Dock.Right)
+        row.Children.Add(star)
+
+        # ── main button (left-click = EU) ──────────────────────────────────
+        btn = Button()
+        btn.Content = "Open BIM360 / ACC"
+        btn.Padding = Thickness(6, 4, 6, 4)
+        btn.HorizontalAlignment = System_HAlign.Stretch
+        btn.ToolTip = u"Left-click → EU  |  Right-click → GBR"
+        btn.Click += self._on_bim360_eu
+
+        # ── right-click context menu (GBR) ─────────────────────────────────
+        cm = ContextMenu()
+        mi_eu  = MenuItem(); mi_eu.Header  = u"Open ACC — EU region (default)"
+        mi_gbr = MenuItem(); mi_gbr.Header = u"Open ACC — GBR region"
+        mi_eu.Click  += self._on_bim360_eu
+        mi_gbr.Click += self._on_bim360_gbr
+        cm.Items.Add(mi_eu)
+        cm.Items.Add(mi_gbr)
+        btn.ContextMenu = cm
+
+        row.Children.Add(btn)
+        return row
+
+    def _on_bim360_eu(self, s, a):
+        _h_bim360_eu.status = getattr(self, "_acc_status", None)
+        _e_bim360_eu.Raise()
+
+    def _on_bim360_gbr(self, s, a):
+        _h_bim360_gbr.status = getattr(self, "_acc_status", None)
+        _e_bim360_gbr.Raise()
+
+    def _on_bim360(self, s, a):      _e_bim360_eu.Raise()
     def _on_central(self, s, a):     _e_central.Raise()
     def _on_local(self, s, a):       _e_local.Raise()
 
