@@ -277,6 +277,10 @@ TOOL_LABELS = {
 
 CDY_HIGHLIGHT_COLOR = (0, 200, 0)   # (R, G, B) tuple, mutable at runtime
 
+# Keeps references to modeless WinForms windows alive after _exec_script returns,
+# preventing them from being garbage collected (e.g. QSelect).
+_MODELESS_WINDOWS = {}
+
 # =============================================================================
 # SECTION 4 - SCRIPT EXECUTION
 # =============================================================================
@@ -299,6 +303,42 @@ class _ExecParams(object):
         self.first_new_engine       = False
 
 
+def _inject_extension_paths(script_path):
+    """Inject the extension lib/ and tab/ root into sys.path so that
+    scripts using relative imports (e.g. Snippets._context_manager) work
+    when executed outside of pyRevit's normal loader."""
+    # Walk up from the script folder to find the .extension root
+    node = op.dirname(script_path)
+    ext_root = None
+    while node:
+        parent = op.dirname(node)
+        if op.basename(node).lower().endswith(".extension"):
+            ext_root = node
+            break
+        if parent == node:
+            break
+        node = parent
+    if ext_root:
+        for candidate in [
+            ext_root,
+            op.join(ext_root, "lib"),
+            op.join(ext_root, "bin"),
+        ]:
+            if op.exists(candidate) and candidate not in sys.path:
+                sys.path.insert(0, candidate)
+    # Also add the script's own .tab root so intra-tab imports work
+    node = op.dirname(script_path)
+    while node:
+        parent = op.dirname(node)
+        if op.basename(node).lower().endswith(".tab"):
+            if node not in sys.path:
+                sys.path.insert(0, node)
+            break
+        if parent == node:
+            break
+        node = parent
+
+
 def _exec_script(path, uiapp):
     if not path:
         return "No path provided."
@@ -308,20 +348,22 @@ def _exec_script(path, uiapp):
         script_dir = op.dirname(path)
         if script_dir not in sys.path:
             sys.path.insert(0, script_dir)
+        _inject_extension_paths(path)
 
         uidoc = uiapp.ActiveUIDocument if uiapp else None
         doc   = uidoc.Document if uidoc else None
 
         exec_params         = _ExecParams(path)
-        mod_name            = "cdy_script_{:x}".format(abs(hash(path)) & 0xFFFFFF)
+        # Use full path hash + id to guarantee uniqueness and avoid module cache collisions
+        mod_name            = "cdy_script_{:x}_{:x}".format(abs(hash(path)), id(exec_params) & 0xFFFF)
         mod                 = imp.new_module(mod_name)
-        mod.__file__        = path
+        mod.__file__        = op.dirname(path)  # dir not file — pyRevit resolves XAML relative to this
         mod.__revit__       = uiapp
         mod.__uidoc__       = uidoc
         mod.__doc__         = doc
         mod.EXEC_PARAMS     = exec_params
         mod.__commandname__ = exec_params.command_name
-        mod.__commandpath__ = path
+        mod.__commandpath__ = op.dirname(path)  # dir not file — pyRevit resolves XAML relative to this
 
         try:
             from pyrevit import revit as _pvrevit
@@ -329,39 +371,44 @@ def _exec_script(path, uiapp):
         except Exception:
             pass
 
-        try:
-            from pyrevit import script as _pvscript
-            _pvscript.EXEC_PARAMS = exec_params
-            mod.script = _pvscript
-        except Exception:
-            class _ScriptProxy(object):
-                def exit(self):
-                    raise SystemExit
-                def get_config(self, section=None):
-                    class _Cfg(object):
-                        def __getattr__(self, name):
-                            return None
-                        def __setattr__(self, name, val):
-                            pass
-                        def save_changes(self):
-                            pass
-                    return _Cfg()
-                def get_logger(self):
-                    import logging
-                    return logging.getLogger(exec_params.command_name)
-                def get_output(self):
-                    return None
-            mod.script = _ScriptProxy()
+        # Use a private ScriptProxy — never mutate the shared pyRevit script module
+        # as that corrupts EXEC_PARAMS for subsequently launched pyRevit tools
+        class _ScriptProxy(object):
+            def exit(self):
+                raise SystemExit
+            def get_config(self, section=None):
+                class _Cfg(object):
+                    def __getattr__(self, name):
+                        return None
+                    def __setattr__(self, name, val):
+                        pass
+                    def save_changes(self):
+                        pass
+                return _Cfg()
+            def get_logger(self):
+                import logging
+                return logging.getLogger(exec_params.command_name)
+            def get_output(self):
+                return None
+        mod.script = _ScriptProxy()
 
         sys.modules[mod_name] = mod
 
         with open(path, "r") as f:
             source = f.read()
+        mod.__dict__["__name__"] = "__main__"
         exec(compile(source, path, "exec"), mod.__dict__)
+        for _wvar in ("_qselect_form", "window", "_window", "form", "_form"):
+            _wobj = mod.__dict__.get(_wvar)
+            if _wobj is not None:
+                _MODELESS_WINDOWS[path + ":" + _wvar] = _wobj
+        sys.modules.pop(mod_name, None)
         return None
     except SystemExit:
+        sys.modules.pop(mod_name, None)
         return None
     except Exception:
+        sys.modules.pop(mod_name, None)
         import traceback
         return traceback.format_exc()
 
@@ -372,10 +419,26 @@ class ScriptLaunchHandler(IExternalEventHandler):
         self.status     = None
 
     def Execute(self, uiapp):
+        from Autodesk.Revit.UI import RevitCommandId
         path = SCRIPTS.get(self.script_key)
-        err  = _exec_script(path, uiapp)
-        if self.status and err:
-            _set_status(self.status, err, error=True)
+        if not path:
+            return
+
+        # PostCommand ONLY — _exec_script corrupts IronPython engine path
+        uid = _build_uid_from_path(path)
+        if uid:
+            try:
+                cmd_id = RevitCommandId.LookupCommandId(uid)
+                if cmd_id and uiapp.CanPostCommand(cmd_id):
+                    uiapp.PostCommand(cmd_id)
+                    return
+            except Exception:
+                pass
+
+        if self.status:
+            _set_status(self.status,
+                        u"Could not launch (uid: {})".format(uid or "none"),
+                        error=True)
 
     def GetName(self):
         return "CDY {}".format(self.script_key)
@@ -776,45 +839,61 @@ class FavLaunchHandler(IExternalEventHandler):
         self.label     = ""
         self.status_tb = None
 
+    def _report(self, msg, error=True):
+        if self.status_tb:
+            def _show(tb=self.status_tb, m=msg, e=error):
+                _set_status(tb, m, error=e)
+            self.status_tb.Dispatcher.Invoke(Action(_show))
+
     def Execute(self, uiapp):
         from Autodesk.Revit.UI import RevitCommandId
 
-        # ── 1. Try PostCommand via stored/computed command_id ────────────────
+        # Resolve UID
         uid = self.cmd_name
         if not uid and self.path:
             uid = _build_uid_from_path(self.path)
-            if not uid:
-                _, uid = _get_command_id(self.path)
+            if uid:
+                self.cmd_name = uid
+        if not uid and self.path:
+            _, uid = _get_command_id(self.path)
             if uid:
                 self.cmd_name = uid
 
-        if uid:
-            try:
-                cmd_id = RevitCommandId.LookupCommandId(uid)
-                if cmd_id and uiapp.CanPostCommand(cmd_id):
-                    uiapp.PostCommand(cmd_id)
-                    return
-            except Exception:
-                pass
-
-        # ── 2. Fall back to direct script execution ──────────────────────────
-        if self.path:
-            err = _exec_script(self.path, uiapp)
-            if not err:
-                return
-            if self.status_tb:
-                def _show(tb=self.status_tb, e=err):
-                    _set_status(tb, e, error=True)
-                self.status_tb.Dispatcher.Invoke(Action(_show))
+        if not uid:
+            self._report(u"'{}': could not build command ID from path:\n{}".format(
+                self.label, self.path or "none"))
             return
 
-        # ── 3. Nothing worked ────────────────────────────────────────────────
-        debug = u"Could not launch '{}' (uid: {})".format(
-            self.label, uid or "none")
-        if self.status_tb:
-            def _show(tb=self.status_tb, m=debug):
-                _set_status(tb, m, error=True)
-            self.status_tb.Dispatcher.Invoke(Action(_show))
+        # Look up command
+        try:
+            cmd_id = RevitCommandId.LookupCommandId(uid)
+        except Exception as ex:
+            self._report(u"'{}': LookupCommandId failed\nUID: {}\n{}".format(
+                self.label, uid, ex))
+            return
+
+        if not cmd_id:
+            self._report(u"'{}': command not registered in Revit.\nUID: {}\nIf button is hidden, try running from ribbon first.".format(
+                self.label, uid))
+            return
+
+        # Check CanPostCommand
+        try:
+            can = uiapp.CanPostCommand(cmd_id)
+        except Exception as ex:
+            self._report(u"'{}': CanPostCommand error\n{}".format(self.label, ex))
+            return
+
+        if not can:
+            self._report(u"'{}': Revit cannot accept this command right now.\nClose any open dialogs and try again.".format(
+                self.label))
+            return
+
+        # Fire
+        try:
+            uiapp.PostCommand(cmd_id)
+        except Exception as ex:
+            self._report(u"'{}': PostCommand failed\n{}".format(self.label, ex))
 
     def GetName(self):
         return "CDY Fav Launch"
@@ -855,22 +934,41 @@ _h_auto_dim     = ScriptLaunchHandler("auto_dim_elements"); _e_auto_dim     = Ex
 _h_sel_untagged   = ScriptLaunchHandler("select_untagged");         _e_sel_untagged   = ExternalEvent.Create(_h_sel_untagged)
 
 
+# Temp file used to pass the chosen colour to the Highlight script
+_HIGHLIGHT_COLOR_FILE = os.path.join(os.getenv("APPDATA"), "pyRevit", "CDY-highlight-color.json")
+
+def _write_highlight_color(r, g, b):
+    """Write the chosen colour to a temp JSON file for the Highlight script to read."""
+    try:
+        with open(_HIGHLIGHT_COLOR_FILE, "w") as f:
+            json.dump({"r": r, "g": g, "b": b}, f)
+    except Exception:
+        pass
+
+
 class HighlightHandler(IExternalEventHandler):
-    """Runs the highlight script, injecting CDY_HIGHLIGHT_COLOR into its namespace."""
+    """Launches the Highlight script via PostCommand after writing colour to temp file."""
     def __init__(self):
         self.status = None
 
     def Execute(self, uiapp):
-        # CDY_HIGHLIGHT_COLOR is a module-level global in this file — read directly
+        from Autodesk.Revit.UI import RevitCommandId
+        # Write colour to temp file BEFORE launching — script reads it on startup
+        r, g, b = CDY_HIGHLIGHT_COLOR
+        _write_highlight_color(r, g, b)
+        # Use PostCommand so IronPython engine path is never corrupted
         path = SCRIPTS.get("Highlight_selected")
-        if not path or not op.exists(path):
-            if self.status:
-                _set_status(self.status, "Highlight script not found.", error=True)
-            return
-        err = _exec_script_with_globals(
-            path, uiapp, {"CDY_HIGHLIGHT_COLOR": CDY_HIGHLIGHT_COLOR})
-        if self.status and err:
-            _set_status(self.status, err, error=True)
+        uid  = _build_uid_from_path(path) if path else None
+        if uid:
+            try:
+                cmd_id = RevitCommandId.LookupCommandId(uid)
+                if cmd_id and uiapp.CanPostCommand(cmd_id):
+                    uiapp.PostCommand(cmd_id)
+                    return
+            except Exception:
+                pass
+        if self.status:
+            _set_status(self.status, "Could not launch Highlight (uid: {})".format(uid or "none"), error=True)
 
     def GetName(self):
         return "CDY Highlight"
@@ -886,18 +984,20 @@ def _exec_script_with_globals(path, uiapp, extra_globals):
         script_dir = op.dirname(path)
         if script_dir not in sys.path:
             sys.path.insert(0, script_dir)
+        _inject_extension_paths(path)
         uidoc = uiapp.ActiveUIDocument if uiapp else None
         doc   = uidoc.Document if uidoc else None
         exec_params         = _ExecParams(path)
-        mod_name            = "cdy_script_{:x}".format(abs(hash(path)) & 0xFFFFFF)
+        # Use full path hash + id to guarantee uniqueness and avoid module cache collisions
+        mod_name            = "cdy_script_{:x}_{:x}".format(abs(hash(path)), id(exec_params) & 0xFFFF)
         mod                 = imp.new_module(mod_name)
-        mod.__file__        = path
+        mod.__file__        = op.dirname(path)  # dir not file — pyRevit resolves XAML relative to this
         mod.__revit__       = uiapp
         mod.__uidoc__       = uidoc
         mod.__doc__         = doc
         mod.EXEC_PARAMS     = exec_params
         mod.__commandname__ = exec_params.command_name
-        mod.__commandpath__ = path
+        mod.__commandpath__ = op.dirname(path)  # dir not file — pyRevit resolves XAML relative to this
         for k, v in extra_globals.items():
             setattr(mod, k, v)
         try:
@@ -905,32 +1005,31 @@ def _exec_script_with_globals(path, uiapp, extra_globals):
             mod.revit = _pvrevit
         except Exception:
             pass
-        try:
-            from pyrevit import script as _pvscript
-            _pvscript.EXEC_PARAMS = exec_params
-            mod.script = _pvscript
-        except Exception:
-            class _ScriptProxy(object):
-                def exit(self): raise SystemExit
-                def get_config(self, section=None):
-                    class _Cfg(object):
-                        def __getattr__(self, n): return None
-                        def __setattr__(self, n, v): pass
-                        def save_changes(self): pass
-                    return _Cfg()
-                def get_logger(self):
-                    import logging
-                    return logging.getLogger(exec_params.command_name)
-                def get_output(self): return None
-            mod.script = _ScriptProxy()
+        class _ScriptProxy(object):
+            def exit(self): raise SystemExit
+            def get_config(self, section=None):
+                class _Cfg(object):
+                    def __getattr__(self, n): return None
+                    def __setattr__(self, n, v): pass
+                    def save_changes(self): pass
+                return _Cfg()
+            def get_logger(self):
+                import logging
+                return logging.getLogger(exec_params.command_name)
+            def get_output(self): return None
+        mod.script = _ScriptProxy()
         sys.modules[mod_name] = mod
         with open(path, "r") as f:
             source = f.read()
+        mod.__dict__["__name__"] = "__main__"
         exec(compile(source, path, "exec"), mod.__dict__)
+        sys.modules.pop(mod_name, None)
         return None
     except SystemExit:
+        sys.modules.pop(mod_name, None)
         return None
     except Exception:
+        sys.modules.pop(mod_name, None)
         import traceback
         return traceback.format_exc()
 
@@ -998,7 +1097,7 @@ from System.Windows.Controls import UserControl
 from System import Guid
 
 _CDY_PANE_ID    = DockablePaneId(Guid("c4e8f127-9d3b-4a71-b6e2-1f0d7c5a8b94"))
-_CDY_PANE_TITLE = "CDY Tools"
+_CDY_PANE_TITLE = "CDY-ProTools"
 
 # Light grey used throughout the panel
 _PANEL_GREY     = Media.Color.FromRgb(235, 235, 235)
