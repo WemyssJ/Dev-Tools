@@ -933,18 +933,23 @@ def _write_highlight_color(r, g, b):
 
 
 class HighlightHandler(IExternalEventHandler):
-    """Launches the Highlight script via PostCommand after writing colour to temp file."""
+    """Launches the Highlight script, writing colour to temp file first.
+    Tries PostCommand first; falls back to _exec_script for hidden-panel buttons
+    where CanPostCommand returns False."""
     def __init__(self):
         self.status = None
 
     def Execute(self, uiapp):
         from Autodesk.Revit.UI import RevitCommandId
+
         # Write colour to temp file BEFORE launching — script reads it on startup
         r, g, b = CDY_HIGHLIGHT_COLOR
         _write_highlight_color(r, g, b)
-        # Use PostCommand so IronPython engine path is never corrupted
+
         path = SCRIPTS.get("Highlight_selected")
         uid  = _build_uid_from_path(path) if path else None
+
+        # Try PostCommand (works when Developer panel is visible/enabled)
         if uid:
             try:
                 cmd_id = RevitCommandId.LookupCommandId(uid)
@@ -953,8 +958,22 @@ class HighlightHandler(IExternalEventHandler):
                     return
             except Exception:
                 pass
+
+        # Fallback: execute directly.
+        # PostCommand fails when the button lives inside a hidden/disabled panel
+        # (CanPostCommand returns False). _exec_script is safe here — the Highlight
+        # script has no XAML/WPFWindow that would conflict with DocReg.
+        if path:
+            err = _exec_script(path, uiapp)
+            if err and self.status:
+                _set_status(self.status,
+                            "Highlight failed:\n{}".format(err), error=True)
+            return
+
         if self.status:
-            _set_status(self.status, "Could not launch Highlight (uid: {})".format(uid or "none"), error=True)
+            _set_status(self.status,
+                        "Could not launch Highlight (uid: {})".format(uid or "none"),
+                        error=True)
 
     def GetName(self):
         return "CDY Highlight"
@@ -1665,9 +1684,9 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
             CDY_HIGHLIGHT_COLOR = (int(c.R), int(c.G), int(c.B))
             self._update_swatch()
 
-    def _on_highlight(self, s, a):       _e_highlight.Raise()
+    def _on_highlight(self, s, a):           _e_highlight.Raise()
     def _on_reset_sel_override(self, s, a):  _e_reset_sel_override.Raise()
-    def _on_reset_all_override(self, s, a): _e_reset_all_override.Raise()
+    def _on_reset_all_override(self, s, a):  _e_reset_all_override.Raise()
 
     # ---------------------------------------------------------------- Tab 5: Files
 
