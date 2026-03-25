@@ -12,11 +12,20 @@ if not selection_ids:
     TaskDialog.Show("Highlight", "Please select elements first.")
     script.exit()
 
-# ── Colour: use injected CDY_HIGHLIGHT_COLOR if available, else default green ─
+# ── Colour: use injected CDY_HIGHLIGHT_COLOR if available ─────────────────────
+# When launched via PostCommand the variable isn't injected, so fall back to
+# the temp JSON file that startup.py's HighlightHandler always writes first.
 try:
-    r, g, b = CDY_HIGHLIGHT_COLOR  # injected by startup.py HighlightHandler
+    r, g, b = CDY_HIGHLIGHT_COLOR
 except NameError:
-    r, g, b = 0, 200, 0            # fallback default
+    import os, json
+    _color_file = os.path.join(os.getenv("APPDATA"), "pyRevit", "CDY-highlight-color.json")
+    try:
+        with open(_color_file, "r") as _f:
+            _d = json.load(_f)
+        r, g, b = int(_d["r"]), int(_d["g"]), int(_d["b"])
+    except Exception:
+        r, g, b = 0, 200, 0  # last-resort default
 
 highlight_color = Color(r, g, b)
 
