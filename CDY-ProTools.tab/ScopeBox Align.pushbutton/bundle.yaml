@@ -1,0 +1,8 @@
+engine: 
+  clean: true
+title:
+  Align Scope Box
+tooltip: 
+  en_us: Align longest edge of Scope Box to Grid. Runs from a plan view. Select scope box first, then grid.
+authors: >-
+  Dave Barron
