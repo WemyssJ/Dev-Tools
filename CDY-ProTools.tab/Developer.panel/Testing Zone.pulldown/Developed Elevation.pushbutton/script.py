@@ -1,3 +1,6 @@
+# Add Overshoot section ability, which auto corrects overlap dim (6.1mm + ?)
+# Add method to flip sections to otherside of wall
+# Test on curved walls
 # -*- coding: utf-8 -*-
 import clr
 clr.AddReference('PresentationFramework')
