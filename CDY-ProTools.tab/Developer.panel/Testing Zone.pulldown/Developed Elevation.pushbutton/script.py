@@ -71,11 +71,13 @@ def prompt_options(sheets):
         Label('Segments per wall'),
         TextBox('segments', default='1'),
         Label('Crop height mm'),
-        TextBox('height_mm', default='5000'),
+        TextBox('height_mm', default='7000'),
         Label('Cut depth mm'),
         TextBox('depth_mm', default='500'),
         Label('Viewport overlap mm'),
         TextBox('overlap_mm', default='6.1'),
+        Label('Mirror sections around wall?'),
+        ComboBox('mirror', ['No', 'Yes'], default='Yes'),
         Separator(),
         Label('Target sheet'),
         ComboBox('target_sheet', labels),
@@ -96,6 +98,7 @@ def prompt_options(sheets):
         'height_ft': mm_to_ft(v, 'height_mm', 3000),
         'depth_ft': mm_to_ft(v, 'depth_mm', 400),
         'overlap_mm': float(v.get('overlap_mm', 6.1)),
+        'mirror': v.get('mirror', 'No') == 'Yes',
         'sheet_label': v['target_sheet'],
         'prefix': str(v['prefix']).strip() or 'DevElev',
     }
@@ -105,56 +108,51 @@ def make_section_box(origin, tangent, half_width, height, depth, outer_dir=None)
     tangent = tangent.Normalize()
     if tangent.GetLength() < 1e-6:
         tangent = XYZ.BasisX
-    right = tangent.Normalize()
 
     if outer_dir is None:
-        outer_dir = right.CrossProduct(XYZ.BasisZ)
+        outer_dir = tangent.CrossProduct(XYZ.BasisZ)
         if outer_dir.GetLength() < 1e-6:
-            outer_dir = right.CrossProduct(XYZ.BasisY)
+            outer_dir = tangent.CrossProduct(XYZ.BasisY)
         outer_dir = outer_dir.Normalize()
     else:
-        try:
-            outer_dir = outer_dir.Normalize()
-        except:
-            outer_dir = right.CrossProduct(XYZ.BasisZ).Normalize()
+        outer_dir = outer_dir.Normalize()
 
+    # ---- FIXED LOGIC ----
     view_dir = outer_dir.Negate()
-    offset = outer_dir * depth * 0.75
-    origin = origin + offset
 
-    up = view_dir.CrossProduct(right)
-    if up.GetLength() < 1e-6:
-        up = XYZ.BasisZ
-    up = up.Normalize()
+    # Mirror only affects position (not orientation)
+    offset_dir = outer_dir if depth >= 0 else outer_dir.Negate()
+    origin = origin + offset_dir * abs(depth) * 0.75
 
-    right = up.CrossProduct(view_dir).Normalize()
+    # Stable axes (prevents flipping)
+    up = XYZ.BasisZ
+    right = up.CrossProduct(view_dir)
+    if right.GetLength() < 1e-6:
+        right = XYZ.BasisX
+    right = right.Normalize()
+    up = view_dir.CrossProduct(right).Normalize()
+
+    if up.Z < 0:
+        up = up.Negate()
+        right = right.Negate()
 
     t = Transform.Identity
     t.Origin = origin
     t.BasisX = right
     t.BasisY = up
     t.BasisZ = view_dir
+
     bb = BoundingBoxXYZ()
     bb.Transform = t
 
     half_height = height * 0.5
     bb.Min = XYZ(-half_width, -half_height, 0)
-    bb.Max = XYZ(half_width, half_height, depth)
+    bb.Max = XYZ(half_width, half_height, abs(depth))
     return bb
 
-def sample_curve(curve, n):
-    t0 = curve.GetEndParameter(0)
-    t1 = curve.GetEndParameter(1)
-    samples = []
-    for i in range(n):
-        t = t0 + (t1 - t0) * (i + 0.5) / max(1, n)
-        pt = curve.Evaluate(t, False)
-        tangent = curve.ComputeDerivatives(t, False).BasisX
-        samples.append((pt, tangent))
-    return samples
-
 def get_view_family_type(family):
-    for vft in FilteredElementCollector(doc).OfClass(ViewFamilyType):
+    """Return the first ViewFamilyType Id for the given family (Section/Elevation)"""
+    for vft in FilteredElementCollector(doc).OfClass(ViewFamilyType).ToElements():
         if vft.ViewFamily == family:
             return vft.Id
     return None
@@ -208,13 +206,6 @@ def safe_set_parameter(element, param_id, value):
         pass
     return False
 
-def set_section_mark_number(view, number):
-    num_text = "{:03d}".format(number) if isinstance(number, int) else str(number)
-    safe_set_parameter(view, BuiltInParameter.VIEW_NUMBER, num_text)
-    safe_set_parameter(view, BuiltInParameter.VIEWER_NUMBER, num_text)
-    safe_set_parameter(view, BuiltInParameter.SECTION_NUMBER, num_text)
-    safe_set_parameter(view, BuiltInParameter.SECTION_MARK, num_text)
-
 def hide_annotation_in_view(view):
     for cat in doc.Settings.Categories:
         try:
@@ -259,7 +250,7 @@ def sort_walls_from_start(walls, start_wall):
     return sequence
 
 def create_segment_views(walls, vft_id, segments, height, depth, prefix,
-                         section_side_point=None):
+                         section_side_point=None, mirror=False):
     views = []
     if not walls:
         return views
@@ -270,6 +261,8 @@ def create_segment_views(walls, vft_id, segments, height, depth, prefix,
         pt = curve.Evaluate(mid_t, False)
         tan = curve.ComputeDerivatives(mid_t, False).BasisX
         half_width = curve.Length * 0.5
+
+        # Determine outer_dir from the picked side point
         outer_dir = None
         if section_side_point is not None:
             is_right = is_point_on_right_side(curve, section_side_point)
@@ -278,6 +271,20 @@ def create_segment_views(walls, vft_id, segments, height, depth, prefix,
                 outer_dir = right_dir if is_right else right_dir.Negate()
             except:
                 outer_dir = None
+
+        # Mirror by negating outer_dir only — moves the camera to the opposite
+        # wall face in plan. The up axis is now world-Z-anchored in
+        # make_section_box so this no longer causes upside-down sections.
+        if mirror:
+            if outer_dir is not None:
+                outer_dir = outer_dir.Negate()
+            else:
+                try:
+                    right_dir = tan.Normalize().CrossProduct(XYZ.BasisZ).Normalize()
+                    outer_dir = right_dir.Negate()
+                except:
+                    pass
+
         bb = make_section_box(pt, tan, half_width, height, depth, outer_dir)
         try:
             v = ViewSection.CreateSection(doc, vft_id, bb)
@@ -305,34 +312,23 @@ def find_no_title_viewport_type():
             return vt.Id
     return ElementId.InvalidElementId
 
-# -------------------- PLACEMENT --------------------
 def place_continuous(sheet, views, vp_type, overlap_mm=6.1, start_x_mm=100, start_y_mm=250):
-    """
-    Place views continuously on a sheet.
-    Correct first viewport horizontal offset by small Revit margin (~25.6mm).
-    """
     overlap_ft = overlap_mm / 304.8
     y_level = start_y_mm / 304.8
     placed = []
-
-    cursor_x = start_x_mm / 304.8  # initial left margin
-
+    cursor_x = start_x_mm / 304.8
     for i, v in enumerate(views):
-        # Create temporary viewport at origin
         try:
             vp = Viewport.Create(doc, sheet.Id, v.Id, XYZ(0, 0, 0))
         except Exception as ex:
             logger.warning("Failed to place viewport {}: {}".format(v.Name, ex))
             continue
-
         if vp_type != ElementId.InvalidElementId:
             try:
                 vp.ChangeTypeId(vp_type)
                 doc.Regenerate()
             except:
                 pass
-
-        # Get viewport box outline width
         try:
             bb = vp.GetBoxOutline()
             vp_width = bb.MaximumPoint.X - bb.MinimumPoint.X
@@ -341,24 +337,12 @@ def place_continuous(sheet, views, vp_type, overlap_mm=6.1, start_x_mm=100, star
             bb = v.CropBox
             vp_width = bb.Max.X - bb.Min.X
             vp_height = bb.Max.Y - bb.Min.Y
-
-        # Compute small left margin adjustment for the first viewport
-        if i == 0:
-            # Desired top-left = start_x_mm, actual top-left = cursor_x
-            # offset = half of box outline internal margin (approx 25.6 mm)
-            adjust_ft = 25.6 / 304.8  # convert mm to ft
-        else:
-            adjust_ft = 0.0
-
+        adjust_ft = 25.6 / 304.8 if i == 0 else 0.0
         vp_center = XYZ(cursor_x + vp_width / 2 + adjust_ft, y_level + vp_height / 2, 0)
         vp.SetBoxCenter(vp_center)
-
         placed.append(vp)
-
-        # Move cursor for next viewport
         cursor_x += vp_width - overlap_ft
         doc.Regenerate()
-
     return placed
 
 # -------------------- RUN --------------------
@@ -367,34 +351,63 @@ def run():
     if not walls:
         forms.alert("No walls selected.", exitscript=True)
         return
+
     sheets = get_sheet_list()
     opts = prompt_options(sheets)
     if not opts:
         return
+
     try:
         side_point = uidoc.Selection.PickPoint("Pick a point to choose section side")
     except:
         side_point = None
+
     target = find_sheet(opts['sheet_label'], sheets)
     if not target:
         forms.alert("Target sheet not found.", exitscript=True)
         return
-    vft = get_view_family_type(ViewFamily.Section if opts['use_sections'] else ViewFamily.Elevation)
+
+    vft = get_view_family_type(
+        ViewFamily.Section if opts['use_sections'] else ViewFamily.Elevation
+    )
     if not vft:
         forms.alert("No suitable view family type in project.", exitscript=True)
         return
+
     no_title = find_no_title_viewport_type()
+
     with revit.Transaction("Developed Elevation"):
+
         views = create_segment_views(
-            walls, vft, opts['segments'],
-            opts['height_ft'], opts['depth_ft'], opts['prefix'],
-            section_side_point=side_point
+            walls,
+            vft,
+            opts['segments'],
+            opts['height_ft'],
+            opts['depth_ft'],
+            opts['prefix'],
+            section_side_point=side_point,
+            mirror=opts['mirror']
         )
+
         if not views:
             forms.alert("No segment views created (maybe a geometry issue).")
             return
-        place_continuous(target, views, no_title, overlap_mm=opts['overlap_mm'])
+
+        # ---- FIX: reverse ONLY for sheet placement ----
+        views_for_sheet = list(reversed(views)) if opts['mirror'] else views
+
+        place_continuous(
+            target,
+            views_for_sheet,
+            no_title,
+            overlap_mm=opts['overlap_mm']
+        )
+
     uidoc.ActiveView = target
-    forms.alert("Done: {} segment views on sheet.".format(len(views)), warn_icon=False)
+
+    forms.alert(
+        "Done: {} segment views on sheet.".format(len(views)),
+        warn_icon=False
+    )
 
 run()
