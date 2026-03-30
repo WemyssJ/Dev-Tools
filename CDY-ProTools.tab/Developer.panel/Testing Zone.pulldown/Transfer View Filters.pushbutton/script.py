@@ -164,7 +164,11 @@ except:
     forms.alert("This view does not support VG Overrides.", exitscript=True)
 
 if not applied_filters:
-    forms.alert("No filters applied.", exitscript=True)
+    forms.alert(
+        "No filters applied to this view.\n\n"
+        "Filter tools will be disabled, but you can still copy view templates.",
+        exitscript=False
+    )
 
 filter_map = {}
 filter_data = ObservableCollection[FilterInfo]()
