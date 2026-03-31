@@ -1,73 +1,175 @@
 # -*- coding: utf-8 -*-
-"""
-Dim Grids — places a linear dimension string across all selected grid lines.
-Place at: Developer.panel\PulloutPanel.pulldown\Dim Grids.pushbutton\script.py
-"""
+"""Create Dimension Lines between Grids."""
 
-from pyrevit import HOST_APP, forms
-import Autodesk.Revit.DB as DB
-from System.Collections.Generic import List as DotNetList
+__title__ = 'Dimension\nGrids'
 
-uidoc = __uidoc__ or (HOST_APP.uiapp.ActiveUIDocument if HOST_APP else None)
-if not uidoc:
-    raise SystemExit
+from pyrevit import revit, DB, forms
+from Autodesk.Revit.UI.Selection import ISelectionFilter
+from Autodesk.Revit import Exceptions
+import os, sys
 
-doc  = uidoc.Document
-view = doc.ActiveView
+# -----------------------------------------------------------------------------------
+# TELEMETRY (unchanged)
+# -----------------------------------------------------------------------------------
+lib_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'lib'))
+if lib_path not in sys.path:
+    sys.path.append(lib_path)
 
-sel_ids = uidoc.Selection.GetElementIds()
-grids   = [doc.GetElement(i) for i in sel_ids
-           if isinstance(doc.GetElement(i), DB.Grid)]
+try:
+    import telemetry_auto
+    tool_name = os.path.basename(os.path.dirname(__file__))
+    TOOL_NAME = tool_name.replace(".pushbutton", "")
+    telemetry_auto.log_tool_usage(TOOL_NAME)
+except:
+    pass
 
-if len(grids) < 2:
-    forms.alert("Select 2 or more Grids first.", title="Dim Gridlines")
-    raise SystemExit
+# -----------------------------------------------------------------------------------
+# SETUP
+# -----------------------------------------------------------------------------------
+doc = revit.doc
+uidoc = revit.uidoc
+active_view = doc.ActiveView
 
-# Build a reference array from grid curves in the active view
-ref_array = DB.ReferenceArray()
-curves    = []
-for grid in grids:
-    crv = grid.GetCurvesInView(DB.DatumExtentType.ViewSpecific, view)
-    if not crv:
-        crv = [grid.Curve]
-    for c in crv:
-        ref_array.Append(DB.Reference(grid))
-        curves.append(c)
-        break   # one curve per grid is enough
+# -----------------------------------------------------------------------------------
+# SELECTION FILTER
+# -----------------------------------------------------------------------------------
+class GridSelectionFilter(ISelectionFilter):
+    def AllowElement(self, element):
+        return element.Category and element.Category.Id.IntegerValue == int(DB.BuiltInCategory.OST_Grids)
 
-if ref_array.Size < 2:
-    forms.alert("Could not build references for the selected grids.", title="Dim Gridlines")
-    raise SystemExit
+    def AllowReference(self, ref, point):
+        return True
 
-# Dimension line runs perpendicular to grids — offset below first grid midpoint
-first_curve = curves[0]
-last_curve  = curves[-1]
-mid1        = first_curve.Evaluate(0.5, True)
-mid2        = last_curve.Evaluate(0.5, True)
+# -----------------------------------------------------------------------------------
+# CHECK VIEW TYPE
+# -----------------------------------------------------------------------------------
+is_plan = active_view.ViewType == DB.ViewType.FloorPlan
 
-# Offset the dimension line downward (Y) so it sits below the grids
-offset      = DB.XYZ(0, -10, 0)   # ~3 m below in internal units
-line_start  = mid1 + offset
-line_end    = mid2 + offset
-dim_line    = DB.Line.CreateBound(line_start, line_end)
+# -----------------------------------------------------------------------------------
+# GET PRESELECTED GRIDS OR ASK USER
+# -----------------------------------------------------------------------------------
+preselected_ids = uidoc.Selection.GetElementIds()
+preselected_grids = [doc.GetElement(i) for i in preselected_ids if i.IntegerValue != DB.ElementId.InvalidElementId]
 
-# Find a suitable linear dimension type
-dim_types = DB.FilteredElementCollector(doc).OfClass(DB.DimensionType).ToElements()
-dim_type  = next(
-    (dt for dt in dim_types
-     if dt.StyleType == DB.DimensionStyleType.Linear),
-    None)
+# Filter to grids only
+preselected_grids = [g for g in preselected_grids if g.Category and g.Category.Id.IntegerValue == int(DB.BuiltInCategory.OST_Grids)]
 
-from Autodesk.Revit.DB import Transaction
+if preselected_grids:
+    grids = preselected_grids
+else:
+    with forms.WarningBar(title="Select parallel straight grid lines"):
+        try:
+            grids = uidoc.Selection.PickElementsByRectangle(
+                GridSelectionFilter(),
+                "Select Grids"
+            )
+        except Exceptions.OperationCanceledException:
+            forms.alert("Cancelled", exitscript=True)
 
-with Transaction(doc, "CDY: Dim Gridlines") as t:
-    t.Start()
+if not grids:
+    forms.alert("No grids selected.", exitscript=True)
+
+# -----------------------------------------------------------------------------------
+# FILTER STRAIGHT GRIDS ONLY
+# -----------------------------------------------------------------------------------
+straight_grids = [g for g in grids if not g.IsCurved]
+
+if len(straight_grids) < 2:
+    forms.alert("Select at least two straight parallel grids.", exitscript=True)
+
+# -----------------------------------------------------------------------------------
+# VALIDATE PARALLEL
+# -----------------------------------------------------------------------------------
+def get_grid_curve_in_view(grid, view):
+    crvs = grid.GetCurvesInView(DB.DatumExtentType.ViewSpecific, view)
+    if crvs and len(crvs) > 0:
+        return crvs[0]
+    return grid.Curve
+
+def get_grid_direction(grid):
+    crv = get_grid_curve_in_view(grid, active_view)
+    return (crv.GetEndPoint(1) - crv.GetEndPoint(0)).Normalize()
+
+base_direction = get_grid_direction(straight_grids[0])
+
+for g in straight_grids[1:]:
+    this_dir = get_grid_direction(g)
+    if not (
+        this_dir.IsAlmostEqualTo(base_direction) or
+        this_dir.IsAlmostEqualTo(base_direction.Negate())
+    ):
+        forms.alert("Selected grids are not parallel.", exitscript=True)
+
+# -----------------------------------------------------------------------------------
+# PICK DIMENSION PLACEMENT POINT
+# -----------------------------------------------------------------------------------
+with forms.WarningBar(title="Pick dimension placement point"):
     try:
-        if dim_type:
-            doc.Create.NewDimension(view, dim_line, ref_array, dim_type)
-        else:
-            doc.Create.NewDimension(view, dim_line, ref_array)
-        t.Commit()
-    except Exception as ex:
-        t.RollBack()
-        forms.alert("Dimension failed: {}".format(ex), title="Dim Gridlines")
+        pick_point = uidoc.Selection.PickPoint()
+    except Exceptions.OperationCanceledException:
+        forms.alert("Cancelled", exitscript=True)
+
+# -----------------------------------------------------------------------------------
+# GET CURVES + MIDPOINTS
+# -----------------------------------------------------------------------------------
+curves = [get_grid_curve_in_view(g, active_view) for g in straight_grids]
+midpoints = [c.Evaluate(0.5, True) for c in curves]
+
+# -----------------------------------------------------------------------------------
+# GRID DIRECTION AND DIMENSION DIRECTION
+# -----------------------------------------------------------------------------------
+grid_dir = (curves[0].GetEndPoint(1) - curves[0].GetEndPoint(0)).Normalize()
+view_normal = active_view.ViewDirection.Normalize()
+
+# perpendicular direction (dimension direction)
+perp_dir = grid_dir.CrossProduct(view_normal).Normalize()
+
+# optional: force consistent side in plan
+if is_plan and perp_dir.DotProduct(active_view.UpDirection) < 0:
+    perp_dir = perp_dir.Negate()
+
+# -----------------------------------------------------------------------------------
+# SORT GRIDS BY PERPENDICULAR AXIS
+# -----------------------------------------------------------------------------------
+sorted_data = sorted(zip(straight_grids, midpoints), key=lambda x: x[1].DotProduct(perp_dir))
+straight_grids = [x[0] for x in sorted_data]
+midpoints      = [x[1] for x in sorted_data]
+
+# -----------------------------------------------------------------------------------
+# REBUILD REFERENCES
+# -----------------------------------------------------------------------------------
+ref_array = DB.ReferenceArray()
+for g in straight_grids:
+    ref_array.Append(DB.Reference(g))
+
+# -----------------------------------------------------------------------------------
+# BUILD DIM LINE THROUGH PICK POINT
+# -----------------------------------------------------------------------------------
+params = [p.DotProduct(perp_dir) for p in midpoints]
+min_p = min(params)
+max_p = max(params)
+origin_param = pick_point.DotProduct(perp_dir)
+
+start = pick_point + perp_dir * (min_p - origin_param)
+end   = pick_point + perp_dir * (max_p - origin_param)
+
+dim_line = DB.Line.CreateBound(start, end)
+
+# -----------------------------------------------------------------------------------
+# SET SKETCH PLANE FOR SECTION/ELEVATION
+# -----------------------------------------------------------------------------------
+if not is_plan:
+    with revit.Transaction("Set Sketch Plane"):
+        plane = DB.Plane.CreateByNormalAndOrigin(
+            active_view.ViewDirection,
+            active_view.Origin
+        )
+        sp = DB.SketchPlane.Create(doc, plane)
+        active_view.SketchPlane = sp
+        doc.Regenerate()
+
+# -----------------------------------------------------------------------------------
+# CREATE DIMENSION
+# -----------------------------------------------------------------------------------
+with revit.Transaction("Dimension Grids"):
+    doc.Create.NewDimension(active_view, dim_line, ref_array)
