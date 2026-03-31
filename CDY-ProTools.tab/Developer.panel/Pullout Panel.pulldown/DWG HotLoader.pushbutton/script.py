@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 DWG HotLoader — open the selected linked DWG in AutoCAD.
-Place at: General.panel\Navigation.pulldown\DWG HotLoader.pushbutton\script.py
 """
 
 import os
@@ -12,6 +11,26 @@ import Autodesk.Revit.DB as DB
 uidoc = __uidoc__ or (HOST_APP.uiapp.ActiveUIDocument if HOST_APP else None)
 if not uidoc:
     raise SystemExit
+
+##############################################################################################
+# TELEMETRY IMPORTS #
+##############################################################################################
+# Only works IF specified TELEMETRY_JSON path exists within %AppData%\pyRevit\Extensions\BIMTools.extension\lib\telemetry_auto.py"
+# Records tool usage by date & revit version
+import os, sys
+
+# Add lib folder for telemetry_auto
+lib_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'lib'))
+if lib_path not in sys.path:
+    sys.path.append(lib_path)
+
+import telemetry_auto
+
+tool_name = os.path.basename(os.path.dirname(__file__)) 
+TOOL_NAME = tool_name.replace(".pushbutton", "")
+telemetry_auto.log_tool_usage(TOOL_NAME)
+##############################################################################################
+
 
 doc = uidoc.Document
 
