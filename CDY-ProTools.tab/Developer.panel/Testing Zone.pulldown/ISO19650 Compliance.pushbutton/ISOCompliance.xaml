@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="ISO 19650 Compliance"
         Height="600"
-        Width="1250"
+        Width="1500"
         WindowStartupLocation="CenterScreen">
 
     <Grid Margin="10">
@@ -13,24 +13,40 @@
         </Grid.RowDefinitions>
 
         <!-- TOP BAR -->
-        <StackPanel Orientation="Horizontal"
-                    Grid.Row="0"
-                    Margin="0,0,0,10">
+        <Grid Grid.Row="0" Margin="0,0,0,10">
+
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="420"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
             <TextBlock Text="Naming Format:"
                        VerticalAlignment="Center"
                        Margin="0,0,10,0"/>
 
             <ComboBox x:Name="NamingCombo"
+                      Grid.Column="1"
                       Width="400"
                       Height="28"/>
 
             <CheckBox x:Name="HideNoRevisionCheck"
+                      Grid.Column="2"
                       Content="Hide sheets with no revision"
                       Margin="20,0,0,0"
                       VerticalAlignment="Center"/>
 
-        </StackPanel>
+            <TextBlock Grid.Column="3"
+                       Text= "This tool supports QA processes and does not replace professional responsibility for model or document compliance."
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Right"
+                       Margin="20,0,0,0"
+                       Foreground="#8B0000"
+                       FontWeight="Bold"
+                       FontStyle="Italic"/>
+
+        </Grid>
 
         <!-- RESULTS GRID -->
         <DataGrid x:Name="ResultsGrid"
