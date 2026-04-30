@@ -94,12 +94,11 @@ def resolve_name(template, sheet):
 
 
 # -------------------------------------------------------
-# SPATIAL NORMALISATION
+# NORMALISE TITLE
 # -------------------------------------------------------
 def normalise_title(text):
     t = text.upper()
     t = re.sub(r"\s+", " ", t)
-    t = re.sub(r"LEVEL\s+0?(\d)", r"LEVEL \1", t)
     return t
 
 
@@ -107,65 +106,12 @@ def normalise_title(text):
 # SPATIAL KEYWORDS
 # -------------------------------------------------------
 SPATIAL_KEYWORDS = {
-
-    "BN": ["BASEMENT"],
-    "B1": ["BASEMENT LEVEL 1", "BASEMENT 1", "BASMENT 1ST"],
-    "B2": ["BASEMENT LEVEL 2", "BASEMENT 2", "BASMENT 2ND"],
-
-    "00": ["GROUND FLOOR", "GROUND", "LEVEL 0"],
-    "GF": ["GROUND FLOOR", "GROUND"],
-
-    "LG": ["LOWER GROUND", "LOWER GROUND FLOOR"],
-    "LGF": ["LOWER GROUND", "LOWER GROUND FLOOR"],
-    "UG": ["UPPER GROUND", "UPPER GROUND FLOOR"],
-    "UGF": ["UPPER GROUND", "UPPER GROUND FLOOR"],
-
-    "01": ["FIRST FLOOR", "1ST FLOOR", "LEVEL 1"],
-    "02": ["SECOND FLOOR", "2ND FLOOR", "LEVEL 2"],
-    "03": ["THIRD FLOOR", "3RD FLOOR", "LEVEL 3"],
-    "04": ["FOURTH FLOOR", "LEVEL 4"],
-    "05": ["FIFTH FLOOR", "LEVEL 5"],
-    "06": ["SIXTH FLOOR", "LEVEL 6"],
-    "07": ["SEVENTH FLOOR", "LEVEL 7"],
-    "08": ["EIGHTH FLOOR", "LEVEL 8"],
-    "09": ["NINTH FLOOR", "LEVEL 9"],
-    "10": ["TENTH FLOOR", "LEVEL 10"],
-    "11": ["ELEVENTH FLOOR", "11TH FLOOR", "LEVEL 11"],
-    "12": ["TWELFTH FLOOR", "12TH FLOOR", "LEVEL 12"],
-    "13": ["THIRTEENTH FLOOR", "13TH FLOOR", "LEVEL 13"],
-    "14": ["FOURTEENTH FLOOR", "14TH FLOOR", "LEVEL 14"],
-    "15": ["FIFTEENTH FLOOR", "15TH FLOOR", "LEVEL 15"],
-    "16": ["SIXTEENTH FLOOR", "16TH FLOOR", "LEVEL 16"],
-    "17": ["SEVENTEENTH FLOOR", "17TH FLOOR", "LEVEL 17"],
-    "18": ["EIGHTEENTH FLOOR", "18TH FLOOR", "LEVEL 18"],
-    "19": ["NINETEENTH FLOOR", "19TH FLOOR", "LEVEL 19"],
-    "20": ["TWENTIETH FLOOR", "20TH FLOOR", "LEVEL 20"],
-    "21": ["TWENTY FIRST FLOOR", "21ST FLOOR", "LEVEL 21"],
-    "22": ["TWENTY SECOND FLOOR", "22ND FLOOR", "LEVEL 22"],
-    "23": ["TWENTY THIRD FLOOR", "23RD FLOOR", "LEVEL 23"],
-    "24": ["TWENTY FOURTH FLOOR", "24TH FLOOR", "LEVEL 24"],
-    "25": ["TWENTY FIFTH FLOOR", "25TH FLOOR", "LEVEL 25"],
-    "26": ["TWENTY SIXTH FLOOR", "26TH FLOOR", "LEVEL 26"],
-    "27": ["TWENTY SEVENTH FLOOR", "27TH FLOOR", "LEVEL 27"],
-    "28": ["TWENTY EIGHTH FLOOR", "28TH FLOOR", "LEVEL 28"],
-    "29": ["TWENTY NINTH FLOOR", "29TH FLOOR", "LEVEL 29"],
-    "30": ["THIRTIETH FLOOR", "30TH FLOOR", "LEVEL 30"],
-    "31": ["THIRTY FIRST FLOOR", "31ST FLOOR", "LEVEL 31"],
-    "32": ["THIRTY SECOND FLOOR", "32ND FLOOR", "LEVEL 32"],
-    "33": ["THIRTY THIRD FLOOR", "33RD FLOOR", "LEVEL 33"],
-    "34": ["THIRTY FOURTH FLOOR", "34TH FLOOR", "LEVEL 34"],
-    "35": ["THIRTY FIFTH FLOOR", "35TH FLOOR", "LEVEL 35"],
-    "36": ["THIRTY SIXTH FLOOR", "36TH FLOOR", "LEVEL 36"],
-    "37": ["THIRTY SEVENTH FLOOR", "37TH FLOOR", "LEVEL 37"],
-    "38": ["THIRTY EIGHTH FLOOR", "38TH FLOOR", "LEVEL 38"],
-    "39": ["THIRTY NINTH FLOOR", "39TH FLOOR", "LEVEL 39"],
-    "40": ["FORTIETH FLOOR", "40TH FLOOR", "LEVEL 40"],
-
-    "RF": ["ROOF", "ROOF LEVEL", "PARAPET"],
-
-    "FN": ["FOUNDATION", "PILE", "SUBSTRUCTURE"],
-    "F1": ["FOUNDATION LEVEL 1", "PILE LEVEL 1"],
-    "F2": ["FOUNDATION LEVEL 2", "PILE LEVEL 2"],
+    "00": ["GROUND FLOOR"],
+    "01": ["FIRST FLOOR"],
+    "02": ["SECOND FLOOR"],
+    "RF": ["ROOF"],
+    "FN": ["FOUNDATION", "PILE", "GROUND BEAM"],
+    "ZZ": ["SECTION", "SECTIONS", "ELEVATION", "ELEVATIONS"]
 }
 
 
@@ -190,9 +136,9 @@ def validate_spatial_reverse(spatial_code, title):
 
 
 # -------------------------------------------------------
-# CRADDYS FORM + ROLE (ADDED)
+# FORM + ROLE
 # -------------------------------------------------------
-FORM_CODES = {"D", "DR","G", "I", "L", "M","M3", "T", "V"}
+FORM_CODES = {"D", "DR", "G", "I", "L", "M", "M3", "T", "V"}
 
 ROLE_CODES = {
     "A","B","C","D","E","F","G","H","L","M",
@@ -211,38 +157,10 @@ class NamingFormat:
 
 
 # -------------------------------------------------------
-# FORMAT SOURCES
+# PRINT SHEETS CONFIG (RESTORED FULL LOGIC)
 # -------------------------------------------------------
-def get_user_naming_formats_from_pyrevit_config():
-    out = []
-    path = os.path.join(os.environ.get("APPDATA", ""), "pyRevit", "pyRevit_config.ini")
-
-    if not os.path.exists(path):
-        return out
-
-    cp = ConfigParser.ConfigParser()
-    cp.read(path)
-
-    if not cp.has_section("Print Sheets_config"):
-        return out
-
-    if not cp.has_option("Print Sheets_config", "namingformats"):
-        return out
-
-    try:
-        raw = cp.get("Print Sheets_config", "namingformats")
-        data = json.loads(raw)
-
-        for k, v in data.items():
-            if v:
-                out.append(NamingFormat(k, v, False))
-    except:
-        pass
-
-    return out
-
-
 def extract_naming_formats_from_print_sheets():
+
     out = []
 
     def find_tab(p):
@@ -286,49 +204,125 @@ def extract_naming_formats_from_print_sheets():
 
 
 # -------------------------------------------------------
+# PYREVIT CONFIG FORMATS
+# -------------------------------------------------------
+def get_user_naming_formats_from_pyrevit_config():
+    out = []
+    path = os.path.join(os.environ.get("APPDATA", ""), "pyRevit", "pyRevit_config.ini")
+
+    if not os.path.exists(path):
+        return out
+
+    cp = ConfigParser.ConfigParser()
+    cp.read(path)
+
+    if not cp.has_section("Print Sheets_config"):
+        return out
+
+    if not cp.has_option("Print Sheets_config", "namingformats"):
+        return out
+
+    try:
+        raw = cp.get("Print Sheets_config", "namingformats")
+        data = json.loads(raw)
+
+        for k, v in data.items():
+            if v:
+                out.append(NamingFormat(k, v, False))
+    except:
+        pass
+
+    return out
+
+
+# -------------------------------------------------------
 # FIELD EXTRACTION
 # -------------------------------------------------------
 def extract_fields(sheet, template, filename):
 
     raw = resolve_name(template, sheet)
+
+    # Keep raw split, but don't assume structure yet
     parts = raw.split("-")
 
+    project = ""
+    start_index = 0
+
+    # SAFE: match leading project pattern (e.g. 79-E1522)
+    project_match = re.match(r"^(\d+-[A-Z]\d+)", raw)
+
+    if project_match:
+        project = project_match.group(1)
+        start_index = len(project.split("-"))
+    else:
+        project = parts[0]
+        start_index = 1
+
     def safe(i):
-        return parts[i] if len(parts) > i else ""
+        idx = start_index + i
+        return parts[idx] if len(parts) > idx else ""
 
     return {
-        "project": safe(0),
-        "originator": safe(1),
-        "functional": safe(2),
-        "spatial": safe(3),
-        "type": safe(4),
-        "role": safe(5),
+        "project": project,
+        "originator": safe(0),
+        "functional": safe(1),
+        "spatial": safe(2),
+        "type": safe(3),
+        "role": safe(4),
         "number": extract_sheet_number(filename),
         "revision": get_current_revision(sheet),
     }
 
-
 # -------------------------------------------------------
-# INTENT INFERENCE
+# INTENT INFERENCE (FIXED)
 # -------------------------------------------------------
 def infer_expected_from_title(title):
 
-    t = title.upper()
+    t = normalise_title(title)
     expected = {"spatial": None}
 
-    if "FOUNDATION" in t or "PILE" in t or "SUBSTRUCTURE" in t:
-        expected["spatial"] = {"FN", "F1", "F2"}
+    # FORCE ZZ FOR SECTIONS / ELEVATIONS
+    if any(x in t for x in ["SECTION", "SECTIONS", "ELEVATION", "ELEVATIONS"]):
+        expected["spatial"] = {"ZZ"}
+        return expected
 
-    elif "GROUND FLOOR" in t:
-        expected["spatial"] = {"00", "GF"}
+    foundation = ["FOUNDATION", "PILE", "GROUND BEAM"]
+    ground = ["GROUND FLOOR"]
+    upper = [
+        "FIRST FLOOR","SECOND FLOOR","THIRD FLOOR","FOURTH FLOOR",
+        "FIFTH FLOOR","SIXTH FLOOR","SEVENTH FLOOR","EIGHTH FLOOR",
+        "NINTH FLOOR","TENTH FLOOR"
+    ]
+    roof = ["ROOF"]
 
-    elif "FIRST FLOOR" in t:
-        expected["spatial"] = {"01"}
+    domains = set()
 
-    elif "SECOND FLOOR" in t:
-        expected["spatial"] = {"02"}
+    if any(x in t for x in foundation):
+        domains.add("F")
 
-    elif "ROOF" in t:
+    if any(x in t for x in ground):
+        domains.add("G")
+
+    if any(x in t for x in upper):
+        domains.add("U")
+
+    if any(x in t for x in roof):
+        domains.add("R")
+
+    if len(domains) > 1:
+        expected["spatial"] = {"ZZ"}
+        return expected
+
+    if "F" in domains:
+        expected["spatial"] = {"FN"}
+
+    elif "G" in domains:
+        expected["spatial"] = {"00"}
+
+    elif "U" in domains:
+        expected["spatial"] = {"01", "02"}
+
+    elif "R" in domains:
         expected["spatial"] = {"RF"}
 
     return expected
@@ -348,44 +342,37 @@ def validate(f, title):
     def add(level, msg):
         issues.append((level, msg))
 
-    if not f["project"]:
-        add("ERROR", "Missing project")
-
     if not f["originator"]:
         add("ERROR", "Missing originator")
 
     if not f["type"]:
         add("ERROR", "Missing form (Type)")
     elif f["type"] not in FORM_CODES:
-        add("ERROR", "Invalid form '{}' (D/DR/G/I/L/M/T/V only)".format(f["type"]))
+        add("ERROR", "Invalid form '{}'".format(f["type"]))
 
     if not f["role"]:
         add("ERROR", "Missing role")
-    elif f["role"] not in ROLE_CODES:
-        add("ERROR", "Invalid role '{}'".format(f["role"]))
 
     if not f["number"]:
         add("ERROR", "Invalid sheet number")
-
-    if not f["revision"]:
-        add("WARNING", "Sheet has no current revision set in Revit")
-    elif not re.match(REV_RE, f["revision"]):
-        add("ERROR", "Invalid revision format")
 
     expected = infer_expected_from_title(title)
 
     if expected["spatial"]:
         if f["spatial"] not in expected["spatial"]:
-            review.append("Spatial mismatch")
 
-    if f["spatial"]:
-        reverse_issue = validate_spatial_reverse(f["spatial"], title)
-        if reverse_issue:
-            review.append(reverse_issue)
+            if expected["spatial"] == {"ZZ"}:
+                review.append("Spatial Breakdown: ZZ expected")
+            else:
+                review.append(
+                    "Spatial mismatch (expected: {})".format(
+                        "/".join(expected["spatial"])
+                    )
+                )
 
-    if "FOUNDATION" in title.upper():
-        if f["functional"] not in {"FN", "F1", "F2", "XX"}:
-            review.append("Functional likely incorrect")
+    reverse_issue = validate_spatial_reverse(f["spatial"], title)
+    if reverse_issue:
+        review.append(reverse_issue)
 
     if issues:
         return "ERROR", issues
@@ -424,15 +411,10 @@ class Window(forms.WPFWindow):
         self.combo = self.FindName("NamingCombo")
         self.grid = self.FindName("ResultsGrid")
 
-        project_fmt = get_project_naming_format_name()
-        selected = 0
-
-        for i, f in enumerate(formats):
+        for f in formats:
             self.combo.Items.Add(f.name)
-            if project_fmt and f.name == project_fmt:
-                selected = i
 
-        self.combo.SelectedIndex = selected
+        self.combo.SelectedIndex = 0
         self.combo.SelectionChanged += self.run
         self.run(None, None)
 
