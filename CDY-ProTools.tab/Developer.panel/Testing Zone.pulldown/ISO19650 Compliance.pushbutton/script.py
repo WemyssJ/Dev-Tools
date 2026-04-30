@@ -97,9 +97,7 @@ def resolve_name(template, sheet):
 # NORMALISE TITLE
 # -------------------------------------------------------
 def normalise_title(text):
-    t = text.upper()
-    t = re.sub(r"\s+", " ", t)
-    return t
+    return re.sub(r"\s+", " ", text.upper())
 
 
 # -------------------------------------------------------
@@ -107,32 +105,24 @@ def normalise_title(text):
 # -------------------------------------------------------
 SPATIAL_KEYWORDS = {
     "00": ["GROUND FLOOR"],
-    "01": ["FIRST FLOOR"],
-    "02": ["SECOND FLOOR"],
+    "LG": ["LOWER GROUND FLOOR", "LG"],
+    "UG": ["UPPER GROUND FLOOR", "UG"],
+    "01": ["FIRST FLOOR", "LEVEL 01", "01"],
+    "02": ["SECOND FLOOR", "LEVEL 02", "02"],
     "RF": ["ROOF"],
     "FN": ["FOUNDATION", "PILE", "GROUND BEAM"],
-    "ZZ": ["SECTION", "SECTIONS", "ELEVATION", "ELEVATIONS"]
+    "GS": ["SECTION", "SECTIONS"],   # ✅ FIX: GS is now real and valid
+    "ZZ": ["ELEVATION", "ELEVATIONS"]  # keep ZZ purely elevations/abstract
 }
 
 
 # -------------------------------------------------------
-# REVERSE CHECK
+# FUNCTIONAL CODES
 # -------------------------------------------------------
-def validate_spatial_reverse(spatial_code, title):
-
-    if not spatial_code:
-        return None
-
-    expected_keywords = SPATIAL_KEYWORDS.get(spatial_code)
-    if not expected_keywords:
-        return None
-
-    title_u = normalise_title(title)
-
-    if any(kw in title_u for kw in expected_keywords):
-        return None
-
-    return "Spatial code '{}' does not match title content".format(spatial_code)
+FUNCTIONAL_CODES = {
+    "AA", "BB", "CC",
+    "V1", "V2", "V3", "EW", "ZZ", "XX"
+}
 
 
 # -------------------------------------------------------
@@ -157,7 +147,7 @@ class NamingFormat:
 
 
 # -------------------------------------------------------
-# PRINT SHEETS CONFIG (RESTORED FULL LOGIC)
+# PRINT SHEETS CONFIG
 # -------------------------------------------------------
 def extract_naming_formats_from_print_sheets():
 
@@ -241,14 +231,11 @@ def get_user_naming_formats_from_pyrevit_config():
 def extract_fields(sheet, template, filename):
 
     raw = resolve_name(template, sheet)
-
-    # Keep raw split, but don't assume structure yet
     parts = raw.split("-")
 
     project = ""
     start_index = 0
 
-    # SAFE: match leading project pattern (e.g. 79-E1522)
     project_match = re.match(r"^(\d+-[A-Z]\d+)", raw)
 
     if project_match:
@@ -273,67 +260,74 @@ def extract_fields(sheet, template, filename):
         "revision": get_current_revision(sheet),
     }
 
+
 # -------------------------------------------------------
-# INTENT INFERENCE (FIXED)
+# INTENT INFERENCE (FIXED GS + ZZ RULES)
 # -------------------------------------------------------
 def infer_expected_from_title(title):
 
     t = normalise_title(title)
-    expected = {"spatial": None}
 
-    # FORCE ZZ FOR SECTIONS / ELEVATIONS
-    if any(x in t for x in ["SECTION", "SECTIONS", "ELEVATION", "ELEVATIONS"]):
-        expected["spatial"] = {"ZZ"}
-        return expected
+    # Sections = GS ONLY (FIXED)
+    if re.search(r"\bSECTION|SECTIONS\b", t):
+        return {"spatial": {"GS"}}
 
-    foundation = ["FOUNDATION", "PILE", "GROUND BEAM"]
-    ground = ["GROUND FLOOR"]
-    upper = [
-        "FIRST FLOOR","SECOND FLOOR","THIRD FLOOR","FOURTH FLOOR",
-        "FIFTH FLOOR","SIXTH FLOOR","SEVENTH FLOOR","EIGHTH FLOOR",
-        "NINTH FLOOR","TENTH FLOOR"
-    ]
-    roof = ["ROOF"]
+    # Elevations = ZZ
+    if re.search(r"\bELEVATION|ELEVATIONS\b", t):
+        return {"spatial": {"ZZ"}}
 
-    domains = set()
+    if re.search(r"\bUPPER GROUND FLOOR|UG\b", t):
+        return {"spatial": {"UG"}}
 
-    if any(x in t for x in foundation):
-        domains.add("F")
+    if re.search(r"\bLOWER GROUND FLOOR|LG\b", t):
+        return {"spatial": {"LG"}}
 
-    if any(x in t for x in ground):
-        domains.add("G")
+    if re.search(r"\b(FIRST FLOOR|LEVEL\s*01|01)\b", t):
+        return {"spatial": {"01"}}
 
-    if any(x in t for x in upper):
-        domains.add("U")
+    if re.search(r"\b(SECOND FLOOR|LEVEL\s*02|02)\b", t):
+        return {"spatial": {"02"}}
 
-    if any(x in t for x in roof):
-        domains.add("R")
+    if "GROUND FLOOR" in t:
+        return {"spatial": {"00"}}
 
-    if len(domains) > 1:
-        expected["spatial"] = {"ZZ"}
-        return expected
+    if "ROOF" in t:
+        return {"spatial": {"RF"}}
 
-    if "F" in domains:
-        expected["spatial"] = {"FN"}
+    if any(x in t for x in ["FOUNDATION", "PILE", "GROUND BEAM"]):
+        return {"spatial": {"FN"}}
 
-    elif "G" in domains:
-        expected["spatial"] = {"00"}
+    return {"spatial": None}
 
-    elif "U" in domains:
-        expected["spatial"] = {"01", "02"}
 
-    elif "R" in domains:
-        expected["spatial"] = {"RF"}
+# -------------------------------------------------------
+# REVERSE CHECK (UPDATED FOR GS)
+# -------------------------------------------------------
+def validate_spatial_reverse(spatial_code, title):
 
-    return expected
+    if not spatial_code:
+        return None
+
+    title_u = normalise_title(title)
+
+    if spatial_code == "GS":
+        if "SECTION" in title_u or "SECTIONS" in title_u:
+            return None
+        return "Spatial code 'GS' may not match title content"
+
+    expected_keywords = SPATIAL_KEYWORDS.get(spatial_code)
+    if not expected_keywords:
+        return None
+
+    if any(kw in title_u for kw in expected_keywords):
+        return None
+
+    return "Spatial code '{}' may not match title content".format(spatial_code)
 
 
 # -------------------------------------------------------
 # VALIDATION
 # -------------------------------------------------------
-REV_RE = r"^(C\d{2}|P\d{2,3}(\.\d{2})?|FC\d{2})$"
-
-
 def validate(f, title):
 
     issues = []
@@ -344,6 +338,11 @@ def validate(f, title):
 
     if not f["originator"]:
         add("ERROR", "Missing originator")
+
+    if not f["functional"]:
+        add("ERROR", "Missing functional breakdown")
+    elif f["functional"] not in FUNCTIONAL_CODES:
+        review.append("Unknown functional code '{}' (review required)".format(f["functional"]))
 
     if not f["type"]:
         add("ERROR", "Missing form (Type)")
@@ -358,17 +357,11 @@ def validate(f, title):
 
     expected = infer_expected_from_title(title)
 
-    if expected["spatial"]:
+    if expected.get("spatial"):
         if f["spatial"] not in expected["spatial"]:
-
-            if expected["spatial"] == {"ZZ"}:
-                review.append("Spatial Breakdown: ZZ expected")
-            else:
-                review.append(
-                    "Spatial mismatch (expected: {})".format(
-                        "/".join(expected["spatial"])
-                    )
-                )
+            review.append(
+                "Spatial mismatch (expected: {})".format("/".join(expected["spatial"]))
+            )
 
     reverse_issue = validate_spatial_reverse(f["spatial"], title)
     if reverse_issue:
@@ -408,7 +401,6 @@ class Window(forms.WPFWindow):
         forms.WPFWindow.__init__(self, xaml)
 
         self.formats = formats
-
         self.combo = self.FindName("NamingCombo")
         self.grid = self.FindName("ResultsGrid")
         self.hide_no_rev = self.FindName("HideNoRevisionCheck")
@@ -418,7 +410,6 @@ class Window(forms.WPFWindow):
 
         self.combo.SelectedIndex = 0
 
-        # events
         self.combo.SelectionChanged += self.run
         self.hide_no_rev.Checked += self.run
         self.hide_no_rev.Unchecked += self.run
@@ -440,12 +431,7 @@ class Window(forms.WPFWindow):
 
         for sh in sheets:
 
-            revision = get_current_revision(sh)
-
-            # ---------------------------------------------
-            # FILTER: hide no revision sheets
-            # ---------------------------------------------
-            if hide_no_rev and not revision:
+            if hide_no_rev and not get_current_revision(sh):
                 continue
 
             name = resolve_name(fmt.template, sh)
