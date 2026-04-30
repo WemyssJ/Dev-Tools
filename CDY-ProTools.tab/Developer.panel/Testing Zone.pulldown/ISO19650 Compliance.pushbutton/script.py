@@ -382,7 +382,7 @@ def validate(f, title):
             issues.append(("WARNING", r))
         return "REVIEW", issues
 
-    return "OK", [("OK", "ISO compliant")]
+    return "OK", [("OK", "ISO19650 compliant")]
 
 
 # -------------------------------------------------------
@@ -408,14 +408,21 @@ class Window(forms.WPFWindow):
         forms.WPFWindow.__init__(self, xaml)
 
         self.formats = formats
+
         self.combo = self.FindName("NamingCombo")
         self.grid = self.FindName("ResultsGrid")
+        self.hide_no_rev = self.FindName("HideNoRevisionCheck")
 
         for f in formats:
             self.combo.Items.Add(f.name)
 
         self.combo.SelectedIndex = 0
+
+        # events
         self.combo.SelectionChanged += self.run
+        self.hide_no_rev.Checked += self.run
+        self.hide_no_rev.Unchecked += self.run
+
         self.run(None, None)
 
     def run(self, s, e):
@@ -429,7 +436,17 @@ class Window(forms.WPFWindow):
 
         rows = ObservableCollection[object]()
 
+        hide_no_rev = self.hide_no_rev.IsChecked if self.hide_no_rev else False
+
         for sh in sheets:
+
+            revision = get_current_revision(sh)
+
+            # ---------------------------------------------
+            # FILTER: hide no revision sheets
+            # ---------------------------------------------
+            if hide_no_rev and not revision:
+                continue
 
             name = resolve_name(fmt.template, sh)
             fields = extract_fields(sh, fmt.template, name)

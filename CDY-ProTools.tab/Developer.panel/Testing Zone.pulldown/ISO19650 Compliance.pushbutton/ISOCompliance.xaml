@@ -25,6 +25,11 @@
                       Width="400"
                       Height="28"/>
 
+            <CheckBox x:Name="HideNoRevisionCheck"
+                      Content="Hide sheets with no revision"
+                      Margin="20,0,0,0"
+                      VerticalAlignment="Center"/>
+
         </StackPanel>
 
         <!-- RESULTS GRID -->
@@ -36,7 +41,6 @@
                   CanUserDeleteRows="False"
                   HeadersVisibility="Column">
 
-            <!-- Global text wrapping for cells -->
             <DataGrid.Resources>
                 <Style TargetType="TextBlock">
                     <Setter Property="TextWrapping" Value="Wrap"/>
@@ -58,7 +62,6 @@
                                     Binding="{Binding Status}"
                                     Width="70"/>
 
-                <!-- Message column with explicit wrapping -->
                 <DataGridTextColumn Header="Message"
                                     Binding="{Binding Message}"
                                     Width="*">
@@ -72,7 +75,6 @@
 
             </DataGrid.Columns>
 
-            <!-- ROW COLOURING -->
             <DataGrid.RowStyle>
                 <Style TargetType="DataGridRow">
 
