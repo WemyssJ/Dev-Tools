@@ -54,7 +54,7 @@ def get_project_naming_format_name():
 
 
 # -------------------------------------------------------
-# REVISION (REvit SOURCE OF TRUTH)
+# REVISION
 # -------------------------------------------------------
 def get_current_revision(sheet):
     try:
@@ -68,7 +68,7 @@ def get_current_revision(sheet):
 # SHEET NUMBER
 # -------------------------------------------------------
 def extract_sheet_number(text):
-    m = re.search(r"-S-(\d{4,6})", text)
+    m = re.search(r"-S-(?:\d{3}-)?(\d{4,6})", text)
     return m.group(1) if m else ""
 
 
@@ -94,53 +94,42 @@ def resolve_name(template, sheet):
 
 
 # -------------------------------------------------------
-# REVERSE SPATIAL CHECK (NEW)
+# SPATIAL NORMALISATION
+# -------------------------------------------------------
+def normalise_title(text):
+    t = text.upper()
+    t = re.sub(r"\s+", " ", t)
+    t = re.sub(r"LEVEL\s+0?(\d)", r"LEVEL \1", t)
+    return t
+
+
+# -------------------------------------------------------
+# SPATIAL KEYWORDS
 # -------------------------------------------------------
 SPATIAL_KEYWORDS = {
 
-    # -----------------------
-    # BASEMENT
-    # -----------------------
     "BN": ["BASEMENT"],
     "B1": ["BASEMENT LEVEL 1", "BASEMENT 1", "BASMENT 1ST"],
     "B2": ["BASEMENT LEVEL 2", "BASEMENT 2", "BASMENT 2ND"],
 
-    # -----------------------
-    # GROUND / LEVEL 0
-    # -----------------------
     "00": ["GROUND FLOOR", "GROUND", "LEVEL 0"],
     "GF": ["GROUND FLOOR", "GROUND"],
 
-    # -----------------------
-    # LOWER / UPPER GROUND
-    # -----------------------
     "LG": ["LOWER GROUND", "LOWER GROUND FLOOR"],
     "LGF": ["LOWER GROUND", "LOWER GROUND FLOOR"],
     "UG": ["UPPER GROUND", "UPPER GROUND FLOOR"],
     "UGF": ["UPPER GROUND", "UPPER GROUND FLOOR"],
 
-    # -----------------------
-    # MEZZANINE
-    # -----------------------
-    "MZ": ["MEZZANINE", "MEZZ"],
-    "M0": ["MEZZANINE", "MEZZ"],
-    "M1": ["MEZZANINE", "MEZZ"],
-    "M2": ["MEZZANINE", "MEZZ"],
-    "M3": ["MEZZANINE", "MEZZ"],
-
-    # -----------------------
-    # LOW RISE FLOORS (explicit text equivalents)
-    # -----------------------
-    "01": ["FIRST FLOOR", "1ST FLOOR", "LEVEL 1", "ONEST FLOOR"],
-    "02": ["SECOND FLOOR", "2ND FLOOR", "LEVEL 2", "TWO FLOOR"],
-    "03": ["THIRD FLOOR", "3RD FLOOR", "LEVEL 3", "THREE FLOOR"],
-    "04": ["FOURTH FLOOR", "4TH FLOOR", "LEVEL 4"],
-    "05": ["FIFTH FLOOR", "5TH FLOOR", "LEVEL 5"],
-    "06": ["SIXTH FLOOR", "6TH FLOOR", "LEVEL 6"],
-    "07": ["SEVENTH FLOOR", "7TH FLOOR", "LEVEL 7"],
-    "08": ["EIGHTH FLOOR", "8TH FLOOR", "LEVEL 8"],
-    "09": ["NINTH FLOOR", "9TH FLOOR", "LEVEL 9"],
-    "10": ["TENTH FLOOR", "10TH FLOOR", "LEVEL 10"],
+    "01": ["FIRST FLOOR", "1ST FLOOR", "LEVEL 1"],
+    "02": ["SECOND FLOOR", "2ND FLOOR", "LEVEL 2"],
+    "03": ["THIRD FLOOR", "3RD FLOOR", "LEVEL 3"],
+    "04": ["FOURTH FLOOR", "LEVEL 4"],
+    "05": ["FIFTH FLOOR", "LEVEL 5"],
+    "06": ["SIXTH FLOOR", "LEVEL 6"],
+    "07": ["SEVENTH FLOOR", "LEVEL 7"],
+    "08": ["EIGHTH FLOOR", "LEVEL 8"],
+    "09": ["NINTH FLOOR", "LEVEL 9"],
+    "10": ["TENTH FLOOR", "LEVEL 10"],
     "11": ["ELEVENTH FLOOR", "11TH FLOOR", "LEVEL 11"],
     "12": ["TWELFTH FLOOR", "12TH FLOOR", "LEVEL 12"],
     "13": ["THIRTEENTH FLOOR", "13TH FLOOR", "LEVEL 13"],
@@ -172,37 +161,43 @@ SPATIAL_KEYWORDS = {
     "39": ["THIRTY NINTH FLOOR", "39TH FLOOR", "LEVEL 39"],
     "40": ["FORTIETH FLOOR", "40TH FLOOR", "LEVEL 40"],
 
-    # -----------------------
-    # ROOF
-    # -----------------------
     "RF": ["ROOF", "ROOF LEVEL", "PARAPET"],
 
-    # -----------------------
-    # SUBSTRUCTURE
-    # -----------------------
     "FN": ["FOUNDATION", "PILE", "SUBSTRUCTURE"],
-    "F1": ["FOUNDATION LEVEL 1", "PILE LEVEL 1", "SUBSTRUCTURE LEVEL 1"],
-    "F2": ["FOUNDATION LEVEL 2", "PILE LEVEL 2", "SUBSTRUCTURE LEVEL 2"],
+    "F1": ["FOUNDATION LEVEL 1", "PILE LEVEL 1"],
+    "F2": ["FOUNDATION LEVEL 2", "PILE LEVEL 2"],
 }
 
 
+# -------------------------------------------------------
+# REVERSE CHECK
+# -------------------------------------------------------
 def validate_spatial_reverse(spatial_code, title):
 
     if not spatial_code:
         return None
 
-    title_u = title.upper()
-
     expected_keywords = SPATIAL_KEYWORDS.get(spatial_code)
-
     if not expected_keywords:
         return None
 
-    for kw in expected_keywords:
-        if kw in title_u:
-            return None
+    title_u = normalise_title(title)
+
+    if any(kw in title_u for kw in expected_keywords):
+        return None
 
     return "Spatial code '{}' does not match title content".format(spatial_code)
+
+
+# -------------------------------------------------------
+# CRADDYS FORM + ROLE (ADDED)
+# -------------------------------------------------------
+FORM_CODES = {"D", "DR","G", "I", "L", "M","M3", "T", "V"}
+
+ROLE_CODES = {
+    "A","B","C","D","E","F","G","H","L","M",
+    "O","P","Q","R","S","T","W","X","Y","Z"
+}
 
 
 # -------------------------------------------------------
@@ -353,7 +348,6 @@ def validate(f, title):
     def add(level, msg):
         issues.append((level, msg))
 
-    # HARD RULES
     if not f["project"]:
         add("ERROR", "Missing project")
 
@@ -361,39 +355,37 @@ def validate(f, title):
         add("ERROR", "Missing originator")
 
     if not f["type"]:
-        add("ERROR", "Missing type")
+        add("ERROR", "Missing form (Type)")
+    elif f["type"] not in FORM_CODES:
+        add("ERROR", "Invalid form '{}' (D/DR/G/I/L/M/T/V only)".format(f["type"]))
 
     if not f["role"]:
         add("ERROR", "Missing role")
+    elif f["role"] not in ROLE_CODES:
+        add("ERROR", "Invalid role '{}'".format(f["role"]))
 
     if not f["number"]:
         add("ERROR", "Invalid sheet number")
 
-    # REVISION
     if not f["revision"]:
-        add("WARNING", "Sheet has no current revision set in Revit (SHEET_CURRENT_REVISION empty)")
+        add("WARNING", "Sheet has no current revision set in Revit")
     elif not re.match(REV_RE, f["revision"]):
-        add("ERROR", "Invalid revision format in Revit: {}".format(f["revision"]))
+        add("ERROR", "Invalid revision format")
 
-    # FORWARD SPATIAL CHECK
     expected = infer_expected_from_title(title)
 
     if expected["spatial"]:
         if f["spatial"] not in expected["spatial"]:
-            review.append(
-                "Spatial mismatch: expected {} based on title".format(
-                    ",".join(expected["spatial"])
-                )
-            )
+            review.append("Spatial mismatch")
 
-    # REVERSE SPATIAL CHECK (NEW)
-    reverse_issue = validate_spatial_reverse(f["spatial"], title)
-    if reverse_issue:
-        review.append(reverse_issue)
+    if f["spatial"]:
+        reverse_issue = validate_spatial_reverse(f["spatial"], title)
+        if reverse_issue:
+            review.append(reverse_issue)
 
     if "FOUNDATION" in title.upper():
         if f["functional"] not in {"FN", "F1", "F2", "XX"}:
-            review.append("Functional likely should be FN/F1/F2 for foundation content")
+            review.append("Functional likely incorrect")
 
     if issues:
         return "ERROR", issues
