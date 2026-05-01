@@ -135,6 +135,13 @@ def resolve_name(template, sheet):
             _safe_lookup_param_as_string(sheet, m) or ""
         )
 
+    for m in re.findall(r"{proj_param:([^}]+)}", name):
+        if m.strip().lower() == "project name":
+            val = proj_info.Name or ""
+        else:
+            val = ""
+        name = name.replace("{proj_param:%s}" % m, val)
+
     if "{rev_number}" in name:
         rev = get_current_revision(sheet)
         name = name.replace("{rev_number}", rev or "")
