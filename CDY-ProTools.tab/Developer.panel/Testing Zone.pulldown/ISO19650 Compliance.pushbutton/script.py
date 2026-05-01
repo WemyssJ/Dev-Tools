@@ -10,6 +10,23 @@ from System.Collections.ObjectModel import ObservableCollection
 from System.Dynamic import ExpandoObject
 from System.Windows import Clipboard
 
+import codes_loader
+from codes_loader import load_codes
+
+# Guard against a stale codes_loader.py on disk.
+_REQUIRED_LOADER_VERSION = 3
+_actual_version = getattr(codes_loader, "LOADER_VERSION", 0)
+if _actual_version < _REQUIRED_LOADER_VERSION:
+    forms.alert(
+        "codes_loader.py is out of date (version {} found, {} required)."
+        "Please replace codes_loader.py in your pushbutton folder with the "
+        "latest version and reload pyRevit.".format(
+            _actual_version, _REQUIRED_LOADER_VERSION
+        ),
+        title="ISO Compliance — Stale Loader",
+        exitscript=True
+    )
+
 logger = script.get_logger()
 doc = revit.doc
 
@@ -18,6 +35,38 @@ if not doc:
 
 proj_info = doc.ProjectInformation
 
+# -------------------------------------------------------
+# LOAD PER-PROJECT APPROVED CODES
+# Reads codes_config.json from the Revit model folder.
+# If missing, prompts user to continue with Craddys defaults.
+# -------------------------------------------------------
+CODES = load_codes(doc)
+
+SPATIAL_KEYWORDS     = CODES["spatial_codes"]
+FUNCTIONAL_CODES     = CODES["functional_codes"]
+FORM_CODES           = CODES["form_codes"]
+ROLE_CODES           = CODES["role_codes"]
+SHEET_NUM_PATTERN    = CODES["sheet_number_pattern"]
+ORIGINATORS          = CODES["originators"]
+USE_CLASSIFICATION   = CODES["use_classification"]
+CLASSIFICATION_CODES = CODES["classification_codes"]
+_EXTRA_FORMATS       = CODES["naming_formats"]
+USING_CDY_DEFAULTS   = CODES["using_cdy_defaults"]
+
+
+# -------------------------------------------------------
+# WARN IF RUNNING ON CRADDYS DEFAULTS (NO BEP CONFIG)
+# -------------------------------------------------------
+if USING_CDY_DEFAULTS:
+    forms.alert(
+        "Running with Craddys internal naming defaults (no codes_config.json found)."
+        "Functional codes will not be fully validated — only XX is approved"
+        "in the Craddys standard. Project-specific block codes (AA, BB, CC etc.)"
+        "require a BEP config file."
+        "To generate a codes_config.json, use the BEP prompt template.",
+        title="ISO Compliance — Using Craddys Defaults",
+        warn_icon=True
+    )
 
 # -------------------------------------------------------
 # SAFE PARAMETER ACCESS
@@ -65,10 +114,10 @@ def get_current_revision(sheet):
 
 
 # -------------------------------------------------------
-# SHEET NUMBER
+# SHEET NUMBER — now uses SHEET_NUM_PATTERN from config
 # -------------------------------------------------------
 def extract_sheet_number(text):
-    m = re.search(r"-S-(?:\d{3}-)?(\d{4,6})", text)
+    m = re.search(SHEET_NUM_PATTERN, text)  # ← was hardcoded regex
     return m.group(1) if m else ""
 
 
@@ -98,42 +147,6 @@ def resolve_name(template, sheet):
 # -------------------------------------------------------
 def normalise_title(text):
     return re.sub(r"\s+", " ", text.upper())
-
-
-# -------------------------------------------------------
-# SPATIAL KEYWORDS
-# -------------------------------------------------------
-SPATIAL_KEYWORDS = {
-    "00": ["GROUND FLOOR"],
-    "LG": ["LOWER GROUND FLOOR", "LG"],
-    "UG": ["UPPER GROUND FLOOR", "UG"],
-    "01": ["FIRST FLOOR", "LEVEL 01", "01"],
-    "02": ["SECOND FLOOR", "LEVEL 02", "02"],
-    "RF": ["ROOF"],
-    "FN": ["FOUNDATION", "PILE", "GROUND BEAM"],
-    "GS": ["SECTION", "SECTIONS"],   # ✅ FIX: GS is now real and valid
-    "ZZ": ["ELEVATION", "ELEVATIONS"]  # keep ZZ purely elevations/abstract
-}
-
-
-# -------------------------------------------------------
-# FUNCTIONAL CODES
-# -------------------------------------------------------
-FUNCTIONAL_CODES = {
-    "AA", "BB", "CC",
-    "V1", "V2", "V3", "EW", "ZZ", "XX"
-}
-
-
-# -------------------------------------------------------
-# FORM + ROLE
-# -------------------------------------------------------
-FORM_CODES = {"D", "DR", "G", "I", "L", "M", "M3", "T", "V"}
-
-ROLE_CODES = {
-    "A","B","C","D","E","F","G","H","L","M",
-    "O","P","Q","R","S","T","W","X","Y","Z"
-}
 
 
 # -------------------------------------------------------
@@ -229,6 +242,16 @@ def get_user_naming_formats_from_pyrevit_config():
 # FIELD EXTRACTION
 # -------------------------------------------------------
 def extract_fields(sheet, template, filename):
+    """
+    Parse the resolved filename into its ISO 19650 field components.
+
+    Handles both naming conventions:
+      With classification:    {proj}-{orig}-{func}-{spatial}-{form}-{role}-{class}-{num}
+      Without classification: {proj}-{orig}-{func}-{spatial}-{form}-{role}-{num}
+
+    The presence/absence of the classification segment is controlled by
+    USE_CLASSIFICATION from codes_config.json.
+    """
 
     raw = resolve_name(template, sheet)
     parts = raw.split("-")
@@ -249,30 +272,35 @@ def extract_fields(sheet, template, filename):
         idx = start_index + i
         return parts[idx] if len(parts) > idx else ""
 
+    # Extract classification: sits after role (index 4), before sheet number.
+    # Only consumed when USE_CLASSIFICATION is True.
+    classification = ""
+    if USE_CLASSIFICATION:
+        classification = safe(5)
+
     return {
-        "project": project,
-        "originator": safe(0),
-        "functional": safe(1),
-        "spatial": safe(2),
-        "type": safe(3),
-        "role": safe(4),
-        "number": extract_sheet_number(filename),
-        "revision": get_current_revision(sheet),
+        "project":        project,
+        "originator":     safe(0),
+        "functional":     safe(1),
+        "spatial":        safe(2),
+        "type":           safe(3),
+        "role":           safe(4),
+        "classification": classification,
+        "number":         extract_sheet_number(filename),
+        "revision":       get_current_revision(sheet),
     }
 
 
 # -------------------------------------------------------
-# INTENT INFERENCE (FIXED GS + ZZ RULES)
+# INTENT INFERENCE
 # -------------------------------------------------------
 def infer_expected_from_title(title):
 
     t = normalise_title(title)
 
-    # Sections = GS ONLY (FIXED)
     if re.search(r"\bSECTION|SECTIONS\b", t):
-        return {"spatial": {"GS"}}
+        return {"spatial": {"ZZ"}}
 
-    # Elevations = ZZ
     if re.search(r"\bELEVATION|ELEVATIONS\b", t):
         return {"spatial": {"ZZ"}}
 
@@ -294,14 +322,14 @@ def infer_expected_from_title(title):
     if "ROOF" in t:
         return {"spatial": {"RF"}}
 
-    if any(x in t for x in ["FOUNDATION", "PILE", "GROUND BEAM"]):
+    if any(x in t for x in ["FOUNDATION", "PILE", "GROUND BEAM", "SUBSTRUCTURE"]):
         return {"spatial": {"FN"}}
 
     return {"spatial": None}
 
 
 # -------------------------------------------------------
-# REVERSE CHECK (UPDATED FOR GS)
+# REVERSE CHECK
 # -------------------------------------------------------
 def validate_spatial_reverse(spatial_code, title):
 
@@ -326,7 +354,7 @@ def validate_spatial_reverse(spatial_code, title):
 
 
 # -------------------------------------------------------
-# VALIDATION
+# VALIDATION — now checks ORIGINATORS from config
 # -------------------------------------------------------
 def validate(f, title):
 
@@ -336,33 +364,59 @@ def validate(f, title):
     def add(level, msg):
         issues.append((level, msg))
 
+    # Originator
     if not f["originator"]:
         add("ERROR", "Missing originator")
+    elif ORIGINATORS and f["originator"] not in ORIGINATORS:  # ← NEW
+        add("ERROR", "Originator '{}' not in approved list: {}".format(
+            f["originator"], ", ".join(sorted(ORIGINATORS))
+        ))
 
+    # Functional
     if not f["functional"]:
         add("ERROR", "Missing functional breakdown")
     elif f["functional"] not in FUNCTIONAL_CODES:
         review.append("Unknown functional code '{}' (review required)".format(f["functional"]))
 
+    # Form / type
     if not f["type"]:
         add("ERROR", "Missing form (Type)")
     elif f["type"] not in FORM_CODES:
         add("ERROR", "Invalid form '{}'".format(f["type"]))
 
+    # Role
     if not f["role"]:
         add("ERROR", "Missing role")
+    elif f["role"] not in ROLE_CODES:                         # ← NEW
+        add("ERROR", "Invalid role '{}'".format(f["role"]))
 
+    # Classification (only when enabled in config)
+    if USE_CLASSIFICATION:
+        cls = f["classification"]
+        if not cls:
+            add("ERROR", "Missing classification code")
+        elif not re.match(r"^\d{2,3}$", cls):
+            # Must be 2-3 digits regardless of whether an approved list exists
+            add("ERROR", "Classification '{}' is not a valid 2-3 digit code".format(cls))
+        elif CLASSIFICATION_CODES and cls not in CLASSIFICATION_CODES:
+            # Approved list is defined in codes_config.json — enforce it
+            add("ERROR", "Classification '{}' not in approved list: {}".format(
+                cls, ", ".join(sorted(CLASSIFICATION_CODES))
+            ))
+
+    # Sheet number
     if not f["number"]:
         add("ERROR", "Invalid sheet number")
 
+    # Spatial intent check
     expected = infer_expected_from_title(title)
-
     if expected.get("spatial"):
         if f["spatial"] not in expected["spatial"]:
             review.append(
                 "Spatial mismatch (expected: {})".format("/".join(expected["spatial"]))
             )
 
+    # Spatial reverse check
     reverse_issue = validate_spatial_reverse(f["spatial"], title)
     if reverse_issue:
         review.append(reverse_issue)
@@ -408,13 +462,33 @@ class Window(forms.WPFWindow):
         for f in formats:
             self.combo.Items.Add(f.name)
 
-        self.combo.SelectedIndex = 0
+        # Auto-select the format that matches the project "Naming Format" parameter.
+        # Falls back to index 0 if the parameter is unset or no name matches.
+        self.combo.SelectedIndex = self._resolve_default_format_index()
 
         self.combo.SelectionChanged += self.run
         self.hide_no_rev.Checked += self.run
         self.hide_no_rev.Unchecked += self.run
 
         self.run(None, None)
+
+    def _resolve_default_format_index(self):
+        """
+        Read the project-level 'Naming Format' parameter and return the index
+        of the first format whose name matches (case-insensitive).
+        Returns 0 if the parameter is blank or no format name matches.
+        """
+        proj_fmt_name = get_project_naming_format_name()
+        if proj_fmt_name:
+            proj_fmt_name_lower = proj_fmt_name.strip().lower()
+            for i, f in enumerate(self.formats):
+                if f.name.strip().lower() == proj_fmt_name_lower:
+                    return i
+            # Parameter is set but no exact match — try partial/contains match
+            for i, f in enumerate(self.formats):
+                if proj_fmt_name_lower in f.name.strip().lower():
+                    return i
+        return 0
 
     def run(self, s, e):
 
@@ -457,6 +531,10 @@ class Window(forms.WPFWindow):
 formats = []
 formats.extend(extract_naming_formats_from_print_sheets())
 formats.extend(get_user_naming_formats_from_pyrevit_config())
+
+# Merge naming formats from codes_config.json (project-specific)  ← NEW
+for _name, _tmpl in _EXTRA_FORMATS.items():
+    formats.append(NamingFormat(_name, _tmpl, builtin=False))
 
 if not formats:
     forms.alert("No naming formats found.", exitscript=True)
