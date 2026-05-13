@@ -11,6 +11,7 @@ from System.Windows.Forms import (
 
 from System.Drawing import Size, Color, Point
 
+
 doc = revit.doc
 uidoc = revit.uidoc
 
@@ -20,14 +21,10 @@ uidoc = revit.uidoc
 # --------------------------------------------------------
 
 def get_viewports_from_views(view_ids):
-    vps = []
-    all_vps = FilteredElementCollector(doc).OfClass(Viewport).ToElements()
-
-    for vp in all_vps:
-        if vp.ViewId in view_ids:
-            vps.append(vp)
-
-    return vps
+    return [
+        vp for vp in FilteredElementCollector(doc).OfClass(Viewport)
+        if vp.ViewId in view_ids
+    ]
 
 
 # --------------------------------------------------------
@@ -50,11 +47,10 @@ for elid in selection_ids:
             views.append(el)
 
 if views and not viewports:
-    view_ids = [v.Id for v in views]
-    viewports = get_viewports_from_views(view_ids)
+    viewports = get_viewports_from_views([v.Id for v in views])
 
 if not viewports:
-    forms.alert("Select Viewports OR Views.", exitscript=True)
+    forms.alert("Select Viewports or Views.", exitscript=True)
 
 
 # --------------------------------------------------------
@@ -68,25 +64,13 @@ for vp in viewports:
     view = doc.GetElement(vp.ViewId)
     sheet = doc.GetElement(vp.SheetId)
 
-    detail_num = vp.get_Parameter(
-        BuiltInParameter.VIEWPORT_DETAIL_NUMBER
-    ).AsString()
-
-    title_param = vp.get_Parameter(
-        BuiltInParameter.VIEW_DESCRIPTION
-    )
-
-    title = title_param.AsString() if title_param else ""
-
     rows.append({
-        "viewport": vp,
-        "view": view,
-        "sheet": sheet,
-        "sheet_number": sheet.SheetNumber,
-        "sheet_name": sheet.Name,
-        "detail_number": detail_num,
+        "vp_id": vp.Id.IntegerValue,
+        "sheet": sheet.SheetNumber,
+        "detail": vp.get_Parameter(BuiltInParameter.VIEWPORT_DETAIL_NUMBER).AsString(),
         "view_name": view.Name,
-        "title_on_sheet": title
+        "sheet_name": sheet.Name,
+        "title": vp.get_Parameter(BuiltInParameter.VIEW_DESCRIPTION).AsString() or ""
     })
 
 
@@ -101,7 +85,7 @@ class BatchEditor(Form):
         self.data = data
 
         self.Text = "Viewport / View Batch Editor"
-        self.Size = Size(1200, 720)
+        self.Size = Size(1300, 750)
 
         # ---------------- GRID ----------------
         self.grid = DataGridView()
@@ -110,75 +94,73 @@ class BatchEditor(Form):
 
         self.grid.SelectionMode = DataGridViewSelectionMode.CellSelect
         self.grid.MultiSelect = True
-
         self.grid.AllowUserToAddRows = False
         self.grid.AllowUserToDeleteRows = False
-        self.grid.RowHeadersVisible = True
 
         self.grid.ColumnHeaderMouseClick += self.on_column_header_click
 
-        self.grid.ColumnCount = 5
+        # Columns (ID hidden)
+        self.grid.ColumnCount = 6
 
-        self.grid.Columns[0].Name = "Sheet"
-        self.grid.Columns[0].ReadOnly = True
+        self.grid.Columns[0].Name = "ID"
+        self.grid.Columns[0].Visible = False
 
-        self.grid.Columns[1].Name = "Detail Number"
-        self.grid.Columns[2].Name = "View Name"
-        self.grid.Columns[3].Name = "Sheet Name"
-        self.grid.Columns[3].ReadOnly = True
-        self.grid.Columns[4].Name = "Title on Sheet"
+        self.grid.Columns[1].Name = "Sheet"
+        self.grid.Columns[2].Name = "Detail Number"
+        self.grid.Columns[3].Name = "View Name"
+        self.grid.Columns[4].Name = "Sheet Name"
+        self.grid.Columns[5].Name = "Title on Sheet"
 
+        # Populate grid
         for item in data:
-            i = self.grid.Rows.Add()
-            self.grid.Rows[i].Cells[0].Value = item["sheet_number"]
-            self.grid.Rows[i].Cells[1].Value = item["detail_number"]
-            self.grid.Rows[i].Cells[2].Value = item["view_name"]
-            self.grid.Rows[i].Cells[3].Value = item["sheet_name"]
-            self.grid.Rows[i].Cells[4].Value = item["title_on_sheet"]
+            r = self.grid.Rows.Add()
+
+            self.grid.Rows[r].Cells[0].Value = item["vp_id"]
+            self.grid.Rows[r].Cells[1].Value = item["sheet"]
+            self.grid.Rows[r].Cells[2].Value = item["detail"]
+            self.grid.Rows[r].Cells[3].Value = item["view_name"]
+            self.grid.Rows[r].Cells[4].Value = item["sheet_name"]
+            self.grid.Rows[r].Cells[5].Value = item["title"]
 
         # ---------------- PANEL ----------------
         panel = Panel()
         panel.Dock = DockStyle.Bottom
-        panel.Height = 160
+        panel.Height = 180
 
         # =====================================================
         # ROW 1 - ACTIONS
         # =====================================================
 
         self.apply_btn = Button()
-        self.apply_btn.Text = "Apply Changes"
+        self.apply_btn.Text = "Apply"
         self.apply_btn.Location = Point(10, 10)
-        self.apply_btn.Width = 140
+        self.apply_btn.Width = 120
         self.apply_btn.Click += self.apply_changes
 
         self.clear_btn = Button()
         self.clear_btn.Text = "Clear Titles"
-        self.clear_btn.Location = Point(160, 10)
-        self.clear_btn.Width = 140
+        self.clear_btn.Location = Point(140, 10)
+        self.clear_btn.Width = 120
         self.clear_btn.Click += self.clear_titles
 
-        # NEW: SYNC BUTTONS
-        self.sync_view_to_detail_btn = Button()
-        self.sync_view_to_detail_btn.Text = "View → Detail"
-        self.sync_view_to_detail_btn.Location = Point(310, 10)
-        self.sync_view_to_detail_btn.Width = 140
-        self.sync_view_to_detail_btn.Click += self.sync_view_to_detail
+        self.sync_v2d = Button()
+        self.sync_v2d.Text = "View → Detail"
+        self.sync_v2d.Location = Point(270, 10)
+        self.sync_v2d.Width = 140
+        self.sync_v2d.Click += self.sync_view_to_detail
 
-        self.sync_detail_to_view_btn = Button()
-        self.sync_detail_to_view_btn.Text = "Detail → View"
-        self.sync_detail_to_view_btn.Location = Point(460, 10)
-        self.sync_detail_to_view_btn.Width = 140
-        self.sync_detail_to_view_btn.Click += self.sync_detail_to_view
+        self.sync_d2v = Button()
+        self.sync_d2v.Text = "Detail → View"
+        self.sync_d2v.Location = Point(420, 10)
+        self.sync_d2v.Width = 140
+        self.sync_d2v.Click += self.sync_detail_to_view
 
-        # =====================================================
-        # DIVIDER
-        # =====================================================
-
+        # Divider
         self.divider = Label()
         self.divider.Text = ""
         self.divider.AutoSize = False
         self.divider.Location = Point(10, 50)
-        self.divider.Width = 1100
+        self.divider.Width = 1250
         self.divider.Height = 1
         self.divider.BackColor = Color.LightGray
 
@@ -186,28 +168,26 @@ class BatchEditor(Form):
         # ROW 2 - FIND / REPLACE
         # =====================================================
 
-        base_y = 80
+        y = 85
 
         self.find_label = Label()
         self.find_label.Text = "Find:"
-        self.find_label.AutoSize = True
-        self.find_label.Location = Point(10, base_y)
+        self.find_label.Location = Point(10, y)
 
         self.find_box = TextBox()
-        self.find_box.Location = Point(55, base_y - 3)
+        self.find_box.Location = Point(55, y - 3)
         self.find_box.Width = 160
 
         self.replace_label = Label()
         self.replace_label.Text = "Replace:"
-        self.replace_label.AutoSize = True
-        self.replace_label.Location = Point(230, base_y)
+        self.replace_label.Location = Point(230, y)
 
         self.replace_box = TextBox()
-        self.replace_box.Location = Point(295, base_y - 3)
+        self.replace_box.Location = Point(295, y - 3)
         self.replace_box.Width = 160
 
         self.scope_box = ComboBox()
-        self.scope_box.Location = Point(470, base_y - 4)
+        self.scope_box.Location = Point(470, y - 3)
         self.scope_box.Width = 160
         self.scope_box.Items.Add("All")
         self.scope_box.Items.Add("Selected Rows")
@@ -216,17 +196,15 @@ class BatchEditor(Form):
 
         self.replace_btn = Button()
         self.replace_btn.Text = "Replace"
-        self.replace_btn.Location = Point(640, base_y - 5)
+        self.replace_btn.Location = Point(640, y - 5)
         self.replace_btn.Width = 120
         self.replace_btn.Click += self.find_replace
 
-        # ---------------- ADD CONTROLS ----------------
-
+        # Add controls
         panel.Controls.Add(self.apply_btn)
         panel.Controls.Add(self.clear_btn)
-
-        panel.Controls.Add(self.sync_view_to_detail_btn)
-        panel.Controls.Add(self.sync_detail_to_view_btn)
+        panel.Controls.Add(self.sync_v2d)
+        panel.Controls.Add(self.sync_d2v)
 
         panel.Controls.Add(self.divider)
 
@@ -245,9 +223,8 @@ class BatchEditor(Form):
     # COLUMN SELECT
     # --------------------------------------------------------
 
-    def on_column_header_click(self, sender, event):
-
-        col = event.ColumnIndex
+    def on_column_header_click(self, sender, e):
+        col = e.ColumnIndex
         self.grid.ClearSelection()
 
         for r in range(self.grid.Rows.Count):
@@ -255,7 +232,7 @@ class BatchEditor(Form):
 
 
     # --------------------------------------------------------
-    # SYNC: VIEW → DETAIL
+    # SYNC
     # --------------------------------------------------------
 
     def sync_view_to_detail(self, sender, args):
@@ -265,16 +242,12 @@ class BatchEditor(Form):
             rows = self.grid.Rows
 
         for r in rows:
-            v = r.Cells[2].Value
+            v = r.Cells[3].Value
             if v:
-                r.Cells[1].Value = str(v)
+                r.Cells[2].Value = str(v)
 
         forms.alert("View → Detail synced.")
 
-
-    # --------------------------------------------------------
-    # SYNC: DETAIL → VIEW
-    # --------------------------------------------------------
 
     def sync_detail_to_view(self, sender, args):
 
@@ -283,9 +256,9 @@ class BatchEditor(Form):
             rows = self.grid.Rows
 
         for r in rows:
-            d = r.Cells[1].Value
+            d = r.Cells[2].Value
             if d:
-                r.Cells[2].Value = str(d)
+                r.Cells[3].Value = str(d)
 
         forms.alert("Detail → View synced.")
 
@@ -299,24 +272,24 @@ class BatchEditor(Form):
         seen = {}
         conflicts = set()
 
-        for i in range(self.grid.Rows.Count):
-            self.grid.Rows[i].DefaultCellStyle.BackColor = Color.White
+        for r in range(self.grid.Rows.Count):
+            self.grid.Rows[r].DefaultCellStyle.BackColor = Color.White
 
-        for i in range(self.grid.Rows.Count):
+        for r in range(self.grid.Rows.Count):
 
-            sheet = str(self.grid.Rows[i].Cells[0].Value)
-            detail = str(self.grid.Rows[i].Cells[1].Value)
+            sheet = str(self.grid.Rows[r].Cells[1].Value)
+            detail = str(self.grid.Rows[r].Cells[2].Value)
 
             key = (sheet, detail)
 
             if key in seen:
-                conflicts.add(i)
+                conflicts.add(r)
                 conflicts.add(seen[key])
             else:
-                seen[key] = i
+                seen[key] = r
 
-        for i in conflicts:
-            row = self.grid.Rows[i]
+        for r in conflicts:
+            row = self.grid.Rows[r]
             row.DefaultCellStyle.BackColor = Color.LightCoral
             row.DefaultCellStyle.SelectionBackColor = Color.IndianRed
 
@@ -324,7 +297,7 @@ class BatchEditor(Form):
 
 
     # --------------------------------------------------------
-    # APPLY
+    # APPLY (FULL 3-PHASE SAFE SYSTEM)
     # --------------------------------------------------------
 
     def apply_changes(self, sender, args):
@@ -333,36 +306,78 @@ class BatchEditor(Form):
             forms.alert("Duplicate detail numbers detected.")
             return
 
-        t = Transaction(doc, "Batch Update Views")
-        t.Start()
-
         try:
-            for i, item in enumerate(self.data):
+            ops = []
 
-                vp = item["viewport"]
-                view = item["view"]
+            for r in self.grid.Rows:
+                if r.IsNewRow:
+                    continue
 
-                new_detail = str(self.grid.Rows[i].Cells[1].Value)
-                new_view_name = str(self.grid.Rows[i].Cells[2].Value)
-                new_title = str(self.grid.Rows[i].Cells[4].Value)
+                vp = doc.GetElement(ElementId(int(r.Cells[0].Value)))
+                view = doc.GetElement(vp.ViewId)
 
-                if vp:
-                    p = vp.get_Parameter(BuiltInParameter.VIEWPORT_DETAIL_NUMBER)
-                    if p and not p.IsReadOnly:
-                        p.Set(new_detail)
+                ops.append({
+                    "vp": vp,
+                    "view": view,
+                    "detail": str(r.Cells[2].Value),
+                    "view_name": str(r.Cells[3].Value),
+                    "title": str(r.Cells[5].Value)
+                })
 
-                    tp = vp.get_Parameter(BuiltInParameter.VIEW_DESCRIPTION)
-                    if tp and not tp.IsReadOnly:
-                        tp.Set(new_title)
+            # =================================================
+            # PHASE 1: TEMP DETAIL NUMBERS
+            # =================================================
+            t1 = Transaction(doc, "Temp Detail Numbers")
+            t1.Start()
 
-                if view and view.Name != new_view_name:
-                    view.Name = new_view_name
+            for o in ops:
+                vp = o["vp"]
+                p = vp.get_Parameter(BuiltInParameter.VIEWPORT_DETAIL_NUMBER)
+                if p and not p.IsReadOnly:
+                    p.Set("__TMP_DN_{}".format(vp.Id.IntegerValue))
 
-            t.Commit()
-            forms.alert("Update complete.")
+            t1.Commit()
+
+            # =================================================
+            # PHASE 2: TEMP VIEW NAMES
+            # =================================================
+            t2 = Transaction(doc, "Temp View Names")
+            t2.Start()
+
+            for o in ops:
+                v = o["view"]
+                if v:
+                    v.Name = "__TMP_VIEW_{}".format(v.Id.IntegerValue)
+
+            t2.Commit()
+
+            # =================================================
+            # PHASE 3: FINAL VALUES
+            # =================================================
+            t3 = Transaction(doc, "Final Values")
+            t3.Start()
+
+            for o in ops:
+
+                vp = o["vp"]
+                view = o["view"]
+
+                p = vp.get_Parameter(BuiltInParameter.VIEWPORT_DETAIL_NUMBER)
+                if p and not p.IsReadOnly:
+                    p.Set(o["detail"])
+
+                tp = vp.get_Parameter(BuiltInParameter.VIEW_DESCRIPTION)
+                if tp and not tp.IsReadOnly:
+                    tp.Set(o["title"])
+
+                if view:
+                    view.Name = o["view_name"]
+
+            t3.Commit()
+
+            forms.alert("Update complete (fully safe 3-phase system).")
 
         except Exception as ex:
-            t.RollBack()
             forms.alert(str(ex))
 
 
@@ -373,7 +388,7 @@ class BatchEditor(Form):
     def clear_titles(self, sender, args):
 
         for r in self.grid.SelectedRows:
-            r.Cells[4].Value = ""
+            r.Cells[5].Value = ""
 
         forms.alert("Titles cleared.")
 
@@ -384,36 +399,33 @@ class BatchEditor(Form):
 
     def find_replace(self, sender, args):
 
-        find_text = self.find_box.Text
-        replace_text = self.replace_box.Text
+        f = self.find_box.Text
+        rep = self.replace_box.Text
         scope = self.scope_box.SelectedItem
 
-        if not find_text:
+        if not f:
             forms.alert("Enter find text.")
             return
 
-        def replace(cell):
+        def apply(cell):
             if cell.Value:
                 v = str(cell.Value)
-                if find_text in v:
-                    cell.Value = v.replace(find_text, replace_text)
+                if f in v:
+                    cell.Value = v.replace(f, rep)
 
         if scope == "All":
-
             for r in range(self.grid.Rows.Count):
                 for c in range(self.grid.Columns.Count):
-                    replace(self.grid.Rows[r].Cells[c])
+                    apply(self.grid.Rows[r].Cells[c])
 
         elif scope == "Selected Rows":
-
             for r in self.grid.SelectedRows:
                 for c in range(self.grid.Columns.Count):
-                    replace(r.Cells[c])
+                    apply(r.Cells[c])
 
         elif scope == "Selected Cells":
-
-            for cell in self.grid.SelectedCells:
-                replace(cell)
+            for c in self.grid.SelectedCells:
+                apply(c)
 
         forms.alert("Replace complete.")
 
