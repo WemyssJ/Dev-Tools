@@ -115,7 +115,7 @@ SCRIPTS = {
     "flip_level_bubbles":    _script(r"Drawing Tools.panel\Drafting.pulldown\Flip Levels.pushbutton\script.py"),
     # -- Dimensions -----------------------------------------------------------
     "dim_gridlines":         _script(r"Drawing Tools.panel\Drafting.pulldown\Dim Grids.pushbutton\script.py"),
-    "dim_levels":            _script(r"Drawing Tools.panel\Drafting.pulldown\Dim Levls.pushbutton\script.py"),
+    "dim_levels":            _script(r"Drawing Tools.panel\Drafting.pulldown\Dim Levels.pushbutton\script.py"),
     # -- Tagging --------------------------------------------------------------
     "select_untagged":       _script(r"Quality Assurance.panel\Model Check.pulldown\Select Untagged.pushbutton\script.py"),
     "Highlight_selected":    _script(r"DockableWindowExclusives\Highlight Selected.pushbutton\script.py"),
