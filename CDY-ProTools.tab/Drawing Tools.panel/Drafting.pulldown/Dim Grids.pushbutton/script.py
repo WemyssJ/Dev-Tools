@@ -8,24 +8,20 @@ from Autodesk.Revit.UI.Selection import ISelectionFilter
 from Autodesk.Revit import Exceptions
 import os, sys
 
-##############################################################################################
-# TELEMETRY IMPORTS #
-##############################################################################################
-# Only works IF specified TELEMETRY_JSON path exists within %AppData%\pyRevit\Extensions\BIMTools.extension\lib\telemetry_auto.py"
-# Records tool usage by date & revit version
-import os, sys
-
-# Add lib folder for telemetry_auto
+# -----------------------------------------------------------------------------------
+# TELEMETRY (unchanged)
+# -----------------------------------------------------------------------------------
 lib_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'lib'))
 if lib_path not in sys.path:
     sys.path.append(lib_path)
 
-import telemetry_auto
-
-tool_name = os.path.basename(os.path.dirname(__file__)) 
-TOOL_NAME = tool_name.replace(".pushbutton", "")
-telemetry_auto.log_tool_usage(TOOL_NAME)
-##############################################################################################
+try:
+    import telemetry_auto
+    tool_name = os.path.basename(os.path.dirname(__file__))
+    TOOL_NAME = tool_name.replace(".pushbutton", "")
+    telemetry_auto.log_tool_usage(TOOL_NAME)
+except:
+    pass
 
 # -----------------------------------------------------------------------------------
 # SETUP
@@ -50,16 +46,25 @@ class GridSelectionFilter(ISelectionFilter):
 is_plan = active_view.ViewType == DB.ViewType.FloorPlan
 
 # -----------------------------------------------------------------------------------
-# PICK GRIDS
+# GET PRESELECTED GRIDS OR ASK USER
 # -----------------------------------------------------------------------------------
-with forms.WarningBar(title="Select parallel straight grid lines"):
-    try:
-        grids = uidoc.Selection.PickElementsByRectangle(
-            GridSelectionFilter(),
-            "Select Grids"
-        )
-    except Exceptions.OperationCanceledException:
-        forms.alert("Cancelled", exitscript=True)
+preselected_ids = uidoc.Selection.GetElementIds()
+preselected_grids = [doc.GetElement(i) for i in preselected_ids if i.IntegerValue != DB.ElementId.InvalidElementId]
+
+# Filter to grids only
+preselected_grids = [g for g in preselected_grids if g.Category and g.Category.Id.IntegerValue == int(DB.BuiltInCategory.OST_Grids)]
+
+if preselected_grids:
+    grids = preselected_grids
+else:
+    with forms.WarningBar(title="Select parallel straight grid lines"):
+        try:
+            grids = uidoc.Selection.PickElementsByRectangle(
+                GridSelectionFilter(),
+                "Select Grids"
+            )
+        except Exceptions.OperationCanceledException:
+            forms.alert("Cancelled", exitscript=True)
 
 if not grids:
     forms.alert("No grids selected.", exitscript=True)
@@ -75,15 +80,20 @@ if len(straight_grids) < 2:
 # -----------------------------------------------------------------------------------
 # VALIDATE PARALLEL
 # -----------------------------------------------------------------------------------
+def get_grid_curve_in_view(grid, view):
+    crvs = grid.GetCurvesInView(DB.DatumExtentType.ViewSpecific, view)
+    if crvs and len(crvs) > 0:
+        return crvs[0]
+    return grid.Curve
+
 def get_grid_direction(grid):
-    crv = grid.Curve
+    crv = get_grid_curve_in_view(grid, active_view)
     return (crv.GetEndPoint(1) - crv.GetEndPoint(0)).Normalize()
 
 base_direction = get_grid_direction(straight_grids[0])
 
 for g in straight_grids[1:]:
     this_dir = get_grid_direction(g)
-
     if not (
         this_dir.IsAlmostEqualTo(base_direction) or
         this_dir.IsAlmostEqualTo(base_direction.Negate())
@@ -91,23 +101,59 @@ for g in straight_grids[1:]:
         forms.alert("Selected grids are not parallel.", exitscript=True)
 
 # -----------------------------------------------------------------------------------
-# BUILD REFERENCE ARRAY
+# PICK DIMENSION PLACEMENT POINT
+# -----------------------------------------------------------------------------------
+with forms.WarningBar(title="Pick dimension placement point"):
+    try:
+        pick_point = uidoc.Selection.PickPoint()
+    except Exceptions.OperationCanceledException:
+        forms.alert("Cancelled", exitscript=True)
+
+# -----------------------------------------------------------------------------------
+# GET CURVES + MIDPOINTS
+# -----------------------------------------------------------------------------------
+curves = [get_grid_curve_in_view(g, active_view) for g in straight_grids]
+midpoints = [c.Evaluate(0.5, True) for c in curves]
+
+# -----------------------------------------------------------------------------------
+# GRID DIRECTION AND DIMENSION DIRECTION
+# -----------------------------------------------------------------------------------
+grid_dir = (curves[0].GetEndPoint(1) - curves[0].GetEndPoint(0)).Normalize()
+view_normal = active_view.ViewDirection.Normalize()
+
+# perpendicular direction (dimension direction)
+perp_dir = grid_dir.CrossProduct(view_normal).Normalize()
+
+# optional: force consistent side in plan
+if is_plan and perp_dir.DotProduct(active_view.UpDirection) < 0:
+    perp_dir = perp_dir.Negate()
+
+# -----------------------------------------------------------------------------------
+# SORT GRIDS BY PERPENDICULAR AXIS
+# -----------------------------------------------------------------------------------
+sorted_data = sorted(zip(straight_grids, midpoints), key=lambda x: x[1].DotProduct(perp_dir))
+straight_grids = [x[0] for x in sorted_data]
+midpoints      = [x[1] for x in sorted_data]
+
+# -----------------------------------------------------------------------------------
+# REBUILD REFERENCES
 # -----------------------------------------------------------------------------------
 ref_array = DB.ReferenceArray()
-
-for grid in straight_grids:
-    ref = DB.Reference.ParseFromStableRepresentation(doc, grid.UniqueId)
-    ref_array.Append(ref)
+for g in straight_grids:
+    ref_array.Append(DB.Reference(g))
 
 # -----------------------------------------------------------------------------------
-# DETERMINE DIMENSION DIRECTION
+# BUILD DIM LINE THROUGH PICK POINT
 # -----------------------------------------------------------------------------------
-if is_plan:
-    # Perpendicular in XY plane
-    dim_direction = DB.XYZ(-base_direction.Y, base_direction.X, 0).Normalize()
-else:
-    # Use view right direction in elevation/section
-    dim_direction = active_view.RightDirection.Normalize()
+params = [p.DotProduct(perp_dir) for p in midpoints]
+min_p = min(params)
+max_p = max(params)
+origin_param = pick_point.DotProduct(perp_dir)
+
+start = pick_point + perp_dir * (min_p - origin_param)
+end   = pick_point + perp_dir * (max_p - origin_param)
+
+dim_line = DB.Line.CreateBound(start, end)
 
 # -----------------------------------------------------------------------------------
 # SET SKETCH PLANE FOR SECTION/ELEVATION
@@ -121,24 +167,6 @@ if not is_plan:
         sp = DB.SketchPlane.Create(doc, plane)
         active_view.SketchPlane = sp
         doc.Regenerate()
-
-# -----------------------------------------------------------------------------------
-# PICK DIMENSION PLACEMENT POINT
-# -----------------------------------------------------------------------------------
-with forms.WarningBar(title="Pick dimension placement point"):
-    try:
-        pick_point = uidoc.Selection.PickPoint()
-    except Exceptions.OperationCanceledException:
-        forms.alert("Cancelled", exitscript=True)
-
-# -----------------------------------------------------------------------------------
-# CREATE DIMENSION LINE
-# -----------------------------------------------------------------------------------
-line_length = 100.0
-dim_line = DB.Line.CreateBound(
-    pick_point,
-    pick_point + dim_direction * line_length
-)
 
 # -----------------------------------------------------------------------------------
 # CREATE DIMENSION
