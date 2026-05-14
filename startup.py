@@ -117,7 +117,7 @@ SCRIPTS = {
     "dim_gridlines":         _script(r"Drawing Tools.panel\2D Drafting.pulldown\Dim Grids.pushbutton\script.py"),
     "dim_levels":            _script(r"Drawing Tools.panel\2D Drafting.pulldown\Dim Levls.pushbutton\script.py"),
     # -- Tagging --------------------------------------------------------------
-    "select_untagged":       _script(r"Quality Assurance.panel\Locate.pulldown\Select Untagged.pushbutton\script.py"),
+    "select_untagged":       _script(r"Quality Assurance.panel\Model Check.pulldown\Select Untagged.pushbutton\script.py"),
     "Highlight_selected":    _script(r"DockableWindowExclusives\Highlight Selected.pushbutton\script.py"),
     "Reset_all_overrides":   _script(r"DockableWindowExclusives\Reset All Overrides.pushbutton\script.py"),
     "Reset_sel_overrides":   _script(r"DockableWindowExclusives\Reset Selected Overrides.pushbutton\script.py"),
