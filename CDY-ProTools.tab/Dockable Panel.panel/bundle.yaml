@@ -1,0 +1,9 @@
+layout:
+  - Dockable Panel
+
+
+background:
+  slideout: 'ffffff'
+  panel: 'f5f5f5'
+  title: 'ededed'
+
