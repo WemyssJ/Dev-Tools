@@ -108,11 +108,11 @@ SCRIPTS = {
     "open_view_on_sheet":    _script(r"General.panel\Navigation.pulldown\Find View.pushbutton\script.py"),
     "open_parent_view":      _script(r"General.panel\Navigation.pulldown\Find ParentView.pushbutton\script.py"),
     # -- Modelling ------------------------------------------------------------
-    "pick_2d":               _script(r"Drawing Tools.panel\2D Drafting.pulldown\Pick Detail Elements.pushbuttonscript.py"),
-    "pick_3d":               _script(r"Drawing Tools.panel\2D Drafting.pulldown\Pick Model Elements.pushbutton\script.py"),
-    "pick_grouped":          _script(r"Drawing Tools.panel\2D Drafting.pulldown\Pick Grouped Elements.pushbutton\script.py"),
-    "flip_grid_bubbles":     _script(r"Drawing Tools.panel\2D Drafting.pulldown\Flip Grids.pushbutton\scriptAlternate.py"),
-    "flip_level_bubbles":    _script(r"Drawing Tools.panel\2D Drafting.pulldown\Flip Levels.pushbutton\script.py"),
+    "pick_2d":               _script(r"Drawing Tools.panel\Drafting.pulldown\Pick Detail Elements.pushbuttonscript.py"),
+    "pick_3d":               _script(r"Drawing Tools.panel\Drafting.pulldown\Pick Model Elements.pushbutton\script.py"),
+    "pick_grouped":          _script(r"Drawing Tools.panel\Drafting.pulldown\Pick Grouped Elements.pushbutton\script.py"),
+    "flip_grid_bubbles":     _script(r"Drawing Tools.panel\Drafting.pulldown\Flip Grids.pushbutton\scriptAlternate.py"),
+    "flip_level_bubbles":    _script(r"Drawing Tools.panel\Drafting.pulldown\Flip Levels.pushbutton\script.py"),
     # -- Dimensions -----------------------------------------------------------
     "dim_gridlines":         _script(r"Drawing Tools.panel\2D Drafting.pulldown\Dim Grids.pushbutton\script.py"),
     "dim_levels":            _script(r"Drawing Tools.panel\2D Drafting.pulldown\Dim Levls.pushbutton\script.py"),
