@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # CDY-ProTools startup.py (refactored)
 # - Hides Developer panel and pyRevit tab until unlocked
-# - Registers Rebar Spacing Calculator dockable panel
 # - Registers CDY Tools dockable panel (5 tabs + Favourites)
 
 # =============================================================================
@@ -90,117 +89,7 @@ HOST_APP.uiapp.Idling += EventHandler[IdlingEventArgs](on_idling)
 
 
 # =============================================================================
-# SECTION 2 - REBAR SPACING CALCULATOR
-# =============================================================================
-
-def find_file(filename, search_root):
-    for root, dirs, files in os.walk(search_root):
-        if filename in files:
-            return op.join(root, filename)
-    return None
-
-
-_tab_root  = op.join(op.dirname(__file__), "CDY-ProTools.tab")
-_xaml_path = find_file("RebarSpacingCalculator.xaml", _tab_root)
-
-from Autodesk.Revit.UI.Selection import ObjectSnapTypes
-import math, datetime
-from Autodesk.Revit.DB import UnitUtils, UnitTypeId
-
-
-class MeasureHandler(IExternalEventHandler):
-    def __init__(self):
-        self.spacing_box     = None
-        self.cover_box       = None
-        self.result_distance = None
-        self.result_bars     = None
-        self.result_rounded  = None
-        self.console         = None
-        self.last_result     = ""
-
-    def Execute(self, uiapp):
-        uidoc = uiapp.ActiveUIDocument
-        if not uidoc:
-            return
-        try:
-            spacing_mm = float(self.spacing_box.Text)
-            if spacing_mm <= 0:
-                raise ValueError("spacing must be > 0")
-        except Exception as e:
-            self.result_distance.Text = "Invalid spacing: {}".format(e)
-            return
-        try:
-            cover_mm = float(self.cover_box.Text)
-        except:
-            cover_mm = 50.0
-        try:
-            p1 = uidoc.Selection.PickPoint(ObjectSnapTypes.Endpoints, "Pick first point")
-            p2 = uidoc.Selection.PickPoint(ObjectSnapTypes.Endpoints, "Pick second point")
-        except:
-            self.result_distance.Text = "Cancelled"
-            return
-        dist_internal = p1.DistanceTo(p2)
-        dist_mm       = UnitUtils.ConvertFromInternalUnits(dist_internal, UnitTypeId.Millimeters)
-        net_mm        = dist_mm - (2 * cover_mm)
-        bars          = net_mm / spacing_mm
-        rounded_up    = int(math.ceil(bars)) + 1
-        self.result_distance.Text = "Distance: {:.0f} mm  (net: {:.0f} mm)".format(dist_mm, net_mm)
-        self.result_bars.Text     = "Bars: {:.2f}".format(bars)
-        self.result_rounded.Text  = "Rounded Qty: {}".format(rounded_up)
-        timestamp  = datetime.datetime.now().strftime("%H:%M:%S")
-        result_str = "[{}] {:.0f}mm @ {}mm spacing -> {} bars".format(
-            timestamp, dist_mm, int(spacing_mm), rounded_up)
-        self.last_result = result_str
-        if self.console is not None:
-            existing = self.console.Text
-            self.console.Text = result_str + ("\n" + existing if existing else "")
-
-    def GetName(self):
-        return "Spacing Measure Handler"
-
-
-_measure_handler = MeasureHandler()
-_measure_event   = ExternalEvent.Create(_measure_handler)
-
-
-class RebarSpacingCalculator(forms.WPFPanel):
-    panel_title  = "Rebar Spacing Calculator"
-    panel_id     = "3110e336-f81c-4927-87da-4e0d30d4d64b"
-    panel_source = _xaml_path
-
-    def SetupDockablePane(self, data):
-        data.FrameworkElement = self
-        data.VisibleByDefault = False
-
-    def __init__(self):
-        super(RebarSpacingCalculator, self).__init__()
-        _measure_handler.spacing_box     = self.spacingBox
-        _measure_handler.cover_box       = self.coverBox
-        _measure_handler.result_distance = self.distanceText
-        _measure_handler.result_bars     = self.barsText
-        _measure_handler.result_rounded  = self.roundedText
-        _measure_handler.console         = self.consoleText
-
-    def measureBtn_Click(self, sender, args):
-        _measure_event.Raise()
-
-    def clearBtn_Click(self, sender, args):
-        self.consoleText.Text = ""
-        _measure_handler.last_result = ""
-
-
-try:
-    if not forms.is_registered_dockable_panel(RebarSpacingCalculator):
-        forms.register_dockable_panel(RebarSpacingCalculator)
-        print("CDY: RebarSpacingCalculator registered OK.")
-    else:
-        print("CDY: RebarSpacingCalculator already registered, skipping.")
-except Exception as ex:
-    print("CDY: RebarSpacingCalculator REGISTRATION FAILED: {}".format(ex))
-
-
-# =============================================================================
-# SECTION 3 - SCRIPT PATH REGISTRY
+# SECTION 2 - SCRIPT PATH REGISTRY (was 3)
 # =============================================================================
 
 _bimtools_tab = op.join(
@@ -215,32 +104,31 @@ def _script(relative_path):
 
 SCRIPTS = {
     # -- Views ----------------------------------------------------------------
-    "open_host_sheet":       _script(r"Developer.panel\Pullout Panel.pulldown\Find Sheet.pushbutton\script.py"),
-    "open_view_on_sheet":    _script(r"Developer.panel\Pullout Panel.pulldown\Find View.pushbutton\script.py"),
-    "open_parent_view":      _script(r"Developer.panel\Pullout Panel.pulldown\Find ParentView.pushbutton\script.py"),
+    "open_host_sheet":       _script(r"General.panel\Navigation.pulldown\Find Sheet.pushbutton\script.py"),
+    "open_view_on_sheet":    _script(r"General.panel\Navigation.pulldown\Find View.pushbutton\script.py"),
+    "open_parent_view":      _script(r"General.panel\Navigation.pulldown\Find ParentView.pushbutton\script.py"),
     # -- Modelling ------------------------------------------------------------
-    "pick_2d":               _script(r"Developer.panel\Pullout Panel.pulldown\Pick Detail Elements.pushbutton\script.py"),
-    "pick_3d":               _script(r"Developer.panel\Pullout Panel.pulldown\Pick Model Elements.pushbutton\script.py"),
-    "pick_grouped":          _script(r"Developer.panel\Pullout Panel.pulldown\Pick Grouped Elements.pushbutton\script.py"),
-    "flip_grid_bubbles":     _script(r"Developer.panel\Pullout Panel.pulldown\Grid Manager.pushbutton\script.py"),
-    "flip_level_bubbles":    _script(r"Developer.panel\Pullout Panel.pulldown\Flip Level Ends.pushbutton\script.py"),
+    "pick_2d":               _script(r"Drawing Tools.panel\2D Drafting.pulldown\Pick Detail Elements.pushbuttonscript.py"),
+    "pick_3d":               _script(r"Drawing Tools.panel\2D Drafting.pulldown\Pick Model Elements.pushbutton\script.py"),
+    "pick_grouped":          _script(r"Drawing Tools.panel\2D Drafting.pulldown\Pick Grouped Elements.pushbutton\script.py"),
+    "flip_grid_bubbles":     _script(r"Drawing Tools.panel\2D Drafting.pulldown\Flip Grids.pushbutton\scriptAlternate.py"),
+    "flip_level_bubbles":    _script(r"Drawing Tools.panel\2D Drafting.pulldown\Flip Levels.pushbutton\script.py"),
     # -- Dimensions -----------------------------------------------------------
-    "dim_gridlines":         _script(r"Developer.panel\Pullout Panel.pulldown\Dim Grids.pushbutton\script.py"),
-    "dim_levels":            _script(r"Developer.panel\Pullout Panel.pulldown\Dim Levels.pushbutton\script.py"),
-    "auto_dim_elements":     _script(r"Developer.panel\Pullout Panel.pulldown\AutoDimension.pushbutton\script.py"),
+    "dim_gridlines":         _script(r"Drawing Tools.panel\2D Drafting.pulldown\Dim Grids.pushbutton\script.py"),
+    "dim_levels":            _script(r"Drawing Tools.panel\2D Drafting.pulldown\Dim Levls.pushbutton\script.py"),
     # -- Tagging --------------------------------------------------------------
-    "select_untagged":       _script(r"Developer.panel\Pullout Panel.pulldown\Select Untagged.pushbutton\script.py"),
-    "Highlight_selected":    _script(r"Developer.panel\Pullout Panel.pulldown\Highlight Selected.pushbutton\script.py"),
-    "Reset_all_overrides":   _script(r"Developer.panel\Pullout Panel.pulldown\Reset All Overrides.pushbutton\script.py"),
-    "Reset_sel_overrides":   _script(r"Developer.panel\Pullout Panel.pulldown\Reset Selected Overrides.pushbutton\script.py"),
+    "select_untagged":       _script(r"Quality Assurance.panel\Select Untagged.pushbutton\script.py"),
+    "Highlight_selected":    _script(r"DockableWindowExclusives\Highlight Selected.pushbutton\script.py"),
+    "Reset_all_overrides":   _script(r"DockableWindowExclusives\Reset All Overrides.pushbutton\script.py"),
+    "Reset_sel_overrides":   _script(r"DockableWindowExclusives\Reset Selected Overrides.pushbutton\script.py"),
     # -- DWG / Files ----------------------------------------------------------
-    "open_dwg_autocad":      _script(r"Developer.panel\Pullout Panel.pulldown\DWG HotLoader.pushbutton\script.py"),
-    "reload_dwg":            _script(r"Developer.panel\Pullout Panel.pulldown\Reload DWG.pushbutton\script.py"),
-    "greyscale_dwg":         _script(r"Developer.panel\Pullout Panel.pulldown\Greyscale DWG.pushbutton\script.py"),
-    "revert_greyscale_dwg":  _script(r"Developer.panel\Pullout Panel.pulldown\Revert Greyscale DWG.pushbutton\script.py"),
-    "open_bim360":           _script(r"Developer.panel\Pullout Panel.pulldown\ACC or BIM360 Location.pushbutton\script.py"),
-    "open_central_location": _script(r"Developer.panel\Pullout Panel.pulldown\CentralModelLocation.pushbutton\script.py"),
-    "open_local_location":   _script(r"Developer.panel\Pullout Panel.pulldown\ModelLocation.pushbutton\script.py"),
+    "open_dwg_autocad":      _script(r"Drawing Tools.panel\AutoCAD.pulldown\Open DWG.pushbutton\script.py"),
+    "reload_dwg":            _script(r"Drawing Tools.panel\AutoCAD.pulldown\Reload DWG.pushbutton\script.py"),
+    "greyscale_dwg":         _script(r"Drawing Tools.panel\AutoCAD.pulldown\Grey Scale DWG.pushbutton\script.py"),
+    "revert_greyscale_dwg":  _script(r"Drawing Tools.panel\AutoCAD.pulldown\Revert Grey Scale DWG.pushbutton\script.py"),
+    "open_bim360":           _script(r"General.panel\Navigation.pulldown\Forma Location.pushbutton\script.py"),
+    "open_central_location": _script(r"General.panel\Navigation.pulldown\CentralModelLocation.pushbutton\script.py"),
+    "open_local_location":   _script(r"General.panel\Navigation.pulldown\ModelLocation.pushbutton\script.py"),
 }
 
 TOOL_LABELS = {
@@ -254,7 +142,6 @@ TOOL_LABELS = {
     "flip_level_bubbles":    "Flip Level Bubbles",
     "dim_gridlines":         "Dimension Selected Gridlines",
     "dim_levels":            "Dimension Selected Levels",
-    "auto_dim_elements":     "Auto Dim Elements in Active View",
     "select_untagged":       "Select Untagged in Active View",
     "Highlight_selected":    "Highlight Selected",
     "Reset_all_overrides":   "Reset All Overrides",
@@ -282,7 +169,7 @@ CDY_HIGHLIGHT_COLOR = (0, 200, 0)   # (R, G, B) tuple, mutable at runtime
 _MODELESS_WINDOWS = {}
 
 # =============================================================================
-# SECTION 4 - SCRIPT EXECUTION
+# SECTION 3 - SCRIPT EXECUTION
 # =============================================================================
 
 def _set_status(tb, message, error=False):
@@ -445,7 +332,7 @@ class ScriptLaunchHandler(IExternalEventHandler):
 
 
 # =============================================================================
-# SECTION 5 - FAVOURITES PERSISTENCE
+# SECTION 4 - FAVOURITES PERSISTENCE
 # =============================================================================
 
 _FAV_FILE = os.path.join(os.getenv("APPDATA"), "pyRevit", "CDY-ProTools-favourites.json")
@@ -669,10 +556,22 @@ def _fav_is_key(key):
 
 
 # =============================================================================
-# SECTION 6 - EXTENSION SCRIPT SCANNER (for Browse & Add)
+# SECTION 5 - EXTENSION SCRIPT SCANNER (for Browse & Add)
 # =============================================================================
 
 def _scan_scripts(root):
+    """Walk the extension tab and return pushbutton scripts safe to expose in the
+    Browse & Add picker.  Three categories are intentionally excluded:
+
+    - Developer.panel   : internal/debug tools hidden behind the unlock file
+    - DockableWindowExclusives : scripts launched only via the dockable panel
+                                 itself; they rely on injected context and must
+                                 not be double-launched from Favourites
+    - bin (any segment) : compiled helpers / support files, not user-facing tools
+    """
+    # Normalise to forward-slash for consistent substring checks
+    _BLOCKED = ("developer.panel", "dockablewindowexclusives", "\\bin\\", "/bin/")
+
     results = []
     if not op.exists(root):
         return results
@@ -681,8 +580,11 @@ def _scan_scripts(root):
             continue
         if not op.basename(dirpath).endswith(".pushbutton"):
             continue
-        # Skip anything inside a Developer panel folder
-        if "Developer.panel" in dirpath:
+        # Normalise path once for all checks
+        norm = dirpath.lower().replace("\\", "/")
+        if any(blk in norm for blk in ("developer.panel",
+                                        "dockablewindowexclusives",
+                                        "/bin/")):
             continue
         tool_name = op.basename(dirpath)[:-len(".pushbutton")]
         results.append({"label": tool_name,
@@ -692,7 +594,7 @@ def _scan_scripts(root):
 
 
 # =============================================================================
-# SECTION 7 - HIDE LAYER TOGGLE
+# SECTION 6 - HIDE LAYER TOGGLE
 # =============================================================================
 
 _hide_layer_active = [False]
@@ -829,7 +731,7 @@ class HideLayerToggleHandler(IExternalEventHandler):
 
 
 # =============================================================================
-# SECTION 7b - FAVOURITES LAUNCH HANDLER
+# SECTION 6b - FAVOURITES LAUNCH HANDLER
 # =============================================================================
 
 class FavLaunchHandler(IExternalEventHandler):
@@ -890,7 +792,7 @@ _fav_event   = ExternalEvent.Create(_fav_handler)
 
 
 # =============================================================================
-# SECTION 8 - INSTANTIATE HANDLERS & EVENTS
+# SECTION 7 - INSTANTIATE HANDLERS & EVENTS
 # =============================================================================
 
 from System.Collections.Generic import List as DotNetList
@@ -915,7 +817,6 @@ _h_flip_level   = ScriptLaunchHandler("flip_level_bubbles");_e_flip_level   = Ex
 
 _h_dim_grids    = ScriptLaunchHandler("dim_gridlines");     _e_dim_grids    = ExternalEvent.Create(_h_dim_grids)
 _h_dim_levels   = ScriptLaunchHandler("dim_levels");        _e_dim_levels   = ExternalEvent.Create(_h_dim_levels)
-_h_auto_dim     = ScriptLaunchHandler("auto_dim_elements"); _e_auto_dim     = ExternalEvent.Create(_h_auto_dim)
 
 _h_sel_untagged   = ScriptLaunchHandler("select_untagged");         _e_sel_untagged   = ExternalEvent.Create(_h_sel_untagged)
 
@@ -1091,7 +992,7 @@ _h_local        = ScriptLaunchHandler("open_local_location");   _e_local    = Ex
 
 
 # =============================================================================
-# SECTION 9 - DOCKABLE PANEL
+# SECTION 8 - DOCKABLE PANEL
 #
 # Uses raw Revit API (IDockablePaneProvider + UserControl) directly.
 # This avoids forms.WPFPanel which hard-requires a XAML file.
@@ -1516,22 +1417,13 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
         p.Children.Add(self._label("Places a linear dimension string across all selected grids.", small=True))
         p.Children.Add(self._fav_row("Dimension Selected Levels",    self._on_dim_levels, "dim_levels"))
         p.Children.Add(self._label("Places a vertical dimension string across all selected levels.", small=True))
-        p.Children.Add(self._sep())
-        self._section(p, "Auto Dim Elements to Grids")
-        p.Children.Add(self._label(
-            "Dimensions all elements of the chosen category in the active view against "
-            "the nearest grid. Columns/Framing/Foundations: centreline-to-grid + width. "
-            "Walls: both ends to nearest grids. Floors: each slab edge to nearest grid.",
-            small=True))
-        p.Children.Add(self._fav_row("Auto Dim Elements in Active View", self._on_auto_dim, "auto_dim_elements"))
         st = self._status()
         p.Children.Add(st)
-        _h_dim_grids.status = _h_dim_levels.status = _h_auto_dim.status = st
+        _h_dim_grids.status = _h_dim_levels.status = st
         return tab
 
     def _on_dim_grids(self, s, a):  _e_dim_grids.Raise()
     def _on_dim_levels(self, s, a): _e_dim_levels.Raise()
-    def _on_auto_dim(self, s, a):   _e_auto_dim.Raise()
 
     # ---------------------------------------------------------------- Tab 4: Tagging
 
@@ -1806,7 +1698,7 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
 
 
 # =============================================================================
-# SECTION 10 - REGISTER CDY TOOLS PANEL
+# SECTION 9 - REGISTER CDY TOOLS PANEL
 # Calls HOST_APP.uiapp.RegisterDockablePane directly — no XAML file needed.
 # =============================================================================
 
