@@ -1,4 +1,11 @@
-from pyrevit import revit, DB, forms
+# -*- coding: utf-8 -*-
+"""
+Find Sheet — open the host sheet for the active view.
+Place at: Developer.panel\PulloutPanel.pulldown\Find Sheet.pushbutton\script.py
+"""
+
+from pyrevit import HOST_APP
+import Autodesk.Revit.DB as DB
 
 ##############################################################################################
 # TELEMETRY IMPORTS #
@@ -19,24 +26,28 @@ TOOL_NAME = tool_name.replace(".pushbutton", "")
 telemetry_auto.log_tool_usage(TOOL_NAME)
 ##############################################################################################
 
-doc = revit.doc
-uidoc = revit.uidoc
-curView = revit.active_view
+uidoc = __uidoc__ or (HOST_APP.uiapp.ActiveUIDocument if HOST_APP else None)
+if not uidoc:
+    raise RuntimeError("No active document.")
 
-ownerView = None  # Initialize at top
-primaryView = None  # Properly defined before use
+doc  = uidoc.Document
+view = doc.ActiveView
 
-# Try sheet view (e.g. if view is on a sheet)
-try:
-        # Get the sheet that contains this view (via Viewport)
-        viewports = DB.FilteredElementCollector(doc).OfClass(DB.Viewport).ToElements()
-        for vp in viewports:
-            if vp.ViewId == curView.Id:
-                sheet = doc.GetElement(vp.SheetId)
-                if sheet:
-                    uidoc.RequestViewChange(sheet)
-                    ownerView = sheet
-                    break
-except:
-        forms.alert('View is not placed on a sheet.', title='Script complete', warn_icon=False)
+# Find the sheet that hosts this view
+sheets = DB.FilteredElementCollector(doc).OfClass(DB.ViewSheet).ToElements()
+host_sheet = None
+for sheet in sheets:
+    vp_ids = sheet.GetAllViewports()
+    for vp_id in vp_ids:
+        vp = doc.GetElement(vp_id)
+        if vp and vp.ViewId == view.Id:
+            host_sheet = sheet
+            break
+    if host_sheet:
+        break
 
+if host_sheet:
+    uidoc.ActiveView = host_sheet
+else:
+    from pyrevit import forms
+    forms.alert("Active view is not placed on any sheet.", title="Find Sheet")
