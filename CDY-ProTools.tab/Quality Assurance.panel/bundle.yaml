@@ -1,8 +1,9 @@
 layout:
-  - Red Pen
+  - Internal Comments
+  - -----
   - Pin
   - -----
-  - Check
+  - ModelCheck
   
 background:
   panel: 'fbfffb'
