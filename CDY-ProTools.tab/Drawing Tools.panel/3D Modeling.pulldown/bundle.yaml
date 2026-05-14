@@ -1,7 +1,8 @@
 layout:
   - Associated Level Selector
+  - Batch Join By Selection
+  - -----
   - QSelect
-  - ManyJoin1
   - -----
   - ViewRange
 
