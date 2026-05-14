@@ -3,7 +3,7 @@ layout:
   - -----
   - Pin
   - -----
-  - ModelCheck
+  - Model Check
   
 background:
   panel: 'fbfffb'
