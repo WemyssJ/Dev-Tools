@@ -22,15 +22,18 @@ from pyrevit import revit, DB, forms
 ##############################################################################################
 # TELEMETRY IMPORTS #
 ##############################################################################################
+# Only works IF specified TELEMETRY_JSON path exists within %AppData%\pyRevit\Extensions\BIMTools.extension\lib\telemetry_auto.py"
+# Records tool usage by date & revit version
 import os, sys
 
+# Add lib folder for telemetry_auto
 lib_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'lib'))
 if lib_path not in sys.path:
     sys.path.append(lib_path)
 
 import telemetry_auto
 
-tool_name = os.path.basename(os.path.dirname(__file__))
+tool_name = os.path.basename(os.path.dirname(__file__)) 
 TOOL_NAME = tool_name.replace(".pushbutton", "")
 telemetry_auto.log_tool_usage(TOOL_NAME)
 ##############################################################################################
@@ -164,11 +167,7 @@ except:
     forms.alert("This view does not support VG Overrides.", exitscript=True)
 
 if not applied_filters:
-    forms.alert(
-        "No filters applied to this view.\n\n"
-        "Filter tools will be disabled, but you can still copy view templates.",
-        exitscript=False
-    )
+    forms.alert("No filters applied.", exitscript=True)
 
 filter_map = {}
 filter_data = ObservableCollection[FilterInfo]()
@@ -197,6 +196,26 @@ def refresh_filter_data():
 
 refresh_filter_data()
 
+# ------------------ Copy View Templates Between Models ------------------
+def action_copy_viewtemplates():
+    selected_viewtemplates = forms.select_viewtemplates(doc=doc)
+    if not selected_viewtemplates:
+        forms.alert("No view templates selected.", exitscript=False)
+        return
+
+    dest_docs = forms.select_open_docs(title='Select Destination Documents')
+    if not dest_docs:
+        return
+
+    for ddoc in dest_docs:
+        with revit.Transaction("Copy View Templates", doc=ddoc):
+            revit.create.copy_viewtemplates(selected_viewtemplates, src_doc=doc, dest_doc=ddoc)
+
+    forms.alert("✅ {} view template(s) copied to {} document(s).".format(len(selected_viewtemplates), len(dest_docs)),
+                title="Copy Complete")
+
+    window.Close()
+
 # ------------------ Matching Core ------------------
 def safe_set(ovr, setter_name, value):
     """Call setter on OverrideGraphicSettings if exists (safe)."""
@@ -207,16 +226,20 @@ def safe_set(ovr, setter_name, value):
         func(value)
         return True
     except Exception as e:
+        # ignore but return False
+        # print("safe_set failed:", setter_name, e)
         return False
 
-def match_filters(direction='proj_to_cut', include_line=True, include_hatch=True, selected_items=None):
+def match_filters(direction='proj_to_cut', include_line=True, include_hatch=True):
     """
     direction: 'proj_to_cut' or 'cut_to_proj'
     include_line: copy line style (color, weight, pattern)
     include_hatch: copy hatch (foreground/background patterns + colors)
-    selected_items: list of FilterInfo items to process (passed in after dialog closes)
+    Applies to currently selected filters in the main UI.
     """
+    selected_items = list(window.FindName("filterList").SelectedItems)
     if not selected_items:
+        forms.alert("Please select one or more filters in the main window.", exitscript=False)
         return 0
 
     t = DB.Transaction(doc, "Match Projection/Cut")
@@ -225,7 +248,7 @@ def match_filters(direction='proj_to_cut', include_line=True, include_hatch=True
     for item in selected_items:
         fid, _ = filter_map[item.Name]
         src_ovr = active_view.GetFilterOverrides(fid)
-        new_ovr = OverrideGraphicSettings(src_ovr)
+        new_ovr = OverrideGraphicSettings(src_ovr)  # start with the same settings
 
         # projection -> cut
         if direction == 'proj_to_cut':
@@ -237,11 +260,15 @@ def match_filters(direction='proj_to_cut', include_line=True, include_hatch=True
                 except: pass
             if include_hatch:
                 try:
+                    # surface -> cut
                     if hasattr(new_ovr, "SetCutForegroundPatternId"):
                         new_ovr.SetCutForegroundPatternId(src_ovr.SurfaceForegroundPatternId)
                         new_ovr.SetCutForegroundPatternColor(src_ovr.SurfaceForegroundPatternColor)
                         new_ovr.SetCutBackgroundPatternId(src_ovr.SurfaceBackgroundPatternId)
                         new_ovr.SetCutBackgroundPatternColor(src_ovr.SurfaceBackgroundPatternColor)
+                    else:
+                        # Older/newer API fallback to surface methods if available - but here we are copying surface -> cut only if cut setters exist
+                        pass
                 except: pass
 
         # cut -> projection
@@ -292,7 +319,10 @@ if os.path.exists(icon_path):
 
 # ------------------ Load XAML (match dialog) ------------------
 match_xaml_path = os.path.join(os.path.dirname(__file__), "MatchVG.xaml")
+with FileStream(match_xaml_path, FileMode.Open) as f:
+    match_window_template = XamlReader.Load(f)
 
+# Provide a function to create a fresh instance (so events and state are clean)
 def create_match_window():
     with FileStream(match_xaml_path, FileMode.Open) as f:
         return XamlReader.Load(f)
@@ -300,7 +330,7 @@ def create_match_window():
 # ------------------ Buttons / Events ------------------
 def on_ok(sender, args):
     selected = [i.Name for i in window.FindName("filterList").SelectedItems]
-    window.Tag = ("transfer", selected)
+    window.Tag = selected
     window.Close()
 
 def on_cancel(sender, args):
@@ -310,37 +340,20 @@ def on_cancel(sender, args):
 window.FindName("okBtn").Click += on_ok
 window.FindName("cancelBtn").Click += on_cancel
 
-# Copy templates button — stores intent and closes main window;
-# transaction runs AFTER ShowDialog() returns (outside WPF dispatcher)
-def on_copy_templates_clicked(sender, args):
-    selected_viewtemplates = forms.select_viewtemplates(doc=doc)
-    if not selected_viewtemplates:
-        return
-    dest_docs = forms.select_open_docs(title='Select Destination Documents')
-    if not dest_docs:
-        return
-    # Store intent on window.Tag so we can act after ShowDialog() returns
-    window.Tag = ("copy_templates", selected_viewtemplates, dest_docs)
-    window.Close()
+# Existing copy templates button
+btnCopyTemplates = window.FindName("btnCopyTemplates")
+btnCopyTemplates.Click += lambda s, e: action_copy_viewtemplates()
 
-window.FindName("btnCopyTemplates").Click += on_copy_templates_clicked
-
-# Match dialog button — opens sub-dialog, collects options, stores intent,
-# then performs transaction AFTER match_win.ShowDialog() returns
+# NEW: open Match modal when user clicks the new button
 def on_open_match_dialog(sender, args):
-    # Capture selected items NOW (from main window list) before opening sub-dialog
-    selected_items = list(window.FindName("filterList").SelectedItems)
-    if not selected_items:
-        forms.alert("Please select one or more filters in the main window.", exitscript=False)
-        return
-
     match_win = create_match_window()
+    # set owner to main window (so centering is relative)
     try:
         match_win.Owner = window
     except:
         pass
 
-    # Load icon
+    # load icon if present
     m_icon_path = os.path.join(os.path.dirname(__file__), "icon.png")
     if os.path.exists(m_icon_path):
         bmpm = BitmapImage()
@@ -353,17 +366,17 @@ def on_open_match_dialog(sender, args):
         except:
             pass
 
-    # Grab controls
+    # grab controls
     rbProjToCut = match_win.FindName("rbProjToCut")
     rbCutToProj = match_win.FindName("rbCutToProj")
-    cbLine      = match_win.FindName("cbLine")
-    cbHatch     = match_win.FindName("cbHatch")
-    cbBoth      = match_win.FindName("cbBoth")
-    btnOk       = match_win.FindName("btnMatchOk")
-    btnCancel   = match_win.FindName("btnMatchCancel")
+    cbLine = match_win.FindName("cbLine")
+    cbHatch = match_win.FindName("cbHatch")
+    cbBoth = match_win.FindName("cbBoth")
+    btnOk = match_win.FindName("btnMatchOk")
+    btnCancel = match_win.FindName("btnMatchCancel")
 
-    # cbBoth syncs the two individual checkboxes
-    def on_cbBoth_changed(s, e):
+    # helper for toggling cbBoth -> sync two checkboxes
+    def on_cbBoth_changed(sender, args):
         try:
             state = bool(cbBoth.IsChecked)
             cbLine.IsChecked = state
@@ -371,110 +384,74 @@ def on_open_match_dialog(sender, args):
         except:
             pass
     try:
-        cbBoth.Checked   += on_cbBoth_changed
+        cbBoth.Checked += on_cbBoth_changed
         cbBoth.Unchecked += on_cbBoth_changed
     except:
+        # older event hooking may vary; fallback to ignore
         pass
 
-    # OK just stores choices on match_win.Tag and closes — NO transaction here
-    def do_confirm(s, e):
-        include_line  = bool(cbLine.IsChecked)
-        include_hatch = bool(cbHatch.IsChecked)
-        if not include_line and not include_hatch:
-            forms.alert("Please select at least one option (Line or Hatch).", exitscript=False)
-            return
+    def do_confirm(s,e):
+        # Determine direction
         direction = 'proj_to_cut' if bool(rbProjToCut.IsChecked) else 'cut_to_proj'
-        match_win.Tag = (direction, include_line, include_hatch)
-        match_win.Close()
-
-    def do_cancel(s, e):
-        match_win.Tag = None
+        include_line = bool(cbLine.IsChecked)
+        include_hatch = bool(cbHatch.IsChecked)
+        # If both unchecked, warn and return
+        if not include_line and not include_hatch:
+            forms.alert("Please select at least one option to match (Line or Hatch).", exitscript=False)
+            return
+        # Run match on selected filters in main window
+        count = match_filters(direction=direction, include_line=include_line, include_hatch=include_hatch)
+        if count:
+            dir_text = "Projection → Cut" if direction == 'proj_to_cut' else "Cut → Projection"
+            parts = []
+            if include_line: parts.append("Line")
+            if include_hatch: parts.append("Hatch")
+            parts_text = " + ".join(parts)
+            forms.alert("✅ Matched {} ({} ) for {} filter(s).".format(dir_text, parts_text, count), exitscript=False)
+        else:
+            forms.alert("No filters were selected in the main window.", exitscript=False)
         try:
             match_win.Close()
         except:
             pass
 
-    btnOk.Click     += do_confirm
+    def do_cancel(s,e):
+        try:
+            match_win.Close()
+        except:
+            pass
+
+    btnOk.Click += do_confirm
     btnCancel.Click += do_cancel
 
+    # Show as dialog centered on owner
     try:
         match_win.ShowDialog()
     except:
+        # fallback to non-modal show
         match_win.Show()
 
-    # ---- Back in valid Revit API context — safe to transact now ----
-    tag = match_win.Tag
-    if not tag:
-        return  # user cancelled
-
-    direction, include_line, include_hatch = tag
-    count = match_filters(
-        direction=direction,
-        include_line=include_line,
-        include_hatch=include_hatch,
-        selected_items=selected_items
-    )
-    if count:
-        dir_text   = "Projection → Cut" if direction == 'proj_to_cut' else "Cut → Projection"
-        parts      = []
-        if include_line:  parts.append("Line")
-        if include_hatch: parts.append("Hatch")
-        forms.alert(
-            "✅ Matched {} ({}) for {} filter(s).".format(dir_text, " + ".join(parts), count),
-            exitscript=False
-        )
-    else:
-        forms.alert("No filters were updated.", exitscript=False)
-
-# Wire the match button
+# wire the new main button
 try:
     window.FindName("btnMatchProjectionCut").Click += on_open_match_dialog
 except Exception as e:
     print("Failed to wire match button:", e)
 
-# Enable/disable buttons based on selection
-ok_button              = window.FindName("okBtn")
-btnMatchProjectionCut  = window.FindName("btnMatchProjectionCut")
-filter_list            = window.FindName("filterList")
-ok_button.IsEnabled             = False
-btnMatchProjectionCut.IsEnabled = False
-
+# Enable/disable Confirm button logic for main window
+ok_button = window.FindName("okBtn")
+btnMatchProjectionCut = window.FindName("btnMatchProjectionCut")
+filter_list = window.FindName("filterList")
+ok_button.IsEnabled = False
 def on_selection_changed(sender, args):
     has_selection = filter_list.SelectedItems.Count > 0
-    ok_button.IsEnabled             = has_selection
+    ok_button.IsEnabled = has_selection
     btnMatchProjectionCut.IsEnabled = has_selection
-
 filter_list.SelectionChanged += on_selection_changed
 
-# ------------------ Show Main Window ------------------
+# Show main window
 window.ShowDialog()
 
-# ---- Back in valid Revit API context ----
-tag = window.Tag
-if not tag:
-    sys.exit()
-
-# Handle copy-templates action (transaction runs here, outside WPF dispatcher)
-if isinstance(tag, tuple) and tag[0] == "copy_templates":
-    _, selected_viewtemplates, dest_docs = tag
-    for ddoc in dest_docs:
-        with revit.Transaction("Copy View Templates", doc=ddoc):
-            revit.create.copy_viewtemplates(selected_viewtemplates, src_doc=doc, dest_doc=ddoc)
-    forms.alert(
-        "✅ {} view template(s) copied to {} document(s).".format(
-            len(selected_viewtemplates), len(dest_docs)
-        ),
-        title="Copy Complete"
-    )
-    sys.exit()
-
-# Handle normal filter-transfer action
-if isinstance(tag, tuple) and tag[0] == "transfer":
-    selected_filters = tag[1]
-else:
-    # Fallback: treat tag as a plain list (shouldn't happen, but safe)
-    selected_filters = tag
-
+selected_filters = window.Tag
 if not selected_filters:
     sys.exit()
 
@@ -496,7 +473,6 @@ if not templates:
 def copy_overrides(fid, src_view, dest_view):
     src_ovr = src_view.GetFilterOverrides(fid)
     ovr = OverrideGraphicSettings()
-
     def safe_call(label, func):
         try: func()
         except Exception as e: print("⚠️ {} failed: {}".format(label, e))
@@ -519,9 +495,9 @@ def copy_overrides(fid, src_view, dest_view):
     ))
     safe_call("Cut hatch", lambda: (
         hasattr(ovr, "SetCutForegroundPatternColor") and ovr.SetCutForegroundPatternColor(src_ovr.CutForegroundPatternColor),
-        hasattr(ovr, "SetCutForegroundPatternId")    and ovr.SetCutForegroundPatternId(src_ovr.CutForegroundPatternId),
+        hasattr(ovr, "SetCutForegroundPatternId") and ovr.SetCutForegroundPatternId(src_ovr.CutForegroundPatternId),
         hasattr(ovr, "SetCutBackgroundPatternColor") and ovr.SetCutBackgroundPatternColor(src_ovr.CutBackgroundPatternColor),
-        hasattr(ovr, "SetCutBackgroundPatternId")    and ovr.SetCutBackgroundPatternId(src_ovr.CutBackgroundPatternId)
+        hasattr(ovr, "SetCutBackgroundPatternId") and ovr.SetCutBackgroundPatternId(src_ovr.CutBackgroundPatternId)
     ))
     safe_call("Halftone", lambda: ovr.SetHalftone(src_ovr.Halftone))
     if hasattr(ovr, "SetSurfaceTransparency"):
@@ -542,7 +518,6 @@ def copy_overrides(fid, src_view, dest_view):
             dest_view.SetFilterVisible(fid, visible)
     except Exception as e:
         print("⚠️ Enable/Visibility override failed:", e)
-
     return ovr
 
 # ------------------ Apply to Selected Templates ------------------
@@ -564,13 +539,10 @@ for fname in selected_filters:
 t.Commit()
 
 source_template_id = active_view.ViewTemplateId
-source_name = (
-    doc.GetElement(source_template_id).Name
-    if source_template_id != DB.ElementId.InvalidElementId
-    else active_view.Name
-)
+source_name = doc.GetElement(source_template_id).Name if source_template_id != DB.ElementId.InvalidElementId else active_view.Name
 target_names = ", ".join([v.Name for v in templates])
 msg = "Selected filters successfully applied from {} to {}!".format(source_name, target_names)
 if failed:
     msg += "\n\nSome filters failed:\n" + "\n".join(failed[:5]) + ("\n..." if len(failed) > 5 else "")
 forms.alert(msg, title="Done")
+

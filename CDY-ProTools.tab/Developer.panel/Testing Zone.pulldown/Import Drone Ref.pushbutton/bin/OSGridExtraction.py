@@ -1,221 +1,315 @@
-import os
-import subprocess
+# -*- coding: utf-8 -*-
+"""
+generate_sharepoint_links_selenium.py
+──────────────────────────────────────
+Uses Selenium to navigate to the SharePoint drone photos folder,
+generate an "Anyone with the link" share link for each file, and
+patch the CSV.
+
+Requirements:
+    py -m pip install selenium webdriver-manager
+
+Usage:
+    py generate_sharepoint_links_selenium.py
+
+If Sharepoint doesn't load, run this:
+rmdir /s /q "C:\Users\wemyssj\AppData\Local\Temp\selenium_chrome"
+taskkill /f /im chrome.exe
+
+"""
+
 import csv
-from urllib.parse import quote
-from math import sin, cos, tan, sqrt, atan2, radians
-import webbrowser
+import json
+import os
+import re
+import sys
+import time
 
-# --------------------------------------------------
+try:
+    from selenium import webdriver
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.common.action_chains import ActionChains
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.chrome.service import Service
+    from selenium.common.exceptions import TimeoutException, NoSuchElementException
+    from webdriver_manager.chrome import ChromeDriverManager
+except ImportError:
+    sys.exit("Run:  py -m pip install selenium webdriver-manager")
+
+# ──────────────────────────────────────────────
 # CONFIG
-# --------------------------------------------------
-exiftool_path = r"C:\exiftool\exiftool.exe"
-folder = r"C:\Users\wemyssj\OneDrive - Craddys\13914 - Plots 2 - 3, Silverthorne Lane\20260107 Drone photos"
-output_csv = os.path.join(folder, "OSGridExtraction.csv")
+# ──────────────────────────────────────────────
 
-# Keep your original SharePoint base URL from your other script
-SHAREPOINT_BASE_URL = (
-    "https://craddysuk-my.sharepoint.com/my"
-    "?viewid=65e14d32%2Dda7d%2D477f%2Dba37%2D0b795e9f474b"
-    "&source=waffle"
-    "&id=%2Fpersonal%2Fjoe%5Fwemyss%5Fcraddys%5Fco%5Fuk%2FDocuments"
+CSV_PATH = r"C:\Users\wemyssj\Craddys\CraddysDrones - 13914 - Plots 2 - 3, Silverthorne Lane\20260318 Drone Canal Wall Photos\OSGridExtraction.csv"
+
+PLACEHOLDER = "PUBLIC_LINK_FOR_"
+
+SHAREPOINT_FOLDER_URL = (
+    "https://craddysuk.sharepoint.com/sites/CraddysDrones/CraddysDrones%20Files"
+    "/Forms/AllItems.aspx?id=%2Fsites%2FCraddysDrones%2FCraddysDrones%20Files"
     "%2F13914%20%2D%20Plots%202%20%2D%203%2C%20Silverthorne%20Lane"
-    "%2F20260107%20Drone%20photos%2F{filename}"
-    "&parent=%2Fpersonal%2Fjoe%5Fwemyss%5Fcraddys%5Fco%5Fuk%2FDocuments"
-    "%2F13914%20%2D%20Plots%202%20%2D%203%2C%20Silverthorne%20Lane"
-    "%2F20260107%20Drone%20photos"
+    "%2F20260318%20Drone%20Canal%20Wall%20Photos"
 )
 
-# --------------------------------------------------
-# DECIMAL → DMS (ABSOLUTE)
-# --------------------------------------------------
-def dec_to_dms(dd):
-    dd = abs(dd)
-    d = int(dd)
-    m = int((dd - d) * 60)
-    s = (dd - d - m / 60) * 3600
-    return f"{d}; {m}; {s:.6f}"
+WAIT_TIMEOUT = 30
 
-# --------------------------------------------------
-# WGS84 → OSGB36 (FULL HELMERT)
-# --------------------------------------------------
-def wgs84_to_osgb36(lat, lon):
-    a, b = 6378137.0, 6356752.3141
-    e2 = 1 - (b*b)/(a*a)
+# ──────────────────────────────────────────────
 
-    lat = radians(lat)
-    lon = radians(lon)
 
-    nu = a / sqrt(1 - e2*sin(lat)**2)
-    x = nu*cos(lat)*cos(lon)
-    y = nu*cos(lat)*sin(lon)
-    z = (1 - e2)*nu*sin(lat)
+def get_filenames_needing_links(csv_path):
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        reader  = csv.DictReader(f)
+        rows    = list(reader)
+        headers = reader.fieldnames
 
-    tx, ty, tz = -446.448, 125.157, -542.060
-    s = 20.4894e-6
-    rx = radians(-0.1502/3600)
-    ry = radians(-0.2470/3600)
-    rz = radians(-0.8421/3600)
+    targets = []
+    for i, row in enumerate(rows):
+        current = row.get("Public Sharepoint Link", "").strip()
+        fname   = row.get("File", "").strip()
+        if fname and (not current or current.startswith(PLACEHOLDER)):
+            targets.append((i, fname))
 
-    x2 = tx + (1+s)*x - rz*y + ry*z
-    y2 = ty + rz*x + (1+s)*y - rx*z
-    z2 = tz - ry*x + rx*y + (1+s)*z
+    return rows, headers, targets
 
-    a, b = 6377563.396, 6356256.909
-    e2 = 1 - (b*b)/(a*a)
 
-    p = sqrt(x2*x2 + y2*y2)
-    lat0 = 0
-    lat = atan2(z2, p*(1-e2))
+def patch_csv(csv_path, rows, headers, results):
+    for row_index, url in results.items():
+        rows[row_index]["Public Sharepoint Link"] = url
+    with open(csv_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=headers)
+        writer.writeheader()
+        writer.writerows(rows)
 
-    while abs(lat - lat0) > 1e-10:
-        lat0 = lat
-        nu = a / sqrt(1 - e2*sin(lat)**2)
-        lat = atan2(z2 + e2*nu*sin(lat), p)
 
-    lon = atan2(y2, x2)
+def extract_url_from_iframe(driver):
+    """
+    Extract the sharing URL from the g_sharingInformation JS object
+    that SharePoint embeds in the iframe page source.
+    This is far more reliable than scraping an input element.
 
-    F0 = 0.9996012717
-    lat0 = radians(49)
-    lon0 = radians(-2)
-    N0, E0 = -100000, 400000
-    n = (a-b)/(a+b)
+    We click 'Copy link' first to make SharePoint generate the anonymous
+    link, then read the URL from the updated JS object or from the
+    clipboard via JS.
+    """
+    wait = WebDriverWait(driver, WAIT_TIMEOUT)
 
-    nu = a*F0 / sqrt(1 - e2*sin(lat)**2)
-    rho = a*F0*(1-e2) / (1 - e2*sin(lat)**2)**1.5
-    eta2 = nu/rho - 1
+    # ── Click "Copy link" button (aria-label='Copy link') ─────────────
+    try:
+        copy_btn = wait.until(EC.element_to_be_clickable((
+            By.XPATH, "//button[@aria-label='Copy link']"
+        )))
+        driver.execute_script("arguments[0].click();", copy_btn)
+        time.sleep(2)  # Wait for SharePoint to generate & copy the link
+    except TimeoutException:
+        return None, "Could not find 'Copy link' button"
 
-    M = b*F0 * (
-        (1+n+5/4*n*n+5/4*n**3)*(lat-lat0)
-        - (3*n+3*n*n+21/8*n**3)*sin(lat-lat0)*cos(lat+lat0)
-        + (15/8*n*n+15/8*n**3)*sin(2*(lat-lat0))*cos(2*(lat+lat0))
-        - (35/24*n**3)*sin(3*(lat-lat0))*cos(3*(lat+lat0))
+    # ── Method 1: read from clipboard via JS ──────────────────────────
+    url = None
+    try:
+        url = driver.execute_script(
+            "return await navigator.clipboard.readText();"
+        )
+        if url and url.startswith("http"):
+            return url, None
+    except Exception:
+        pass
+
+    # ── Method 2: extract from g_sharingInformation in page source ────
+    try:
+        page_source = driver.page_source
+        # Look for the sharing link in the JS payload
+        # SharePoint embeds anonymous links as "url":"https://..." after Copy
+        matches = re.findall(r'"url"\s*:\s*"(https://[^"]+sharepoint[^"]+)"', page_source)
+        if matches:
+            # Prefer the shortest URL (the share link, not the directUrl)
+            url = min(matches, key=len)
+            return url, None
+
+        # Also try directUrl as fallback (this is the direct file link)
+        match = re.search(r'"directUrl"\s*:\s*"(https://[^"]+)"', page_source)
+        if match:
+            url = match.group(1).replace("\\u0026", "&")
+            return url, None
+    except Exception:
+        pass
+
+    # ── Method 3: look for any input with a sharepoint URL ────────────
+    try:
+        inputs = driver.find_elements(By.XPATH, "//input")
+        for inp in inputs:
+            val = inp.get_attribute("value") or ""
+            if val.startswith("http") and "sharepoint" in val:
+                return val, None
+    except Exception:
+        pass
+
+    return None, "Could not extract URL from share dialog"
+
+
+def get_share_link_for_file(driver, filename):
+    wait = WebDriverWait(driver, WAIT_TIMEOUT)
+
+    # Ensure we're on the main page
+    driver.switch_to.default_content()
+
+    # ── Find the file row ──────────────────────────────────────────────
+    try:
+        file_el = wait.until(EC.presence_of_element_located((
+            By.XPATH,
+            f"//span[normalize-space(text())='{filename}'] | //a[normalize-space(@title)='{filename}']"
+        )))
+    except TimeoutException:
+        return None, f"Could not find '{filename}' in the file list"
+
+    # ── Hover to reveal the row action buttons ─────────────────────────
+    ActionChains(driver).move_to_element(file_el).perform()
+    time.sleep(0.4)
+
+    # ── Click the '...' (more actions) button ─────────────────────────
+    try:
+        row_el = file_el.find_element(By.XPATH,
+            "ancestor::div[contains(@class,'ms-DetailsRow') or contains(@class,'listItem')][1]"
+        )
+        more_btn = row_el.find_element(By.XPATH,
+            ".//button[@aria-label='More actions' or @title='More actions' "
+            "or @data-automationid='FieldRenderer-name--More']"
+        )
+        more_btn.click()
+    except NoSuchElementException:
+        ActionChains(driver).context_click(file_el).perform()
+
+    time.sleep(0.5)
+
+    # ── Click "Share" in the context menu ─────────────────────────────
+    try:
+        share_item = wait.until(EC.element_to_be_clickable((
+            By.XPATH,
+            "//span[normalize-space(text())='Share'] "
+            "| //button[normalize-space(text())='Share'] "
+            "| //li[normalize-space(.)='Share']"
+        )))
+        share_item.click()
+    except TimeoutException:
+        driver.find_element(By.TAG_NAME, "body").click()
+        return None, f"Share menu item not found for '{filename}'"
+
+    time.sleep(0.5)
+
+    # ── Switch INTO the share iframe ───────────────────────────────────
+    try:
+        WebDriverWait(driver, WAIT_TIMEOUT).until(
+            EC.frame_to_be_available_and_switch_to_it((By.ID, "shareFrame"))
+        )
+    except TimeoutException:
+        driver.switch_to.default_content()
+        return None, f"Share iframe did not appear for '{filename}'"
+
+    # Wait for iframe content to fully load
+    WebDriverWait(driver, WAIT_TIMEOUT).until(
+        EC.presence_of_element_located((By.XPATH, "//button[@aria-label='Copy link']"))
     )
 
-    dL = lon - lon0
+    # ── Extract URL and click Copy ─────────────────────────────────────
+    url, err = extract_url_from_iframe(driver)
 
-    N = N0 + M \
-        + nu*sin(lat)*cos(lat)*dL**2/2 \
-        + nu*sin(lat)*cos(lat)**3*(5-tan(lat)**2+9*eta2)*dL**4/24
+    # ── Switch back and close dialog ──────────────────────────────────
+    driver.switch_to.default_content()
+    _close_dialog(driver)
 
-    E = E0 \
-        + nu*cos(lat)*dL \
-        + nu*cos(lat)**3*(nu/rho-tan(lat)**2)*dL**3/6
+    if url and url.startswith("http"):
+        return url, None
+    return None, err or f"Could not read link for '{filename}'"
 
-    return E, N
 
-# --------------------------------------------------
-# OS GRID REF (10-FIGURE)
-# --------------------------------------------------
-def en_to_osref(E, N):
-    if not (0 <= E < 700000 and 0 <= N < 1300000):
-        return None
+def _close_dialog(driver):
+    driver.switch_to.default_content()
+    try:
+        close_btn = WebDriverWait(driver, 5).until(EC.element_to_be_clickable((
+            By.XPATH,
+            "//button[@aria-label='Close' or @title='Close' "
+            "or contains(@class,'closeButton') "
+            "or contains(@class,'ms-Dialog-button--close')]"
+        )))
+        driver.execute_script("arguments[0].click();", close_btn)
+        time.sleep(0.4)
+    except Exception:
+        try:
+            driver.find_element(By.TAG_NAME, "body").send_keys("\x1b")
+            time.sleep(0.3)
+        except Exception:
+            pass
 
-    letters = "ABCDEFGHJKLMNOPQRSTUVWXYZ"
 
-    e100k = int(E) // 100000
-    n100k = int(N) // 100000
+def main():
+    rows, headers, targets = get_filenames_needing_links(CSV_PATH)
 
-    l1 = (19 - n100k) - ((19 - n100k) % 5) + (e100k + 10) // 5
-    l2 = ((19 - n100k) * 5 % 25) + (e100k % 5)
+    if not targets:
+        print("All rows already have links. Nothing to do.")
+        return
 
-    prefix = letters[l1] + letters[l2]
+    print(f"Found {len(targets)} file(s) needing links.\n")
 
-    e = str(int(E % 100000)).zfill(5)
-    n = str(int(N % 100000)).zfill(5)
+    options = webdriver.ChromeOptions()
+    options.add_argument("--start-maximized")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument(r"--user-data-dir=C:\Users\wemyssj\AppData\Local\Temp\selenium_chrome")
+    options.add_experimental_option("prefs", {
+        "profile.content_settings.exceptions.clipboard": {
+            "[*.]sharepoint.com,*": {"setting": 1},
+            "[*.]live.com,*":       {"setting": 1},
+        }
+    })
 
-    return f"{prefix}{e}{n}"
+    driver = webdriver.Chrome(
+        service=Service(ChromeDriverManager().install()),
+        options=options
+    )
 
-# --------------------------------------------------
-# MAIN CSV WRITE
-# --------------------------------------------------
-gridfinder_entries = []
+    try:
+        print("Opening SharePoint folder...")
+        driver.get(SHAREPOINT_FOLDER_URL)
 
-with open(output_csv, "w", newline="", encoding="utf-8") as f:
-    writer = csv.writer(f)
-    writer.writerow([
-        "File",
-        "Lat DMS", "Lat Ref",
-        "Lon DMS", "Lon Ref",
-        "Altitude (m)",
-        "OS Grid (10)",
-        "Private Sharepoint Link",
-        "Public Sharepoint Link"
-    ])
+        print("Waiting for file list to load (log in if prompted)...")
+        WebDriverWait(driver, 60).until(
+            EC.presence_of_element_located((By.XPATH,
+                "//div[@role='grid' or @data-automationid='list-page']"
+            ))
+        )
+        print("File list loaded.\n")
 
-    for r, _, files in os.walk(folder):
-        for file in files:
-            if not file.lower().endswith((".jpg", ".jpeg", ".heic")):
-                continue
+        results = {}
+        errors  = []
 
-            path = os.path.join(r, file)
+        for idx, (row_index, filename) in enumerate(targets):
+            print(f"  [{idx+1}/{len(targets)}] {filename} ...", end=" ", flush=True)
 
-            # Extract EXIF GPS
-            res = subprocess.run(
-                [exiftool_path,
-                 "-GPSLatitude", "-GPSLatitudeRef",
-                 "-GPSLongitude", "-GPSLongitudeRef",
-                 "-GPSAltitude", "-GPSAltitudeRef",
-                 "-n", path],
-                capture_output=True, text=True
-            )
+            url, err = get_share_link_for_file(driver, filename)
 
-            if not res.stdout.strip():
-                continue
-
-            d = {}
-            for line in res.stdout.splitlines():
-                if ":" in line:
-                    k, v = line.split(":", 1)
-                    d[k.strip()] = v.strip()
-
-            lat = float(d["GPS Latitude"])
-            lon = float(d["GPS Longitude"])
-
-            # Altitude handling
-            alt = d.get("GPS Altitude")
-            alt_ref = d.get("GPS Altitude Ref", "0")
-            if alt is not None:
-                alt = float(alt)
-                if alt_ref == "1":
-                    alt = -alt
+            if url:
+                results[row_index] = url
+                print("✓")
             else:
-                alt = ""
+                print(f"✗ {err}")
+                errors.append(f"{filename}: {err}")
 
-            # OS Grid
-            E, N = wgs84_to_osgb36(lat, lon)
-            os10 = en_to_osref(E, N)
+            # Save progress after every file
+            if results:
+                patch_csv(CSV_PATH, rows, headers, results)
 
-            if os10:
-                prefix = os10[:2]
-                e5 = os10[2:7]
-                n5 = os10[7:12]
-                pattern = f"{prefix}_s_{e5}_s_{n5}"
-                gridfinder_entries.append(f"{os10}|{pattern}|1")
+        print(f"\n{'='*60}")
+        print(f"Done. Updated {len(results)} / {len(targets)} rows.")
+        print(f"CSV saved: {CSV_PATH}")
+        if errors:
+            print(f"\n⚠  {len(errors)} error(s):")
+            for e in errors:
+                print(f"   • {e}")
+        print("="*60)
 
-            # Encode filename for SharePoint
-            encoded_file = quote(file)
+    finally:
+        driver.quit()
 
-            # Private SharePoint URL using your original base
-            private_url = SHAREPOINT_BASE_URL.format(filename=encoded_file)
 
-            # Placeholder Public SharePoint URL (replace later with Power Automate CSV)
-            public_url = f"PUBLIC_LINK_FOR_{encoded_file}"
-
-            # Write CSV row
-            writer.writerow([
-                file,
-                dec_to_dms(lat), d["GPS Latitude Ref"],
-                dec_to_dms(lon), d["GPS Longitude Ref"],
-                alt,
-                os10 or "Out of range",
-                private_url,
-                public_url
-            ])
-
-# --------------------------------------------------
-# OPEN GRIDREFERENCEFINDER
-# --------------------------------------------------
-if gridfinder_entries:
-    joined = ",".join(gridfinder_entries)
-    url = f"https://gridreferencefinder.com/#gr={joined}"
-    webbrowser.open(url)
+if __name__ == "__main__":
+    main()

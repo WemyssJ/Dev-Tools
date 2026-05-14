@@ -3,7 +3,7 @@ import os
 # --------------------------
 # CONFIG: set your folder here
 # --------------------------
-folder_path = r"C:\Users\wemyssj\OneDrive - Craddys\13914 - Plots 2 - 3, Silverthorne Lane\20260107 Drone photos"  # <-- replace with your folder path
+folder_path = r"C:\Users\wemyssj\Craddys\CraddysDrones - 13914 - Plots 2 - 3, Silverthorne Lane\20260318 Drone Canal Wall Photos"  # <-- replace with your folder path
 
 # Loop through all files in the folder
 for filename in os.listdir(folder_path):

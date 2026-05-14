@@ -1,0 +1,132 @@
+PROMPT TEMPLATE — BEP → codes_config.json
+==========================================
+Copy this prompt and paste it into Claude (or any capable AI), then append
+the relevant BEP sections below it.  The AI will return a ready-to-use
+codes_config.json for the project.
+
+------ PROMPT START ------
+
+You are helping me configure a Revit ISO 19650 compliance tool for a new project.
+
+I will paste extracts from the project's BEP (BIM Execution Plan) below.
+Please read them carefully and produce a valid `codes_config.json` file that
+matches EXACTLY the structure shown in the schema section.
+
+SCHEMA
+------
+{
+  "project_number_format": "<4digit|6digit>",
+
+  "functional_codes": ["<CODE>", ...],
+
+  "form_codes": ["<CODE>", ...],
+
+  "role_codes": ["<SINGLE_LETTER>", ...],
+
+  "spatial_codes": {
+    "<CODE>": ["<KEYWORD_IN_SHEET_TITLE>", ...]
+  },
+
+  "use_classification": <true|false>,
+
+  "classification_codes": ["<CODE>", ...],
+
+  "sheet_number_pattern": "<regex string — use double backslash for \\d etc.>",
+
+  "originators": ["<ORIGINATOR_CODE>", ...],
+
+  "naming_formats": {
+    "<Format Display Name>": "<template string>"
+  }
+}
+
+RULES
+-----
+- Output ONLY the raw JSON. No markdown fences, no explanation.
+- If the BEP does not specify a field, carry over the DEFAULT values below.
+
+CLASSIFICATION CODE RULES (important):
+- "use_classification" should be true if the BEP file-naming convention
+  includes a numeric classification code (2-3 digits) between the role letter
+  and the sheet number. Example with classification: 672-CDY-AA-GS-DR-S-073-102001
+  Example without: 672-CDY-AA-GS-DR-S-102001
+- "classification_codes" should list the specific approved values from the BEP
+  (e.g. ["070","072","073","075"]). Leave as [] if the BEP allows any numeric
+  classification without listing specific approved values.
+
+SHEET NUMBER PATTERN RULES:
+- Produce a Python-compatible regex that captures the numeric sheet number
+  from the project's file-naming convention.
+- If classification is used, the pattern must optionally skip it:
+    "-[A-Z]-(?:\\d{2,3}-)?([0-9]{4,6})"
+  where [A-Z] matches the role letter, (?:\\d{2,3}-)? optionally matches
+  the classification, and ([0-9]{4,6}) captures the sheet number.
+- If classification is NOT used: "-[A-Z]-([0-9]{4,6})"
+- Adjust digit counts to match the project's actual sheet number length.
+
+NAMING FORMAT TEMPLATE PLACEHOLDERS:
+  {proj_number}            → the project number from Revit
+  {sheet_param:PARAM}      → value of a Revit sheet parameter named PARAM
+  {rev_number}             → current revision letter/number
+- If classification is used, include {sheet_param:Classification} in the template.
+- Provide one format named "With Classification" if applicable, and/or
+  "Without Classification" as appropriate.
+
+SPATIAL CODE RULES:
+- Map each approved spatial/zone code to the plain-English keywords that
+  would appear in a sheet title for that zone.
+- Include numeric floor codes (e.g. "03","04") if the BEP uses them.
+
+DEFAULTS (use verbatim if BEP is silent on a field)
+--------
+{
+  "project_number_format": "6digit",
+  "functional_codes": ["AA","BB","CC","V1","V2","V3","EW","ZZ","XX"],
+  "form_codes": ["D","DR","G","I","L","M","M3","T","V"],
+  "role_codes": ["A","B","C","D","E","F","G","H","L","M","O","P","Q","R","S","T","W","X","Y","Z"],
+  "spatial_codes": {
+    "00": ["GROUND FLOOR"],
+    "LG": ["LOWER GROUND FLOOR","LG"],
+    "UG": ["UPPER GROUND FLOOR","UG"],
+    "01": ["FIRST FLOOR","LEVEL 01","01"],
+    "02": ["SECOND FLOOR","LEVEL 02","02"],
+    "RF": ["ROOF"],
+    "FN": ["FOUNDATION","PILE","GROUND BEAM"],
+    "GS": ["SECTION","SECTIONS"],
+    "ZZ": ["ELEVATION","ELEVATIONS"]
+  },
+  "use_classification": false,
+  "classification_codes": [],
+  "sheet_number_pattern": "-[A-Z]-(?:\\d{2,3}-)?([0-9]{4,6})",
+  "originators": [],
+  "naming_formats": {}
+}
+
+BEP CONTENT
+-----------
+[PASTE RELEVANT BEP SECTIONS HERE — e.g. Document Naming Convention,
+Approved Codes tables, Originator codes, Spatial breakdown, Role codes,
+Classification system / Uniclass codes]
+
+------ PROMPT END ------
+
+
+INSTRUCTIONS FOR USE
+====================
+1. Copy everything between PROMPT START and PROMPT END.
+2. Replace [PASTE RELEVANT BEP SECTIONS HERE] with the actual BEP text
+   (copy-paste from PDF or Word — tables work fine).
+3. Paste into Claude / ChatGPT / Gemini.
+4. The AI returns a raw JSON block.
+5. Save that block as `codes_config.json` in the same folder as your
+   central Revit model (.rvt).
+6. The compliance tool will pick it up automatically next time it runs.
+
+KEY DECISIONS THE AI WILL MAKE FOR YOU
+=======================================
+- Does this BEP use classification codes? → sets use_classification true/false
+- What are the approved classification values? → sets classification_codes list
+- What naming format template matches this project? → sets naming_formats
+
+TIP: Re-run whenever the BEP is updated — just overwrite the existing
+codes_config.json. The tool will pick up changes on next run.

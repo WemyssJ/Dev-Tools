@@ -1,0 +1,41 @@
+{
+  "_comment": "ISO 19650 approved codes for this project. Populate from BEP before use.",
+  "_project": "EXAMPLE PROJECT — replace with real values",
+
+  "project_number_format": "6digit",
+  "_project_number_format_options": ["4digit", "6digit"],
+
+  "functional_codes": ["AA", "BB", "CC", "V1", "V2", "V3", "EW", "ZZ", "XX"],
+  "_functional_codes_note": "Approved functional breakdown codes from BEP section X.X",
+
+  "form_codes": ["D", "DR", "G", "I", "L", "M", "M3", "T", "V"],
+  "_form_codes_note": "Approved document form/type codes. D = Drawing, DR = Drawing (alt), G = General, etc.",
+
+  "role_codes": ["A","B","C","D","E","F","G","H","L","M","O","P","Q","R","S","T","W","X","Y","Z"],
+  "_role_codes_note": "Single-letter discipline/role codes. A = Architecture, S = Structural, M = MEP, etc.",
+
+  "spatial_codes": {
+    "00": ["GROUND FLOOR"],
+    "LG": ["LOWER GROUND FLOOR", "LG"],
+    "UG": ["UPPER GROUND FLOOR", "UG"],
+    "01": ["FIRST FLOOR", "LEVEL 01", "01"],
+    "02": ["SECOND FLOOR", "LEVEL 02", "02"],
+    "RF": ["ROOF"],
+    "FN": ["FOUNDATION", "PILE", "GROUND BEAM"],
+    "GS": ["SECTION", "SECTIONS"],
+    "ZZ": ["ELEVATION", "ELEVATIONS"]
+  },
+  "_spatial_codes_note": "Keys are the approved spatial codes. Values are title keywords that imply that code.",
+
+  "sheet_number_pattern": "-S-(?:\\d{3}-)?([0-9]{4,6})",
+  "_sheet_number_pattern_note": "Regex pattern used to extract sheet number from filename. Adjust to match project convention.",
+
+  "originators": ["XYZ", "ABC"],
+  "_originators_note": "Approved originator codes for this project (from BEP). Leave empty [] to skip check.",
+
+  "naming_formats": {
+    "Standard": "{proj_number}-{sheet_param:Originator}-{sheet_param:Functional}-{sheet_param:Spatial}-{sheet_param:Form}-{sheet_param:Role}-{rev_number}",
+    "Short": "{proj_number}-{sheet_param:Originator}-{sheet_param:Form}-{rev_number}"
+  },
+  "_naming_formats_note": "Named templates used to resolve the output filename. Keys appear in the dropdown."
+}
