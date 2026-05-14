@@ -3,9 +3,6 @@ layout:
   - CentralModelLocation
   - ModelLocation
   - -----
-  - Find DWG
-  - DWG HotLoader
-  - -----
   - Find Sheet
   - Find View
   - Find ParentView
