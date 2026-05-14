@@ -3,7 +3,7 @@ highlight: new
 title:
   en_us: Duplicate Elements
 tooltip: 
-  en_us: Add Duplicate beams / columns to selection
+  en_us: Select duplicate Structural Columns & Structural Framing elements in model
 authors: >-
   Joe Wemyss
 
