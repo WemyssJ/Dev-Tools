@@ -1,0 +1,9 @@
+title:
+  en_us: Revert Greyscale DWG
+tooltip:
+  en_us: Remove all colour overrides, restoring revit defaults
+engine:
+  clean: true
+context: zero-doc
+author: >-
+  Joe Wemyss

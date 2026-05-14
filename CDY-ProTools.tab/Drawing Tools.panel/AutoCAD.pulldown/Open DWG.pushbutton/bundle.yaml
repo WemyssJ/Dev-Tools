@@ -1,0 +1,9 @@
+title:
+  en_us: Opens DWG in AutoCAD
+tooltip:
+  en_us: Opens selected DWG in AutoCAD
+engine:
+  clean: true
+context: zero-doc
+author: >-
+  Joe Wemyss
