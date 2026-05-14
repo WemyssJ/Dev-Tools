@@ -1,9 +1,9 @@
 layout:
   - Align Viewports
   - Move Views 
-  - Viewport Management
   - -----
   - Batch Sheet Maker
   - -----
-  - FindReplace_Sheets
+  - Viewport Management
+  - Sheet Management
 
