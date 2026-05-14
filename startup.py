@@ -1186,6 +1186,7 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
         p.Children.Add(self._label(
             u"Click \u2605 next to any tool to pin it here, "
             u"or use Browse to add any tool from the extension.",
+            u"SOME ADDED TOOLS MAY NOT RUN, IF SO, REPORT TO JW.",
             small=True))
         p.Children.Add(self._button(u"\U0001F50D  Browse & Add Tool", self._on_browse))
         p.Children.Add(self._sep())
