@@ -1,0 +1,9 @@
+title:
+  en_us: Reset Selected Overrides
+tooltip:
+  en_us: Resets in place overides in view for selected elements
+engine:
+  clean: true
+context: zero-doc
+author: >-
+  Joe Wemyss
