@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-__title__ = 'Forma Location'
+__title__ = 'Forma'
 __author__  = 'Tay Othman, Joe Wemyss'
 __doc__ = """Open the Autodesk Construction Cloud (ACC) website for the current project in the default web browser. EU = Normal Click, GB = Shift Click"""
 
