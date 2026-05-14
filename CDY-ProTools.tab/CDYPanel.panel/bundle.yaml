@@ -1,7 +1,5 @@
-highlight: new
-
 layout:
-  - Dockable Panel
+  - Open CDYPanel
 
 
 background:
