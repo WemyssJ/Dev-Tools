@@ -2,7 +2,7 @@ context:
     not_any:
     - doc-family 
 
-title: Find DWG
+title: DWG Report
 
 tooltip: Makes a report of the DWG objects in the current document.
 
