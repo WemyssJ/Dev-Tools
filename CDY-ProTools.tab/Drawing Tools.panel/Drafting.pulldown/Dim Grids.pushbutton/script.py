@@ -29,6 +29,12 @@ uidoc = uiapp.ActiveUIDocument
 doc   = uidoc.Document
 view  = doc.ActiveView
 
+# -- Set and ASSIGN sketch plane to view so all interactive picks work ------
+with revit.Transaction("Set Sketch Plane", doc=doc):
+    plane = DB.Plane.CreateByNormalAndOrigin(view.ViewDirection, view.Origin)
+    sp    = DB.SketchPlane.Create(doc, plane)
+    view.SketchPlane = sp
+
 # -- Selection filter -------------------------------------------------------
 class GridFilter(ISelectionFilter):
     def AllowElement(self, e):
