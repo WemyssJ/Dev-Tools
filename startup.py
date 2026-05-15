@@ -1392,21 +1392,14 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
         p.Children.Add(self._fav_row("Pick Grouped Elements", self._on_pick_grouped, "pick_grouped"))
         p.Children.Add(self._label("For grouped elements: select groups first, then click.", small=True))
         p.Children.Add(self._sep())
-        self._section(p, "Datum Bubbles")
-        p.Children.Add(self._label("Select grids or levels, then flip their bubble end.", small=True))
-        p.Children.Add(self._fav_row("Flip Grid Bubbles",  self._on_flip_grid,  "flip_grid_bubbles"))
-        p.Children.Add(self._fav_row("Flip Level Bubbles", self._on_flip_level, "flip_level_bubbles"))
         st = self._status()
         p.Children.Add(st)
         _h_pick2d.status = _h_pick3d.status = _h_pick_grouped.status = st
-        _h_flip_grid.status = _h_flip_level.status = st
         return tab
 
     def _on_pick2d(self, s, a):       _e_pick2d.Raise()
     def _on_pick3d(self, s, a):       _e_pick3d.Raise()
     def _on_pick_grouped(self, s, a): _e_pick_grouped.Raise()
-    def _on_flip_grid(self, s, a):    _e_flip_grid.Raise()
-    def _on_flip_level(self, s, a):   _e_flip_level.Raise()
 
     # ---------------------------------------------------------------- Tab 3: Dimensions
 
@@ -1418,13 +1411,21 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
         p.Children.Add(self._label("Places a linear dimension string across all selected grids.", small=True))
         p.Children.Add(self._fav_row("Dimension Selected Levels",    self._on_dim_levels, "dim_levels"))
         p.Children.Add(self._label("Places a vertical dimension string across all selected levels.", small=True))
+        p.Children.Add(self._sep())
+        self._section(p, "Datum Bubbles")
+        p.Children.Add(self._label("Select grids or levels, then flip their bubble end.", small=True))
+        p.Children.Add(self._fav_row("Flip Grid Bubbles",  self._on_flip_grid,  "flip_grid_bubbles"))
+        p.Children.Add(self._fav_row("Flip Level Bubbles", self._on_flip_level, "flip_level_bubbles"))
         st = self._status()
         p.Children.Add(st)
         _h_dim_grids.status = _h_dim_levels.status = st
+        _h_flip_grid.status = _h_flip_level.status = st
         return tab
 
     def _on_dim_grids(self, s, a):  _e_dim_grids.Raise()
     def _on_dim_levels(self, s, a): _e_dim_levels.Raise()
+    def _on_flip_grid(self, s, a):  _e_flip_grid.Raise()
+    def _on_flip_level(self, s, a): _e_flip_level.Raise()
 
     # ---------------------------------------------------------------- Tab 4: Tagging
 
