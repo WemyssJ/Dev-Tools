@@ -35,6 +35,12 @@ if view.ViewType not in valid_view_types:
     forms.alert("Switch to a Section or Elevation view first.")
     raise SystemExit
 
+# -- Set and ASSIGN sketch plane to view so all interactive picks work ------
+with revit.Transaction("Set Sketch Plane", doc=doc):
+    plane = DB.Plane.CreateByNormalAndOrigin(view.ViewDirection, view.Origin)
+    sp    = DB.SketchPlane.Create(doc, plane)
+    view.SketchPlane = sp
+
 # -- Selection filter -------------------------------------------------------
 class LevelFilter(ISelectionFilter):
     def AllowElement(self, e):
@@ -65,9 +71,7 @@ if len(levels) < 2:
 levels = sorted(levels, key=lambda l: l.Elevation)
 
 # Levels are horizontal — dimension line runs vertically (along view up direction)
-# perp_dir is the view's right direction, along which we offset to the pick point
-up_dir    = view.UpDirection.Normalize()
-right_dir = view.RightDirection.Normalize()
+up_dir = view.UpDirection.Normalize()
 
 # Pick placement point
 with forms.WarningBar(title="Pick dimension placement point"):
