@@ -117,10 +117,15 @@ SCRIPTS = {
     "dim_gridlines":         _script(r"Drawing Tools.panel\Drafting.pulldown\Dim Grids.pushbutton\script.py"),
     "dim_levels":            _script(r"Drawing Tools.panel\Drafting.pulldown\Dim Levels.pushbutton\script.py"),
     # -- Tagging --------------------------------------------------------------
-    "select_untagged":       _script(r"Quality Assurance.panel\Model Check.pulldown\Select Untagged.pushbutton\script.py"),
+    "select_untagged":       _script(r"Quality Assurance.panel\Model Check.pulldown\Untagged.pushbutton\script.py"),
     "Highlight_selected":    _script(r"DockableWindowExclusives\Highlight Selected.pushbutton\script.py"),
     "Reset_all_overrides":   _script(r"DockableWindowExclusives\Reset All Overrides.pushbutton\script.py"),
     "Reset_sel_overrides":   _script(r"DockableWindowExclusives\Reset Selected Overrides.pushbutton\script.py"),
+    # -- Memory Selection -----------------------------------------------------
+    "mwrite":                _script(r"DockableWindowExclusives\MWrite.pushbutton\script.py"),
+    "mread":                 _script(r"DockableWindowExclusives\MRead.pushbutton\script.py"),
+    "mappend":               _script(r"DockableWindowExclusives\MAppend.pushbutton\script.py"),
+    "mdelete":               _script(r"DockableWindowExclusives\MDelete.pushbutton\script.py"),
     # -- DWG / Files ----------------------------------------------------------
     "open_dwg_autocad":      _script(r"Drawing Tools.panel\AutoCAD.pulldown\Open DWG.pushbutton\script.py"),
     "reload_dwg":            _script(r"Drawing Tools.panel\AutoCAD.pulldown\Reload DWG.pushbutton\script.py"),
@@ -146,11 +151,15 @@ TOOL_LABELS = {
     "Highlight_selected":    "Highlight Selected",
     "Reset_all_overrides":   "Reset All Overrides",
     "Reset_sel_overrides":   "Reset Selected Overrides",
+    "mwrite":                "MWrite - Save Selection",
+    "mread":                 "MRead - Restore Selection",
+    "mappend":               "MAppend - Append to Selection",
+    "mdelete":               "MDelete - Delete Slot",
     "open_dwg_autocad":      "Open Selected DWG in AutoCAD",
     "reload_dwg":            "Reload Selected DWG",
     "greyscale_dwg":         "Grey Scale Selected DWG",
     "revert_greyscale_dwg":  "Revert Grey Scale",
-    "open_bim360":           "Open BIM360 / ACC",
+    "open_bim360":           "Open Forma",
     "open_central_location": "Open Central Model Location",
     "open_local_location":   "Open Local File Location",
 }
@@ -790,6 +799,138 @@ class FavLaunchHandler(IExternalEventHandler):
 _fav_handler = FavLaunchHandler()
 _fav_event   = ExternalEvent.Create(_fav_handler)
 
+# =============================================================================
+# SECTION 6c - MEMORY SELECTION STORE (MWrite / MRead / MAppend / MDelete)
+#
+# Slots stored per-document in %APPDATA%\pyRevit\CDY-Mem\<DocTitle>.json
+# Element IDs are captured inside the ExternalEvent handler (where selection
+# is guaranteed intact) and passed to the script via a params file.
+# =============================================================================
+
+_MEM_DIR        = os.path.join(os.getenv("APPDATA"), "pyRevit", "CDY-Mem")
+_MEM_PARAM_FILE = os.path.join(_MEM_DIR, "_params.json")
+
+
+def _mem_doc_key(doc):
+    import re
+    title = doc.Title if doc and doc.Title else "unknown"
+    return re.sub(r'[^\w\-]', '_', title)
+
+
+def _mem_store_path(doc):
+    return op.join(_MEM_DIR, _mem_doc_key(doc) + ".json")
+
+
+def _mem_load(doc):
+    try:
+        path = _mem_store_path(doc)
+        if op.exists(path):
+            with open(path, "r") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
+
+
+def _mem_save(doc, store):
+    try:
+        if not op.exists(_MEM_DIR):
+            os.makedirs(_MEM_DIR)
+        with open(_mem_store_path(doc), "w") as f:
+            json.dump(store, f, indent=2)
+    except Exception:
+        pass
+
+
+def _mem_write_params(slot, op_name, element_ids=None):
+    """Write slot, op, and optionally pre-captured element IDs to the params file.
+    Removes any stale file first so old data is never accidentally reused."""
+    try:
+        if not op.exists(_MEM_DIR):
+            os.makedirs(_MEM_DIR)
+        if op.exists(_MEM_PARAM_FILE):
+            os.remove(_MEM_PARAM_FILE)
+        payload = {"slot": slot, "op": op_name}
+        if element_ids is not None:
+            payload["element_ids"] = element_ids
+        with open(_MEM_PARAM_FILE, "w") as f:
+            json.dump(payload, f)
+    except Exception:
+        pass
+class MemoryHandler(IExternalEventHandler):
+    """Handles MWrite / MRead / MAppend / MDelete.
+    Captures element IDs here (inside the ExternalEvent) where selection is
+    guaranteed intact, then delegates to the script via params file."""
+
+    def __init__(self):
+        self.op      = "write"
+        self.slot    = ""
+        self.status  = None
+        self.on_done = None
+
+    def _ui_status(self, msg, error=False):
+        if self.status:
+            def _do(tb=self.status, m=msg, e=error):
+                _set_status(tb, m, error=e)
+            self.status.Dispatcher.Invoke(Action(_do))
+
+    def _ui_done(self):
+        if self.on_done:
+            try:
+                self.on_done()
+            except Exception:
+                pass
+
+    def Execute(self, uiapp):
+        slot  = self.slot.strip()
+        op    = self.op
+        uidoc = uiapp.ActiveUIDocument
+
+        if op == "write" and not slot:
+            self._ui_status("Enter a slot name first.", error=True)
+            return
+        if op in ("read", "append", "delete") and not slot:
+            self._ui_status("Select a slot first.", error=True)
+            return
+
+        # Capture element IDs NOW while selection is guaranteed intact
+        element_ids = None
+        if op in ("write", "append") and uidoc:
+            try:
+                from pyrevit.compat import get_elementid_value_func
+                get_val     = get_elementid_value_func()
+                element_ids = [str(get_val(e)) for e in uidoc.Selection.GetElementIds()]
+                if not element_ids:
+                    self._ui_status("Nothing selected. Select elements first.", error=True)
+                    return
+            except Exception as ex:
+                self._ui_status(u"Could not read selection: {}".format(ex), error=True)
+                return
+
+        _mem_write_params(slot, op, element_ids=element_ids)
+
+        script_key = {"write": "mwrite", "read": "mread",
+                      "append": "mappend", "delete": "mdelete"}.get(op)
+        if not script_key:
+            self._ui_status(u"Unknown op: {}".format(op), error=True)
+            return
+
+        path = SCRIPTS.get(script_key)
+        err  = _exec_script(path, uiapp)
+        if err:
+            self._ui_status(u"{} failed:\n{}".format(op, err), error=True)
+            return
+
+        if op in ("write", "delete"):
+            self._ui_done()
+
+    def GetName(self):
+        return "CDY Memory"
+
+
+_h_memory = MemoryHandler()
+_e_memory  = ExternalEvent.Create(_h_memory)
+
 
 # =============================================================================
 # SECTION 7 - INSTANTIATE HANDLERS & EVENTS
@@ -1161,11 +1302,37 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
         except Exception as ex:
             print("CDY: Watermark failed: {}".format(ex))
 
-        # Step 3 ── TabControl: fully transparent so root grey shows through,
-        #           including the tab-header strip (previously appeared black).
-        tabs = TabControl()
-        tabs.Background = SolidColorBrush(Media.Color.FromArgb(0, 0, 0, 0))
-        tabs.BorderThickness = Thickness(0)
+        # TabControl with fixed left-aligned WrapPanel so tabs never bounce
+        try:
+            import System.Windows.Markup as Markup
+            TAB_STYLE_XAML = (
+                '<Style xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"'
+                '       TargetType="TabControl">'
+                '  <Setter Property="Template">'
+                '    <Setter.Value>'
+                '      <ControlTemplate TargetType="TabControl">'
+                '        <Grid>'
+                '          <Grid.RowDefinitions>'
+                '            <RowDefinition Height="Auto"/>'
+                '            <RowDefinition Height="*"/>'
+                '          </Grid.RowDefinitions>'
+                '          <WrapPanel Grid.Row="0" IsItemsHost="True" HorizontalAlignment="Left"/>'
+                '          <ContentPresenter Grid.Row="1" ContentSource="SelectedContent"/>'
+                '        </Grid>'
+                '      </ControlTemplate>'
+                '    </Setter.Value>'
+                '  </Setter>'
+                '</Style>'
+            )
+            tabs = TabControl()
+            tabs.Background      = SolidColorBrush(Media.Color.FromArgb(0, 0, 0, 0))
+            tabs.BorderThickness = Thickness(0)
+            tabs.Style           = Markup.XamlReader.Parse(TAB_STYLE_XAML)
+        except Exception as ex:
+            print("CDY: TabControl style failed, using default: {}".format(ex))
+            tabs = TabControl()
+            tabs.Background      = SolidColorBrush(Media.Color.FromArgb(0, 0, 0, 0))
+            tabs.BorderThickness = Thickness(0)
 
         tabs.Items.Add(self._build_fav_tab())
         tabs.Items.Add(self._build_views_tab())
@@ -1173,6 +1340,7 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
         tabs.Items.Add(self._build_dimensions_tab())
         tabs.Items.Add(self._build_tagging_tab())
         tabs.Items.Add(self._build_files_tab())
+
 
         root.Children.Add(tabs)
         self.Content = root
@@ -1392,9 +1560,165 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
         p.Children.Add(self._fav_row("Pick Grouped Elements", self._on_pick_grouped, "pick_grouped"))
         p.Children.Add(self._label("For grouped elements: select groups first, then click.", small=True))
         p.Children.Add(self._sep())
-        st = self._status()
-        p.Children.Add(st)
-        _h_pick2d.status = _h_pick3d.status = _h_pick_grouped.status = st
+
+        # -- Memory Selection -------------------------------------------------
+        self._section(p, "Memory Selection")
+        p.Children.Add(self._label(
+            "Save and recall named element selections across your session.", small=True))
+
+        st_mem = self._status()
+        self._mem_combos = []
+
+        def _make_mem_combo():
+            from System.Windows.Controls import ComboBox
+            cb = ComboBox()
+            cb.Margin     = Thickness(0, 0, 4, 0)
+            cb.MinWidth   = 80
+            cb.IsEditable = False
+            self._mem_combos.append(cb)
+            return cb
+
+        def _refresh_mem_combos():
+            try:
+                from pyrevit import HOST_APP as _ha
+                doc   = _ha.uiapp.ActiveUIDocument.Document \
+                        if _ha.uiapp.ActiveUIDocument else None
+                slots = sorted(_mem_load(doc).keys()) if doc else []
+            except Exception:
+                slots = []
+            for cb in self._mem_combos:
+                try:
+                    prev = cb.SelectedItem
+                    cb.Items.Clear()
+                    for s in slots:
+                        cb.Items.Add(s)
+                    if prev in slots:
+                        cb.SelectedItem = prev
+                    elif slots:
+                        cb.SelectedIndex = 0
+                except Exception:
+                    pass
+
+        self._refresh_mem_combos = _refresh_mem_combos
+
+        # MWrite row
+        from System.Windows.Controls import TextBox
+        p.Children.Add(self._label("MWrite - save selection to a named slot:", small=True))
+        mw_row = DockPanel()
+        mw_row.Margin = Thickness(0, 4, 0, 2)
+        mw_row.LastChildFill = True
+        mw_btn = Button()
+        mw_btn.Content  = "MWrite"
+        mw_btn.Padding  = Thickness(6, 4, 6, 4)
+        mw_btn.MinWidth = 64
+        DockPanel.SetDock(mw_btn, Dock.Right)
+        mw_row.Children.Add(mw_btn)
+        mw_name = TextBox()
+        mw_name.Margin  = Thickness(0, 0, 4, 0)
+        mw_name.Padding = Thickness(4, 3, 4, 3)
+        mw_name.ToolTip = "Type a name for this selection slot"
+        mw_row.Children.Add(mw_name)
+        p.Children.Add(mw_row)
+
+        def _on_mwrite(s, a, tb=st_mem, name_box=mw_name):
+            slot = name_box.Text.strip()
+            if not slot:
+                _set_status(tb, "Enter a slot name first.", error=True)
+                return
+            _h_memory.op      = "write"
+            _h_memory.slot    = slot
+            _h_memory.status  = tb
+            _h_memory.on_done = lambda: (_refresh_mem_combos(),
+                                         setattr(name_box, "Text", ""))
+            _e_memory.Raise()
+        mw_btn.Click += _on_mwrite
+
+        # MRead row
+        p.Children.Add(self._label("MRead - restore a saved selection:", small=True))
+        mr_row = DockPanel()
+        mr_row.Margin = Thickness(0, 4, 0, 2)
+        mr_row.LastChildFill = True
+        mr_btn = Button()
+        mr_btn.Content  = "MRead"
+        mr_btn.Padding  = Thickness(6, 4, 6, 4)
+        mr_btn.MinWidth = 64
+        DockPanel.SetDock(mr_btn, Dock.Right)
+        mr_row.Children.Add(mr_btn)
+        mr_cb = _make_mem_combo()
+        mr_row.Children.Add(mr_cb)
+        p.Children.Add(mr_row)
+
+        def _on_mread(s, a, tb=st_mem, cb=mr_cb):
+            slot = cb.SelectedItem
+            if not slot:
+                _set_status(tb, "No slot selected.", error=True)
+                return
+            _h_memory.op      = "read"
+            _h_memory.slot    = slot
+            _h_memory.status  = tb
+            _h_memory.on_done = None
+            _e_memory.Raise()
+        mr_btn.Click += _on_mread
+
+        # MAppend row
+        p.Children.Add(self._label("MAppend - add selection to an existing slot:", small=True))
+        ma_row = DockPanel()
+        ma_row.Margin = Thickness(0, 4, 0, 2)
+        ma_row.LastChildFill = True
+        ma_btn = Button()
+        ma_btn.Content  = "MAppend"
+        ma_btn.Padding  = Thickness(6, 4, 6, 4)
+        ma_btn.MinWidth = 64
+        DockPanel.SetDock(ma_btn, Dock.Right)
+        ma_row.Children.Add(ma_btn)
+        ma_cb = _make_mem_combo()
+        ma_row.Children.Add(ma_cb)
+        p.Children.Add(ma_row)
+
+        def _on_mappend(s, a, tb=st_mem, cb=ma_cb):
+            slot = cb.SelectedItem
+            if not slot:
+                _set_status(tb, "No slot selected.", error=True)
+                return
+            _h_memory.op      = "append"
+            _h_memory.slot    = slot
+            _h_memory.status  = tb
+            _h_memory.on_done = None
+            _e_memory.Raise()
+        ma_btn.Click += _on_mappend
+
+        # MDelete row
+        p.Children.Add(self._label("MDelete - remove a saved slot:", small=True))
+        md_row = DockPanel()
+        md_row.Margin = Thickness(0, 4, 0, 2)
+        md_row.LastChildFill = True
+        md_btn = Button()
+        md_btn.Content    = "MDelete"
+        md_btn.Padding    = Thickness(6, 4, 6, 4)
+        md_btn.MinWidth   = 64
+        md_btn.Foreground = SolidColorBrush(Media.Color.FromRgb(180, 60, 60))
+        DockPanel.SetDock(md_btn, Dock.Right)
+        md_row.Children.Add(md_btn)
+        md_cb = _make_mem_combo()
+        md_row.Children.Add(md_cb)
+        p.Children.Add(md_row)
+
+        def _on_mdelete(s, a, tb=st_mem, cb=md_cb):
+            slot = cb.SelectedItem
+            if not slot:
+                _set_status(tb, "No slot selected.", error=True)
+                return
+            _h_memory.op      = "delete"
+            _h_memory.slot    = slot
+            _h_memory.status  = tb
+            _h_memory.on_done = lambda: _refresh_mem_combos()
+            _e_memory.Raise()
+        md_btn.Click += _on_mdelete
+
+        _refresh_mem_combos()
+
+        p.Children.Add(st_mem)
+        _h_pick2d.status = _h_pick3d.status = _h_pick_grouped.status = st_mem
         return tab
 
     def _on_pick2d(self, s, a):       _e_pick2d.Raise()
@@ -1667,7 +1991,7 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
 
         # ── main button (left-click = EU) ──────────────────────────────────
         btn = Button()
-        btn.Content = "Open BIM360 / ACC"
+        btn.Content = "Open Forma"
         btn.Padding = Thickness(6, 4, 6, 4)
         btn.HorizontalAlignment = System_HAlign.Stretch
         btn.ToolTip = u"Left-click → EU  |  Right-click → GBR"
