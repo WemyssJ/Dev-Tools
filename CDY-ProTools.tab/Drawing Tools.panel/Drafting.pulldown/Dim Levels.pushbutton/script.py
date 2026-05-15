@@ -54,7 +54,7 @@ def get_levels():
            if isinstance(doc.GetElement(i), DB.Level)]
     if pre:
         return pre
-    with forms.WarningBar(title="Select levels, then press Finish"):
+    with forms.WarningBar(title="Select levels"):
         try:
             return list(uidoc.Selection.PickElementsByRectangle(LevelFilter(), "Select Levels"))
         except Exceptions.OperationCanceledException:
