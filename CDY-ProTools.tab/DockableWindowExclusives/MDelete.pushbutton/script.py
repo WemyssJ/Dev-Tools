@@ -1,86 +1,55 @@
 # -*- coding: utf-8 -*-
 # CDY Memory Selection - MDelete
-# Delete a named selection slot from the store for the current document.
-#
-# When launched from the dockable panel the slot name comes from the params file.
-# When run as a standalone toolbar button, falls back to a slot picker dialog.
+# Removes a named slot from the store.
+# store_path is pre-resolved by MemoryHandler -- this script never uses doc.Title.
 
 import os
 import os.path as op
 import json
-import re
 
-from pyrevit import script, revit, forms
+from pyrevit import script
 
-logger = script.get_logger()
-
+logger  = script.get_logger()
 _MEM_DIR        = op.join(os.getenv("APPDATA"), "pyRevit", "CDY-Mem")
 _MEM_PARAM_FILE = op.join(_MEM_DIR, "_params.json")
 
-
-def _doc_key(doc):
-    return re.sub(r'[^\w\-]', '_', doc.Title or "unknown")
-
-def _store_path(doc):
-    return op.join(_MEM_DIR, _doc_key(doc) + ".json")
-
-def _load(doc):
-    try:
-        path = _store_path(doc)
-        if op.exists(path):
-            with open(path, "r") as f:
-                return json.load(f)
-    except Exception as e:
-        logger.debug("MDelete load error: %s" % e)
-    return {}
-
-def _save(doc, store):
-    if not op.exists(_MEM_DIR):
-        os.makedirs(_MEM_DIR)
-    with open(_store_path(doc), "w") as f:
-        json.dump(store, f, indent=2)
-
-
-# -- Read params file ----------------------------------------------------------
-slot = None
-
+# -- Read params --------------------------------------------------------------
 try:
     with open(_MEM_PARAM_FILE, "r") as f:
         params = json.load(f)
-    os.remove(_MEM_PARAM_FILE)  # consume immediately
-    if params.get("op") == "delete":
-        slot = (params.get("slot") or "").strip()
-except Exception:
-    pass
-
-doc   = revit.doc
-store = _load(doc)
-
-if not store:
-    forms.alert("No saved selection slots found for this document.", exitscript=True)
-
-# -- Toolbar fallback: show picker ---------------------------------------------
-if not slot:
-    slot = forms.SelectFromList.show(
-        sorted(store.keys()),
-        title="MDelete - Choose Slot to Delete",
-        multiselect=False)
-    if not slot:
-        script.exit()
-
-if slot not in store:
-    forms.alert("Slot '{}' not found.".format(slot), exitscript=True)
-
-# -- Confirm when run from toolbar (panel already confirmed via UI) -------------
-# Only show confirm dialog when run interactively (no params file was present)
-count = len(store[slot])
-confirmed = forms.alert(
-    "Delete slot '{}' ({} elements)?".format(slot, count),
-    title="MDelete", yes=True, no=True)
-if not confirmed:
+    os.remove(_MEM_PARAM_FILE)
+except Exception as e:
+    logger.error("MDelete: could not read params file: %s" % e)
     script.exit()
 
-# -- Delete and save -----------------------------------------------------------
+slot       = (params.get("slot") or "").strip()
+store_path = params.get("store_path")
+
+if not slot or not store_path:
+    logger.error("MDelete: missing slot or store_path in params.")
+    script.exit()
+
+# -- Load store, delete slot, save --------------------------------------------
+store = {}
+try:
+    if op.exists(store_path):
+        with open(store_path, "r") as f:
+            store = json.load(f)
+except Exception as e:
+    logger.error("MDelete: could not load store: %s" % e)
+    script.exit()
+
+if slot not in store:
+    logger.error("MDelete: slot '{}' not found.".format(slot))
+    script.exit()
+
 del store[slot]
-_save(doc, store)
+
+try:
+    with open(store_path, "w") as f:
+        json.dump(store, f, indent=2)
+except Exception as e:
+    logger.error("MDelete: could not save store: %s" % e)
+    script.exit()
+
 print("MDelete: removed slot '{}'.".format(slot))

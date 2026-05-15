@@ -1,95 +1,62 @@
 # -*- coding: utf-8 -*-
 # CDY Memory Selection - MAppend
-# Add the current selection to an existing named slot (union, no duplicates).
-#
-# When launched from the dockable panel the startup.py MemoryHandler captures
-# element IDs inside the ExternalEvent (while selection is guaranteed intact)
-# and writes them to the params file before this script runs.
-#
-# When run as a standalone pyRevit toolbar button, no params file is present
-# so the script falls back to reading the live selection and showing a picker.
+# Merges pre-captured element IDs into an existing slot (union, no duplicates).
+# store_path is pre-resolved by MemoryHandler -- this script never uses doc.Title.
 
 import os
 import os.path as op
 import json
-import re
 
-from pyrevit import script, revit, forms
-from pyrevit.compat import get_elementid_value_func
+from pyrevit import script
 
-logger = script.get_logger()
-
+logger  = script.get_logger()
 _MEM_DIR        = op.join(os.getenv("APPDATA"), "pyRevit", "CDY-Mem")
 _MEM_PARAM_FILE = op.join(_MEM_DIR, "_params.json")
 
-
-def _doc_key(doc):
-    return re.sub(r'[^\w\-]', '_', doc.Title or "unknown")
-
-def _store_path(doc):
-    return op.join(_MEM_DIR, _doc_key(doc) + ".json")
-
-def _load(doc):
-    try:
-        path = _store_path(doc)
-        if op.exists(path):
-            with open(path, "r") as f:
-                return json.load(f)
-    except Exception as e:
-        logger.debug("MAppend load error: %s" % e)
-    return {}
-
-def _save(doc, store):
-    if not op.exists(_MEM_DIR):
-        os.makedirs(_MEM_DIR)
-    with open(_store_path(doc), "w") as f:
-        json.dump(store, f, indent=2)
-
-
-# -- Read params file (written by MemoryHandler before calling this script) ----
-slot        = None
-element_ids = None  # pre-captured by the handler; None when run from toolbar
-
+# -- Read params --------------------------------------------------------------
 try:
     with open(_MEM_PARAM_FILE, "r") as f:
         params = json.load(f)
-    os.remove(_MEM_PARAM_FILE)  # consume immediately - never reuse stale params
-    if params.get("op") == "append":
-        slot        = (params.get("slot") or "").strip()
-        element_ids = params.get("element_ids")  # list of id strings, or None
-except Exception:
-    pass  # no params file - toolbar fallback below
+    os.remove(_MEM_PARAM_FILE)
+except Exception as e:
+    logger.error("MAppend: could not read params file: %s" % e)
+    script.exit()
 
-doc   = revit.doc
-store = _load(doc)
+slot        = (params.get("slot") or "").strip()
+store_path  = params.get("store_path")
+element_ids = params.get("element_ids")
 
-# -- Get element IDs - use pre-captured list if available ----------------------
-if element_ids is None:
-    # Toolbar path: read live selection now
-    get_val     = get_elementid_value_func()
-    selection   = revit.get_selection()
-    element_ids = [str(get_val(e)) for e in selection.element_ids]
-    if not element_ids:
-        forms.alert("Nothing is selected. Select elements to append first.", exitscript=True)
+if not slot or not store_path:
+    logger.error("MAppend: missing slot or store_path in params.")
+    script.exit()
 
-# -- Resolve slot name (toolbar fallback) --------------------------------------
-if not slot:
-    if not store:
-        forms.alert("No saved slots found. Use MWrite to create a slot first.", exitscript=True)
-    slot = forms.SelectFromList.show(
-        sorted(store.keys()),
-        title="MAppend - Choose Slot to Append To",
-        multiselect=False)
-    if not slot:
-        script.exit()
+if not element_ids:
+    logger.error("MAppend: no element_ids in params.")
+    script.exit()
 
-# -- Merge and save ------------------------------------------------------------
+# -- Load store, merge, save --------------------------------------------------
+store = {}
+try:
+    if op.exists(store_path):
+        with open(store_path, "r") as f:
+            store = json.load(f)
+except Exception as e:
+    logger.debug("MAppend: could not load existing store (will create): %s" % e)
+
 existing = set(store.get(slot, []))
 new_ids  = set(element_ids)
 merged   = list(existing | new_ids)
 added    = len(merged) - len(existing)
 store[slot] = merged
-_save(doc, store)
+
+try:
+    if not op.exists(_MEM_DIR):
+        os.makedirs(_MEM_DIR)
+    with open(store_path, "w") as f:
+        json.dump(store, f, indent=2)
+except Exception as e:
+    logger.error("MAppend: could not save store: %s" % e)
+    script.exit()
 
 print("MAppend: added {} new id(s) to slot '{}' ({} total).".format(
     added, slot, len(merged)))
