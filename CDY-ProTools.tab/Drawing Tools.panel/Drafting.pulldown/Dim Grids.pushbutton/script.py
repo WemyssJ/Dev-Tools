@@ -48,7 +48,7 @@ def get_grids():
            if isinstance(doc.GetElement(i), DB.Grid)]
     if pre:
         return pre
-    with forms.WarningBar(title="Select parallel grid lines, then press Finish"):
+    with forms.WarningBar(title="Select parallel grid lines"):
         try:
             return list(uidoc.Selection.PickElementsByRectangle(GridFilter(), "Select Grids"))
         except Exceptions.OperationCanceledException:
