@@ -117,7 +117,7 @@ SCRIPTS = {
     "dim_gridlines":         _script(r"Drawing Tools.panel\Drafting.pulldown\Dim Grids.pushbutton\script.py"),
     "dim_levels":            _script(r"Drawing Tools.panel\Drafting.pulldown\Dim Levels.pushbutton\script.py"),
     # -- Tagging --------------------------------------------------------------
-    "select_untagged":       _script(r"Quality Assurance.panel\Model Check.pulldown\Untagged.pushbutton\script.py"),
+    "select_untagged":       _script(r"Quality Assurance.panel\Model Check.pulldown\Select Untagged.pushbutton\script.py"),
     "Highlight_selected":    _script(r"DockableWindowExclusives\Highlight Selected.pushbutton\script.py"),
     "Reset_all_overrides":   _script(r"DockableWindowExclusives\Reset All Overrides.pushbutton\script.py"),
     "Reset_sel_overrides":   _script(r"DockableWindowExclusives\Reset Selected Overrides.pushbutton\script.py"),
@@ -842,8 +842,8 @@ def _mem_save(doc, store):
         pass
 
 
-def _mem_write_params(slot, op_name, element_ids=None):
-    """Write slot, op, and optionally pre-captured element IDs to the params file.
+def _mem_write_params(slot, op_name, doc=None, element_ids=None):
+    """Write slot, op, store_path, and optionally pre-captured element IDs to the params file.
     Removes any stale file first so old data is never accidentally reused."""
     try:
         if not op.exists(_MEM_DIR):
@@ -851,6 +851,8 @@ def _mem_write_params(slot, op_name, element_ids=None):
         if op.exists(_MEM_PARAM_FILE):
             os.remove(_MEM_PARAM_FILE)
         payload = {"slot": slot, "op": op_name}
+        if doc:
+            payload["store_path"] = _mem_store_path(doc)
         if element_ids is not None:
             payload["element_ids"] = element_ids
         with open(_MEM_PARAM_FILE, "w") as f:
@@ -865,6 +867,7 @@ class MemoryHandler(IExternalEventHandler):
     def __init__(self):
         self.op      = "write"
         self.slot    = ""
+        self.doc     = None
         self.status  = None
         self.on_done = None
 
@@ -877,7 +880,12 @@ class MemoryHandler(IExternalEventHandler):
     def _ui_done(self):
         if self.on_done:
             try:
-                self.on_done()
+                def _do(cb=self.on_done):
+                    cb()
+                if self.status:
+                    self.status.Dispatcher.Invoke(Action(_do))
+                else:
+                    self.on_done()
             except Exception:
                 pass
 
@@ -885,6 +893,10 @@ class MemoryHandler(IExternalEventHandler):
         slot  = self.slot.strip()
         op    = self.op
         uidoc = uiapp.ActiveUIDocument
+
+        if not uidoc or not uidoc.Document:
+            self._ui_status("No active document.", error=True)
+            return
 
         if op == "write" and not slot:
             self._ui_status("Enter a slot name first.", error=True)
@@ -907,7 +919,10 @@ class MemoryHandler(IExternalEventHandler):
                 self._ui_status(u"Could not read selection: {}".format(ex), error=True)
                 return
 
-        _mem_write_params(slot, op, element_ids=element_ids)
+        _mem_write_params(slot, op, doc=uidoc.Document, element_ids=element_ids)
+
+        # Store doc for use in callback
+        self.doc = uidoc.Document
 
         script_key = {"write": "mwrite", "read": "mread",
                       "append": "mappend", "delete": "mdelete"}.get(op)
@@ -1578,11 +1593,12 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
             self._mem_combos.append(cb)
             return cb
 
-        def _refresh_mem_combos():
+        def _refresh_mem_combos(doc=None):
             try:
-                from pyrevit import HOST_APP as _ha
-                doc   = _ha.uiapp.ActiveUIDocument.Document \
-                        if _ha.uiapp.ActiveUIDocument else None
+                if not doc:
+                    from pyrevit import HOST_APP as _ha
+                    doc = _ha.uiapp.ActiveUIDocument.Document \
+                            if _ha.uiapp.ActiveUIDocument else None
                 slots = sorted(_mem_load(doc).keys()) if doc else []
             except Exception:
                 slots = []
@@ -1628,8 +1644,11 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
             _h_memory.op      = "write"
             _h_memory.slot    = slot
             _h_memory.status  = tb
-            _h_memory.on_done = lambda: (_refresh_mem_combos(),
-                                         setattr(name_box, "Text", ""))
+            def _on_write_done(handler=_h_memory):
+                _set_status(tb, u"Saved to slot '{}'".format(slot))
+                _refresh_mem_combos(handler.doc)
+                setattr(name_box, "Text", "")
+            _h_memory.on_done = _on_write_done
             _e_memory.Raise()
         mw_btn.Click += _on_mwrite
 
