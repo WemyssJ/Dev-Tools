@@ -137,8 +137,3 @@ with Transaction(doc, "CDY: Flip Grid Bubbles") as t:
 # ---------------------------------------------------------------------------
 if total_changes == 0:
     forms.alert("No grid bubbles were changed.", title="Flip Grid Bubbles")
-else:
-    forms.alert(
-        "{} change operations applied to grids.".format(total_changes),
-        title="Flip Grid Bubbles"
-    )
