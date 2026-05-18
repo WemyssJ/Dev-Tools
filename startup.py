@@ -113,6 +113,7 @@ SCRIPTS = {
     "pick_grouped":          _script(r"Drawing Tools.panel\Drafting.pulldown\Pick Grouped Elements.pushbutton\script.py"),
     "flip_grid_bubbles":     _script(r"Drawing Tools.panel\Drafting.pulldown\Flip Grids.pushbutton\scriptAlternate.py"),
     "flip_level_bubbles":    _script(r"Drawing Tools.panel\Drafting.pulldown\Flip Levels.pushbutton\script.py"),
+    "grids_2d_extents":    _script(r"DockableWindowExclusives\Grids 2D Extents.pushbutton\script.py"),
     # -- Dimensions -----------------------------------------------------------
     "dim_gridlines":         _script(r"Drawing Tools.panel\Drafting.pulldown\Dim Grids.pushbutton\script.py"),
     "dim_levels":            _script(r"Drawing Tools.panel\Drafting.pulldown\Dim Levels.pushbutton\script.py"),
@@ -145,6 +146,7 @@ TOOL_LABELS = {
     "pick_grouped":          "Pick Grouped Elements",
     "flip_grid_bubbles":     "Flip Grid Bubbles",
     "flip_level_bubbles":    "Flip Level Bubbles",
+    "grids_2d_extents":      "Toggle Grids to 2D",
     "dim_gridlines":         "Dimension Gridlines",
     "dim_levels":            "Dimension Levels",
     "select_untagged":       "Select Untagged in Active View",
@@ -955,6 +957,7 @@ _h_pick3d       = ScriptLaunchHandler("pick_3d");           _e_pick3d       = Ex
 _h_pick_grouped = ScriptLaunchHandler("pick_grouped");      _e_pick_grouped = ExternalEvent.Create(_h_pick_grouped)
 _h_flip_grid    = ScriptLaunchHandler("flip_grid_bubbles"); _e_flip_grid    = ExternalEvent.Create(_h_flip_grid)
 _h_flip_level   = ScriptLaunchHandler("flip_level_bubbles");_e_flip_level   = ExternalEvent.Create(_h_flip_level)
+_h_2d_extents   = ScriptLaunchHandler("grids_2d_extents");_e_2d_extents   = ExternalEvent.Create(_h_2d_extents)
 
 _h_dim_grids    = ScriptLaunchHandler("dim_gridlines");     _e_dim_grids    = ExternalEvent.Create(_h_dim_grids)
 _h_dim_levels   = ScriptLaunchHandler("dim_levels");        _e_dim_levels   = ExternalEvent.Create(_h_dim_levels)
@@ -1786,16 +1789,19 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
         p.Children.Add(self._label("Select grids or levels, then flip their bubble end.", small=True))
         p.Children.Add(self._fav_row("Flip Grid Bubbles",  self._on_flip_grid,  "flip_grid_bubbles"))
         p.Children.Add(self._fav_row("Flip Level Bubbles", self._on_flip_level, "flip_level_bubbles"))
+        p.Children.Add(self._fav_row("Toggle Grids to 2D",  self._on_2D_extents,  "2D_grid_extents"))
         st = self._status()
         p.Children.Add(st)
         _h_dim_grids.status = _h_dim_levels.status = st
         _h_flip_grid.status = _h_flip_level.status = st
+        _h_2d_extents.status = _h_2d_extents.status = st
         return tab
 
     def _on_dim_grids(self, s, a):  _e_dim_grids.Raise()
     def _on_dim_levels(self, s, a): _e_dim_levels.Raise()
     def _on_flip_grid(self, s, a):  _e_flip_grid.Raise()
     def _on_flip_level(self, s, a): _e_flip_level.Raise()
+    def _on_2D_extents(self, s, a): _e_2d_extents.Raise()
 
     # ---------------------------------------------------------------- Tab 4: Tagging
 
