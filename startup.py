@@ -1620,23 +1620,38 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
 
         mw_btn.Click += _on_mwrite
 
-        # -- COMBO + READ / APPEND / DELETE ROW --------------------------------
+        # -- COMBO (full width, matching MWrite row) ---------------------------
         p.Children.Add(self._label("MRead / MAppend / MDelete:", small=True))
 
-        mem_row = DockPanel()
-        mem_row.Margin = Thickness(0, 4, 2, 2)
-        mem_row.LastChildFill = True
+        # ComboBox sits on its own row, stretched to the same full width as
+        # the MWrite row above (no right-docked button beside it).
+        self._mem_combo.Margin               = Thickness(0, 4, 0, 2)
+        self._mem_combo.HorizontalAlignment  = System_HAlign.Stretch
+        self._mem_combo.MinWidth             = 0
+        p.Children.Add(self._mem_combo)
 
-        mem_row.Children.Add(self._mem_combo)
+        # -- THREE EQUAL BUTTONS BELOW THE COMBO --------------------------------
+        # Use a uniform Grid so each button is exactly 1/3 of the available
+        # width regardless of label length.  A 3-px gap between columns gives
+        # a subtle border between the buttons.
+        from System.Windows.Controls import Grid as WpfGrid
+        from System.Windows import GridLength, GridUnitType
+        from System.Windows.Controls import ColumnDefinition
 
-        btn_stack = StackPanel()
-        btn_stack.Orientation = 0  # Horizontal
-        DockPanel.SetDock(btn_stack, Dock.Right)
+        btn_grid = WpfGrid()
+        btn_grid.Margin = Thickness(0, 2, 0, 2)
+
+        for i in range(3):
+            col = ColumnDefinition()
+            col.Width = GridLength(1, GridUnitType.Star)
+            btn_grid.ColumnDefinitions.Add(col)
 
         btn_read = Button()
         btn_read.Content = "MRead"
-        btn_read.Padding = Thickness(6, 4, 6, 4)
-        btn_read.MinWidth = 64
+        btn_read.Padding = Thickness(4, 4, 4, 4)
+        btn_read.Margin  = Thickness(0, 0, 2, 0)   # right gap = border between buttons
+        btn_read.HorizontalAlignment = System_HAlign.Stretch
+        WpfGrid.SetColumn(btn_read, 0)
 
         def _on_mread(s, a):
             slot = self._mem_combo.SelectedItem
@@ -1653,8 +1668,10 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
 
         btn_append = Button()
         btn_append.Content = "MAppend"
-        btn_append.Padding = Thickness(6, 4, 6, 4)
-        btn_append.MinWidth = 64
+        btn_append.Padding = Thickness(4, 4, 4, 4)
+        btn_append.Margin  = Thickness(2, 0, 2, 0)  # gap on both sides
+        btn_append.HorizontalAlignment = System_HAlign.Stretch
+        WpfGrid.SetColumn(btn_append, 1)
 
         def _on_mappend(s, a):
             slot = self._mem_combo.SelectedItem
@@ -1670,10 +1687,12 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
         btn_append.Click += _on_mappend
 
         btn_delete = Button()
-        btn_delete.Content = "MDelete"
-        btn_delete.Padding = Thickness(6, 4, 6, 4)
-        btn_delete.MinWidth = 64
+        btn_delete.Content    = "MDelete"
+        btn_delete.Padding    = Thickness(4, 4, 4, 4)
+        btn_delete.Margin     = Thickness(2, 0, 0, 0)  # left gap
         btn_delete.Foreground = SolidColorBrush(Color.FromRgb(180, 60, 60))
+        btn_delete.HorizontalAlignment = System_HAlign.Stretch
+        WpfGrid.SetColumn(btn_delete, 2)
 
         def _on_mdelete(s, a):
             cb   = self._mem_combo
@@ -1695,33 +1714,56 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
 
         btn_delete.Click += _on_mdelete
 
-        btn_stack.Children.Add(btn_read)
-        btn_stack.Children.Add(btn_append)
-        btn_stack.Children.Add(btn_delete)
-        mem_row.Children.Add(btn_stack)
-        p.Children.Add(mem_row)
+        btn_grid.Children.Add(btn_read)
+        btn_grid.Children.Add(btn_append)
+        btn_grid.Children.Add(btn_delete)
+        p.Children.Add(btn_grid)
 
         p.Children.Add(st_mem)
         _h_pick2d.status = _h_pick3d.status = _h_pick_grouped.status = st_mem
 
         # ------------------------------------------------------------------
-        # DEFERRED POPULATION
-        # The panel is built before any document is open, so ActiveUIDocument
-        # is None at this point and the combo would be empty.  Subscribe to
-        # Idling once; on the first tick where a document is available we
-        # populate the combo and immediately unsubscribe.
-        # This is the same pattern used by hide_panels() at the top of the file.
+        # COMBO POPULATION — two complementary hooks:
+        #
+        # 1. ViewActivated: fires every time the user opens or switches to a
+        #    view (including on first project open).  This is the primary path
+        #    and also handles switching between documents mid-session.
+        #
+        # 2. Idling (keep-retrying): runs every idle tick until
+        #    ActiveUIDocument is available, then unsubscribes.  Covers the
+        #    startup window before the first view is activated and edge-cases
+        #    where ViewActivated may not fire (e.g. project already open when
+        #    pyRevit reloads the panel).
         # ------------------------------------------------------------------
+        from Autodesk.Revit.UI.Events import ViewActivatedEventArgs
+
+        def _on_view_activated(sender, args):
+            try:
+                doc = args.CurrentActiveView.Document \
+                      if args.CurrentActiveView else None
+                if doc:
+                    _refresh_mem_combo(doc)
+            except Exception:
+                pass
+
+        HOST_APP.uiapp.ViewActivated += \
+            EventHandler[ViewActivatedEventArgs](_on_view_activated)
+
         def _deferred_mem_refresh(sender, args):
             try:
                 uidoc = HOST_APP.uiapp.ActiveUIDocument
                 if uidoc and uidoc.Document:
                     _refresh_mem_combo(uidoc.Document)
-                    HOST_APP.uiapp.Idling -= EventHandler[IdlingEventArgs](_deferred_mem_refresh)
+                    # Successfully populated — stop retrying
+                    HOST_APP.uiapp.Idling -= \
+                        EventHandler[IdlingEventArgs](_deferred_mem_refresh)
+                # else: no doc yet — stay subscribed and retry next tick
             except Exception:
-                HOST_APP.uiapp.Idling -= EventHandler[IdlingEventArgs](_deferred_mem_refresh)
+                HOST_APP.uiapp.Idling -= \
+                    EventHandler[IdlingEventArgs](_deferred_mem_refresh)
 
-        HOST_APP.uiapp.Idling += EventHandler[IdlingEventArgs](_deferred_mem_refresh)
+        HOST_APP.uiapp.Idling += \
+            EventHandler[IdlingEventArgs](_deferred_mem_refresh)
 
         return tab
 
