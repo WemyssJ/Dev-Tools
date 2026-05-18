@@ -1,116 +1,162 @@
 # -*- coding: utf-8 -*-
 __title__ = 'Flip Level Ends'
-__doc__ = """Flip visibility of bubbles at the ends of selected levels. If both bubbles were visible, only one remains."""
+__doc__ = """Flip visibility of bubbles at the ends of selected levels."""
 
-try:
-    from pyrevit.versionmgr import PYREVIT_VERSION
-except:
-    from pyrevit import versionmgr
-    PYREVIT_VERSION = versionmgr.get_pyrevit_version()
-
-from pyrevit import script, revit
-output = script.get_output()
-logger = script.get_logger()
-linkify = output.linkify
-doc = revit.doc
-uidoc = revit.uidoc
-selection = revit.get_selection()
-
-from Autodesk.Revit.DB import Level, DatumEnds, Transaction
-from Autodesk.Revit import UI
-from Autodesk.Revit.UI import TaskDialog
-
-##############################################################################################
-# TELEMETRY IMPORTS #
-##############################################################################################
-# Only works IF specified TELEMETRY_JSON path exists within %AppData%\pyRevit\Extensions\BIMTools.extension\lib\telemetry_auto.py"
-# Records tool usage by date & revit version
 import os, sys
 
-# Add lib folder for telemetry_auto
+from pyrevit import HOST_APP, revit, forms
+from Autodesk.Revit.DB import Level, DatumEnds, Transaction, BuiltInCategory
+from Autodesk.Revit.UI import TaskDialog
+from Autodesk.Revit.UI.Selection import ISelectionFilter
+from Autodesk.Revit import Exceptions
+
+
+# ---------------------------------------------------------------------------
+# UI bootstrap fix (same pattern as Dim tools)
+# ---------------------------------------------------------------------------
+uiapp = getattr(HOST_APP, "uiapp", None) or __revit__
+
+try:
+    if hasattr(uiapp, "MainWindowHandle") and not uiapp.MainWindowHandle:
+        import pyrevit
+        pyrevit.framework.get_current_uiapp()
+except:
+    pass
+
+doc   = uiapp.ActiveUIDocument.Document
+uidoc = uiapp.ActiveUIDocument
+view  = doc.ActiveView
+
+
+# ---------------------------------------------------------------------------
+# Safe warning bar (same pattern as grids/levels tools)
+# ---------------------------------------------------------------------------
+def safe_warning_bar(title):
+    try:
+        return forms.WarningBar(title=title)
+    except Exception:
+        class _DummyCtx(object):
+            def __enter__(self): pass
+            def __exit__(self, exc_type, exc_val, exc_tb): pass
+        return _DummyCtx()
+
+
+# ---------------------------------------------------------------------------
+# Telemetry (unchanged but safe-guarded)
+# ---------------------------------------------------------------------------
 lib_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'lib'))
 if lib_path not in sys.path:
     sys.path.append(lib_path)
 
-import telemetry_auto
+try:
+    import telemetry_auto
+    TOOL_NAME = os.path.basename(os.path.dirname(__file__)).replace(".pushbutton", "")
+    telemetry_auto.log_tool_usage(TOOL_NAME)
+except:
+    pass
 
-tool_name = os.path.basename(os.path.dirname(__file__)) 
-TOOL_NAME = tool_name.replace(".pushbutton", "")
-telemetry_auto.log_tool_usage(TOOL_NAME)
-##############################################################################################
 
-class PickByCategorySelectionFilter(UI.Selection.ISelectionFilter):
-    def __init__(self, catname):
-        self.category = catname
+# ---------------------------------------------------------------------------
+# Selection filter (Revit-safe category ID, not string matching)
+# ---------------------------------------------------------------------------
+class LevelFilter(ISelectionFilter):
+    def AllowElement(self, e):
+        return (
+            isinstance(e, Level)
+            or (e.Category and e.Category.Id.IntegerValue == int(BuiltInCategory.OST_Levels))
+        )
 
-    def AllowElement(self, element):
-        return self.category in element.Category.Name
-
-    def AllowReference(self, refer, point):
+    def AllowReference(self, reference, point):
         return False
 
 
-def pickbycategory(catname):
-    msfilter = PickByCategorySelectionFilter(catname)
-    selection_list = revit.pick_rectangle(pick_filter=msfilter)
-    return selection_list
-
-
+# ---------------------------------------------------------------------------
+# Selection
+# ---------------------------------------------------------------------------
 def get_selected_levels():
-    sel = selection.elements
-    sel = filter(lambda x: isinstance(x, Level), sel)
+    pre = [
+        doc.GetElement(i)
+        for i in uidoc.Selection.GetElementIds()
+        if isinstance(doc.GetElement(i), Level)
+    ]
 
-    if len(sel) == 0:
-        TaskDialog.Show(__title__, "Select Levels to flip bubbles visibility")
-        sel = pickbycategory("Level")
-        if not sel:
-            return
+    if pre:
+        return pre
 
-    return list(sel)
+    with safe_warning_bar("Select levels, then press Finish"):
+        try:
+            return list(uidoc.Selection.PickElementsByRectangle(LevelFilter()))
+        except Exceptions.OperationCanceledException:
+            return []
 
 
+# ---------------------------------------------------------------------------
+# Core logic
+# ---------------------------------------------------------------------------
 def flip_level(level, view):
     if not level.CanBeVisibleInView(view):
-        return
+        return False
 
-    ends = [DatumEnds.End0, DatumEnds.End1]
-    last = None
     changed = 0
-    for end in ends:
-        if level.IsBubbleVisibleInView(end, view) and not last:
-            level.HideBubbleInView(end, view)
-            last = True
-            changed += 1
+
+    for end in (DatumEnds.End0, DatumEnds.End1):
+
+        is_visible = level.IsBubbleVisibleInView(end, view)
+
+        # If visible → hide
+        if is_visible:
+            try:
+                level.HideBubbleInView(end, view)
+                changed += 1
+            except:
+                pass
+
+        # If hidden → show
         else:
-            if not level.IsBubbleVisibleInView(end, view):
+            try:
                 level.ShowBubbleInView(end, view)
                 changed += 1
+            except:
+                pass
 
-    return bool(changed)
+    return changed > 0
 
 
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 def main():
-    sel_levels = get_selected_levels()
-    if not sel_levels:
+    levels = get_selected_levels()
+
+    if not levels:
         return
-    active_view = doc.ActiveView
 
-    changed = 0
-    t = Transaction(doc)
-    t.Start(__title__)
+    changed_total = 0
 
-    for lvl in sel_levels:
-        changed += bool(flip_level(lvl, active_view))
+    with Transaction(doc, __title__) as t:
+        t.Start()
 
-    if changed > 0:
-        t.Commit()
-    else:
-        t.Rollback()
+        for lvl in levels:
+            changed_total += int(flip_level(lvl, view))
 
-    if changed != len(sel_levels):
-        TaskDialog.Show(__title__, "%d of %d levels were flipped" % (changed, len(sel_levels)))
-    elif changed == 0:
+        if changed_total:
+            t.Commit()
+        else:
+            t.RollBack()
+
+
+    # Feedback
+    if changed_total == 0:
         TaskDialog.Show(__title__, "Nothing flipped")
+    else:
+        TaskDialog.Show(
+            __title__,
+            "{} level(s) modified".format(changed_total)
+        )
 
+
+# ---------------------------------------------------------------------------
+# Entry
+# ---------------------------------------------------------------------------
 if __name__ == '__main__':
     main()
