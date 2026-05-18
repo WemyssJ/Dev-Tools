@@ -203,7 +203,6 @@ def _inject_extension_paths(script_path):
     """Inject the extension lib/ and tab/ root into sys.path so that
     scripts using relative imports (e.g. Snippets._context_manager) work
     when executed outside of pyRevit's normal loader."""
-    # Walk up from the script folder to find the .extension root
     node = op.dirname(script_path)
     ext_root = None
     while node:
@@ -222,7 +221,6 @@ def _inject_extension_paths(script_path):
         ]:
             if op.exists(candidate) and candidate not in sys.path:
                 sys.path.insert(0, candidate)
-    # Also add the script's own .tab root so intra-tab imports work
     node = op.dirname(script_path)
     while node:
         parent = op.dirname(node)
@@ -250,16 +248,15 @@ def _exec_script(path, uiapp):
         doc   = uidoc.Document if uidoc else None
 
         exec_params         = _ExecParams(path)
-        # Use full path hash + id to guarantee uniqueness and avoid module cache collisions
         mod_name            = "cdy_script_{:x}_{:x}".format(abs(hash(path)), id(exec_params) & 0xFFFF)
         mod                 = imp.new_module(mod_name)
-        mod.__file__        = op.dirname(path)  # dir not file — pyRevit resolves XAML relative to this
+        mod.__file__        = op.dirname(path)
         mod.__revit__       = uiapp
         mod.__uidoc__       = uidoc
         mod.__doc__         = doc
         mod.EXEC_PARAMS     = exec_params
         mod.__commandname__ = exec_params.command_name
-        mod.__commandpath__ = op.dirname(path)  # dir not file — pyRevit resolves XAML relative to this
+        mod.__commandpath__ = op.dirname(path)
 
         try:
             from pyrevit import revit as _pvrevit
@@ -267,8 +264,6 @@ def _exec_script(path, uiapp):
         except Exception:
             pass
 
-        # Use a private ScriptProxy — never mutate the shared pyRevit script module
-        # as that corrupts EXEC_PARAMS for subsequently launched pyRevit tools
         class _ScriptProxy(object):
             def exit(self):
                 raise SystemExit
@@ -320,7 +315,6 @@ class ScriptLaunchHandler(IExternalEventHandler):
         if not path:
             return
 
-        # Try PostCommand first
         uid = _build_uid_from_path(path)
         if uid:
             try:
@@ -331,7 +325,6 @@ class ScriptLaunchHandler(IExternalEventHandler):
             except Exception:
                 pass
 
-        # Fall back to direct exec — safe now DocReg uses __file__ not script.get_bundle_file
         err = _exec_script(path, uiapp)
         if self.status and err:
             _set_status(self.status, err, error=True)
@@ -349,26 +342,17 @@ _FAV_FILE = os.path.join(os.getenv("APPDATA"), "pyRevit", "CDY-ProTools-favourit
 _SCRIPT_CMD_MAP = {}
 
 
-
 def _build_uid_from_path(script_path):
     """
     Build the correct Revit command UID from a script path, including any
     .pulldown nesting between .panel and .pushbutton.
-
-    Flat:   CustomCtrl_%CustomCtrl_%<tab>%<panel>%<btn>
-    Nested: CustomCtrl_%CustomCtrl_%<tab>%<panel>%CustomCtrl_%<pulldown>%<btn>
-
-    Uses string splitting on both backslash and / so it works regardless of which
-    os.path functions are available (important when running inside Revit on
-    Windows where op.dirname may behave unexpectedly with iron-python).
     """
-    # Normalise to backslash and split into parts, drop the trailing script.py
     parts = script_path.replace("/", "\\").split("\\")
     if parts and parts[-1].lower() == "script.py":
         parts = parts[:-1]
 
     btn_name   = ""
-    pulldowns  = []   # collected innermost-first as we walk backwards
+    pulldowns  = []
     panel_name = ""
     tab_name   = ""
 
@@ -386,12 +370,12 @@ def _build_uid_from_path(script_path):
     if not (tab_name and panel_name and btn_name):
         return None
 
-    # pulldowns were innermost-first; reverse so outermost comes first in UID
     pulldowns.reverse()
     pulldown_seg = "".join("CustomCtrl_%{}%".format(pd) for pd in pulldowns)
     uid = "CustomCtrl_%CustomCtrl_%{}%{}%{}{}".format(
         tab_name, panel_name, pulldown_seg, btn_name)
     return uid
+
 
 def _build_command_registry():
     global _SCRIPT_CMD_MAP
@@ -489,8 +473,6 @@ def _load_favs():
                     if healed != item["path"]:
                         item["path"] = healed
                         changed = True
-                    # Always recompute the command_id from path so stale
-                    # flat IDs (missing pulldown segments) get corrected.
                     correct_uid = _build_uid_from_path(item["path"])
                     if correct_uid and item.get("command_id") != correct_uid:
                         item["command_id"] = correct_uid
@@ -568,19 +550,30 @@ def _fav_is_key(key):
 # SECTION 5 - EXTENSION SCRIPT SCANNER (for Browse & Add)
 # =============================================================================
 
+def _is_dev_unlocked():
+    """Return True if the developer unlock file grants access."""
+    try:
+        if os.path.exists(UNLOCK_FILE):
+            with open(UNLOCK_FILE, "r") as f:
+                return json.load(f).get("unlocked", False)
+    except Exception:
+        pass
+    return False
+
+
 def _scan_scripts(root):
     """Walk the extension tab and return pushbutton scripts safe to expose in the
-    Browse & Add picker.  Three categories are intentionally excluded:
+    Browse & Add picker.  Two categories are always excluded:
 
-    - Developer.panel   : internal/debug tools hidden behind the unlock file
     - DockableWindowExclusives : scripts launched only via the dockable panel
                                  itself; they rely on injected context and must
                                  not be double-launched from Favourites
-    - bin (any segment) : compiled helpers / support files, not user-facing tools
-    """
-    # Normalise to forward-slash for consistent substring checks
-    _BLOCKED = ("developer.panel", "dockablewindowexclusives", "\\bin\\", "/bin/")
+    - bin (any segment)        : compiled helpers / support files, not user-facing
 
+    Developer.panel is excluded unless the user has the dev unlock file, in
+    which case those tools are included so they can be pinned to Favourites.
+    """
+    dev_unlocked = _is_dev_unlocked()
     results = []
     if not op.exists(root):
         return results
@@ -589,13 +582,17 @@ def _scan_scripts(root):
             continue
         if not op.basename(dirpath).endswith(".pushbutton"):
             continue
-        # Normalise path once for all checks
         norm = dirpath.lower().replace("\\", "/")
-        if any(blk in norm for blk in ("developer.panel",
-                                        "dockablewindowexclusives",
-                                        "/bin/")):
+        # Always blocked
+        if any(blk in norm for blk in ("dockablewindowexclusives", "/bin/")):
+            continue
+        # Developer panel: only blocked when not unlocked
+        if "developer.panel" in norm and not dev_unlocked:
             continue
         tool_name = op.basename(dirpath)[:-len(".pushbutton")]
+        # Prefix dev tools so they're clearly labelled in the picker
+        if "developer.panel" in norm:
+            tool_name = u"[Dev] {}".format(tool_name)
         results.append({"label": tool_name,
                         "path":  op.join(dirpath, "script.py")})
     results.sort(key=lambda x: x["label"].lower())
@@ -759,7 +756,6 @@ class FavLaunchHandler(IExternalEventHandler):
     def Execute(self, uiapp):
         from Autodesk.Revit.UI import RevitCommandId
 
-        # Resolve UID
         uid = self.cmd_name
         if not uid and self.path:
             uid = _build_uid_from_path(self.path)
@@ -770,7 +766,6 @@ class FavLaunchHandler(IExternalEventHandler):
             if uid:
                 self.cmd_name = uid
 
-        # Try PostCommand if we have a UID
         if uid:
             try:
                 cmd_id = RevitCommandId.LookupCommandId(uid)
@@ -780,10 +775,6 @@ class FavLaunchHandler(IExternalEventHandler):
             except Exception:
                 pass
 
-        # PostCommand not available (hidden panel buttons can't be PostCommand'd).
-        # These are safe to exec directly — they are simple scripts with no XAML/WPFWindow.
-        # The DocReg corruption issue is fixed in DocReg itself (uses __file__ not
-        # script.get_bundle_file), so _exec_script is safe to use here again.
         if self.path:
             err = _exec_script(self.path, uiapp)
             if err:
@@ -801,10 +792,6 @@ _fav_event   = ExternalEvent.Create(_fav_handler)
 
 # =============================================================================
 # SECTION 6c - MEMORY SELECTION STORE (MWrite / MRead / MAppend / MDelete)
-#
-# Slots stored per-document in %APPDATA%\pyRevit\CDY-Mem\<DocTitle>.json
-# Element IDs are captured inside the ExternalEvent handler (where selection
-# is guaranteed intact) and passed to the script via a params file.
 # =============================================================================
 
 _MEM_DIR        = os.path.join(os.getenv("APPDATA"), "pyRevit", "CDY-Mem")
@@ -843,8 +830,7 @@ def _mem_save(doc, store):
 
 
 def _mem_write_params(slot, op_name, doc=None, element_ids=None):
-    """Write slot, op, store_path, and optionally pre-captured element IDs to the params file.
-    Removes any stale file first so old data is never accidentally reused."""
+    """Write slot, op, store_path, and optionally pre-captured element IDs to the params file."""
     try:
         if not op.exists(_MEM_DIR):
             os.makedirs(_MEM_DIR)
@@ -859,10 +845,10 @@ def _mem_write_params(slot, op_name, doc=None, element_ids=None):
             json.dump(payload, f)
     except Exception:
         pass
+
+
 class MemoryHandler(IExternalEventHandler):
-    """Handles MWrite / MRead / MAppend / MDelete.
-    Captures element IDs here (inside the ExternalEvent) where selection is
-    guaranteed intact, then delegates to the script via params file."""
+    """Handles MWrite / MRead / MAppend / MDelete."""
 
     def __init__(self):
         self.op      = "write"
@@ -905,7 +891,6 @@ class MemoryHandler(IExternalEventHandler):
             self._ui_status("Select a slot first.", error=True)
             return
 
-        # Capture element IDs NOW while selection is guaranteed intact
         element_ids = None
         if op in ("write", "append") and uidoc:
             try:
@@ -977,7 +962,6 @@ _h_dim_levels   = ScriptLaunchHandler("dim_levels");        _e_dim_levels   = Ex
 _h_sel_untagged   = ScriptLaunchHandler("select_untagged");         _e_sel_untagged   = ExternalEvent.Create(_h_sel_untagged)
 
 
-# Temp file used to pass the chosen colour to the Highlight script
 _HIGHLIGHT_COLOR_FILE = os.path.join(os.getenv("APPDATA"), "pyRevit", "CDY-highlight-color.json")
 
 def _write_highlight_color(r, g, b):
@@ -990,23 +974,19 @@ def _write_highlight_color(r, g, b):
 
 
 class HighlightHandler(IExternalEventHandler):
-    """Launches the Highlight script, writing colour to temp file first.
-    Tries PostCommand first; falls back to _exec_script for hidden-panel buttons
-    where CanPostCommand returns False."""
+    """Launches the Highlight script, writing colour to temp file first."""
     def __init__(self):
         self.status = None
 
     def Execute(self, uiapp):
         from Autodesk.Revit.UI import RevitCommandId
 
-        # Write colour to temp file BEFORE launching — script reads it on startup
         r, g, b = CDY_HIGHLIGHT_COLOR
         _write_highlight_color(r, g, b)
 
         path = SCRIPTS.get("Highlight_selected")
         uid  = _build_uid_from_path(path) if path else None
 
-        # Try PostCommand (works when Developer panel is visible/enabled)
         if uid:
             try:
                 cmd_id = RevitCommandId.LookupCommandId(uid)
@@ -1016,10 +996,6 @@ class HighlightHandler(IExternalEventHandler):
             except Exception:
                 pass
 
-        # Fallback: execute directly.
-        # PostCommand fails when the button lives inside a hidden/disabled panel
-        # (CanPostCommand returns False). _exec_script is safe here — the Highlight
-        # script has no XAML/WPFWindow that would conflict with DocReg.
         if path:
             err = _exec_script(path, uiapp)
             if err and self.status:
@@ -1050,16 +1026,15 @@ def _exec_script_with_globals(path, uiapp, extra_globals):
         uidoc = uiapp.ActiveUIDocument if uiapp else None
         doc   = uidoc.Document if uidoc else None
         exec_params         = _ExecParams(path)
-        # Use full path hash + id to guarantee uniqueness and avoid module cache collisions
         mod_name            = "cdy_script_{:x}_{:x}".format(abs(hash(path)), id(exec_params) & 0xFFFF)
         mod                 = imp.new_module(mod_name)
-        mod.__file__        = op.dirname(path)  # dir not file — pyRevit resolves XAML relative to this
+        mod.__file__        = op.dirname(path)
         mod.__revit__       = uiapp
         mod.__uidoc__       = uidoc
         mod.__doc__         = doc
         mod.EXEC_PARAMS     = exec_params
         mod.__commandname__ = exec_params.command_name
-        mod.__commandpath__ = op.dirname(path)  # dir not file — pyRevit resolves XAML relative to this
+        mod.__commandpath__ = op.dirname(path)
         for k, v in extra_globals.items():
             setattr(mod, k, v)
         try:
@@ -1141,7 +1116,6 @@ class ACCHandler(IExternalEventHandler):
 
 _h_bim360_eu  = ACCHandler();  _h_bim360_eu.region  = "eu";  _e_bim360_eu  = ExternalEvent.Create(_h_bim360_eu)
 _h_bim360_gbr = ACCHandler();  _h_bim360_gbr.region = "gbr"; _e_bim360_gbr = ExternalEvent.Create(_h_bim360_gbr)
-# Keep legacy alias so any existing references don't break
 _h_bim360 = _h_bim360_eu;  _e_bim360 = _e_bim360_eu
 _h_central      = ScriptLaunchHandler("open_central_location"); _e_central  = ExternalEvent.Create(_h_central)
 _h_local        = ScriptLaunchHandler("open_local_location");   _e_local    = ExternalEvent.Create(_h_local)
@@ -1149,9 +1123,6 @@ _h_local        = ScriptLaunchHandler("open_local_location");   _e_local    = Ex
 
 # =============================================================================
 # SECTION 8 - DOCKABLE PANEL
-#
-# Uses raw Revit API (IDockablePaneProvider + UserControl) directly.
-# This avoids forms.WPFPanel which hard-requires a XAML file.
 # =============================================================================
 
 from Autodesk.Revit.UI import IDockablePaneProvider, DockablePaneId
@@ -1161,7 +1132,6 @@ from System import Guid
 _CDY_PANE_ID    = DockablePaneId(Guid("c4e8f127-9d3b-4a71-b6e2-1f0d7c5a8b94"))
 _CDY_PANE_TITLE = "CDY Tools"
 
-# Light grey used throughout the panel
 _PANEL_GREY     = Media.Color.FromRgb(235, 235, 235)
 _PANEL_GREY_MID = Media.Color.FromRgb(220, 220, 220)
 
@@ -1259,11 +1229,9 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
     def _make_tab(self, header):
         tab    = TabItem()
         tab.Header = header
-        # ── ScrollViewer: semi-transparent over the grey root ──────────────
         scroll = ScrollViewer()
         scroll.VerticalScrollBarVisibility   = ScrollBarVisibility.Auto
         scroll.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
-        # Alpha 0 = fully transparent — watermark on white root shows through
         scroll.Background = SolidColorBrush(
             Media.Color.FromArgb(0, 255, 255, 255))
         panel  = StackPanel()
@@ -1280,13 +1248,8 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
 
     def _build_ui(self):
         root = Grid()
-
-        # Step 1 ── white base so the logo grey reads clearly against it
         root.Background = SolidColorBrush(Media.Color.FromRgb(255, 255, 255))
 
-        # Step 2 ── overlay the CDY watermark DrawingBrush on top of the grey base.
-        #           We do this by placing a second child element that carries the
-        #           brush, rather than replacing root.Background.
         try:
             import System.Windows.Markup as Markup
             from System.Windows.Controls import Border
@@ -1312,12 +1275,11 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
             )
             watermark_border = Border()
             watermark_border.Background  = Markup.XamlReader.Parse(LOGO_XAML)
-            watermark_border.IsHitTestVisible = False   # clicks pass through
+            watermark_border.IsHitTestVisible = False
             root.Children.Add(watermark_border)
         except Exception as ex:
             print("CDY: Watermark failed: {}".format(ex))
 
-        # TabControl with fixed left-aligned WrapPanel so tabs never bounce
         try:
             import System.Windows.Markup as Markup
             TAB_STYLE_XAML = (
@@ -1355,7 +1317,6 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
         tabs.Items.Add(self._build_dimensions_tab())
         tabs.Items.Add(self._build_tagging_tab())
         tabs.Items.Add(self._build_files_tab())
-
 
         root.Children.Add(tabs)
         self.Content = root
@@ -1582,162 +1543,186 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
             "Save and recall named element selections across your session.", small=True))
 
         st_mem = self._status()
-        self._mem_combos = []
 
-        def _make_mem_combo():
-            from System.Windows.Controls import ComboBox
-            cb = ComboBox()
-            cb.Margin     = Thickness(0, 0, 4, 0)
-            cb.MinWidth   = 80
-            cb.IsEditable = False
-            self._mem_combos.append(cb)
-            return cb
+        from System.Windows.Controls import ComboBox, Button, DockPanel, StackPanel
+        from System.Windows import Thickness
+        from System.Windows.Media import SolidColorBrush, Color
 
-        def _refresh_mem_combos(doc=None):
+        # Single shared ComboBox
+        self._mem_combo = ComboBox()
+        self._mem_combo.Margin = Thickness(0, 0, 4, 0)
+        self._mem_combo.MinWidth = 140
+        self._mem_combo.IsEditable = False
+
+        def _refresh_mem_combo(doc=None):
             try:
                 if not doc:
-                    from pyrevit import HOST_APP as _ha
-                    doc = _ha.uiapp.ActiveUIDocument.Document \
-                            if _ha.uiapp.ActiveUIDocument else None
+                    try:
+                        from pyrevit import HOST_APP as _ha
+                        uidoc = _ha.uiapp.ActiveUIDocument
+                        doc   = uidoc.Document if uidoc else None
+                    except Exception:
+                        doc = None
                 slots = sorted(_mem_load(doc).keys()) if doc else []
             except Exception:
                 slots = []
-            for cb in self._mem_combos:
-                try:
-                    prev = cb.SelectedItem
-                    cb.Items.Clear()
-                    for s in slots:
-                        cb.Items.Add(s)
-                    if prev in slots:
-                        cb.SelectedItem = prev
-                    elif slots:
-                        cb.SelectedIndex = 0
-                except Exception:
-                    pass
 
-        self._refresh_mem_combos = _refresh_mem_combos
+            cb   = self._mem_combo
+            prev = cb.SelectedItem
+            cb.Items.Clear()
+            for s in slots:
+                cb.Items.Add(s)
+            if prev in slots:
+                cb.SelectedItem = prev
+            elif cb.Items.Count > 0:
+                cb.SelectedIndex = 0
+            else:
+                cb.SelectedIndex = -1
 
-        # MWrite row
+        self._refresh_mem_combos = _refresh_mem_combo
+
+        # -- MWRITE ROW -------------------------------------------------------
         from System.Windows.Controls import TextBox
         p.Children.Add(self._label("MWrite - save selection to a named slot:", small=True))
+
         mw_row = DockPanel()
         mw_row.Margin = Thickness(0, 4, 0, 2)
         mw_row.LastChildFill = True
+
         mw_btn = Button()
-        mw_btn.Content  = "MWrite"
-        mw_btn.Padding  = Thickness(6, 4, 6, 4)
+        mw_btn.Content = "MWrite"
+        mw_btn.Padding = Thickness(6, 4, 6, 4)
         mw_btn.MinWidth = 64
         DockPanel.SetDock(mw_btn, Dock.Right)
-        mw_row.Children.Add(mw_btn)
+
         mw_name = TextBox()
-        mw_name.Margin  = Thickness(0, 0, 4, 0)
+        mw_name.Margin = Thickness(0, 0, 4, 0)
         mw_name.Padding = Thickness(4, 3, 4, 3)
-        mw_name.ToolTip = "Type a name for this selection slot"
+
+        mw_row.Children.Add(mw_btn)
         mw_row.Children.Add(mw_name)
         p.Children.Add(mw_row)
 
-        def _on_mwrite(s, a, tb=st_mem, name_box=mw_name):
-            slot = name_box.Text.strip()
+        def _on_mwrite(s, a, tb=st_mem):
+            slot = mw_name.Text.strip()
             if not slot:
                 _set_status(tb, "Enter a slot name first.", error=True)
                 return
-            _h_memory.op      = "write"
-            _h_memory.slot    = slot
-            _h_memory.status  = tb
-            def _on_write_done(handler=_h_memory):
-                _set_status(tb, u"Saved to slot '{}'".format(slot))
-                _refresh_mem_combos(handler.doc)
-                setattr(name_box, "Text", "")
-            _h_memory.on_done = _on_write_done
+            _h_memory.op = "write"
+            _h_memory.slot = slot
+            _h_memory.status = tb
+            def _done(handler=_h_memory):
+                _set_status(tb, "Saved to slot '{}'".format(slot))
+                _refresh_mem_combo(handler.doc)
+                mw_name.Text = ""
+            _h_memory.on_done = _done
             _e_memory.Raise()
+
         mw_btn.Click += _on_mwrite
 
-        # MRead row
-        p.Children.Add(self._label("MRead - restore a saved selection:", small=True))
-        mr_row = DockPanel()
-        mr_row.Margin = Thickness(0, 4, 0, 2)
-        mr_row.LastChildFill = True
-        mr_btn = Button()
-        mr_btn.Content  = "MRead"
-        mr_btn.Padding  = Thickness(6, 4, 6, 4)
-        mr_btn.MinWidth = 64
-        DockPanel.SetDock(mr_btn, Dock.Right)
-        mr_row.Children.Add(mr_btn)
-        mr_cb = _make_mem_combo()
-        mr_row.Children.Add(mr_cb)
-        p.Children.Add(mr_row)
+        # -- COMBO + READ / APPEND / DELETE ROW --------------------------------
+        p.Children.Add(self._label("MRead / MAppend / MDelete:", small=True))
 
-        def _on_mread(s, a, tb=st_mem, cb=mr_cb):
-            slot = cb.SelectedItem
+        mem_row = DockPanel()
+        mem_row.Margin = Thickness(0, 4, 2, 2)
+        mem_row.LastChildFill = True
+
+        mem_row.Children.Add(self._mem_combo)
+
+        btn_stack = StackPanel()
+        btn_stack.Orientation = 0  # Horizontal
+        DockPanel.SetDock(btn_stack, Dock.Right)
+
+        btn_read = Button()
+        btn_read.Content = "MRead"
+        btn_read.Padding = Thickness(6, 4, 6, 4)
+        btn_read.MinWidth = 64
+
+        def _on_mread(s, a):
+            slot = self._mem_combo.SelectedItem
             if not slot:
-                _set_status(tb, "No slot selected.", error=True)
+                _set_status(st_mem, "No slot selected.", error=True)
                 return
-            _h_memory.op      = "read"
-            _h_memory.slot    = slot
-            _h_memory.status  = tb
+            _h_memory.op = "read"
+            _h_memory.slot = slot
+            _h_memory.status = st_mem
             _h_memory.on_done = None
             _e_memory.Raise()
-        mr_btn.Click += _on_mread
 
-        # MAppend row
-        p.Children.Add(self._label("MAppend - add selection to an existing slot:", small=True))
-        ma_row = DockPanel()
-        ma_row.Margin = Thickness(0, 4, 0, 2)
-        ma_row.LastChildFill = True
-        ma_btn = Button()
-        ma_btn.Content  = "MAppend"
-        ma_btn.Padding  = Thickness(6, 4, 6, 4)
-        ma_btn.MinWidth = 64
-        DockPanel.SetDock(ma_btn, Dock.Right)
-        ma_row.Children.Add(ma_btn)
-        ma_cb = _make_mem_combo()
-        ma_row.Children.Add(ma_cb)
-        p.Children.Add(ma_row)
+        btn_read.Click += _on_mread
 
-        def _on_mappend(s, a, tb=st_mem, cb=ma_cb):
-            slot = cb.SelectedItem
+        btn_append = Button()
+        btn_append.Content = "MAppend"
+        btn_append.Padding = Thickness(6, 4, 6, 4)
+        btn_append.MinWidth = 64
+
+        def _on_mappend(s, a):
+            slot = self._mem_combo.SelectedItem
             if not slot:
-                _set_status(tb, "No slot selected.", error=True)
+                _set_status(st_mem, "No slot selected.", error=True)
                 return
-            _h_memory.op      = "append"
-            _h_memory.slot    = slot
-            _h_memory.status  = tb
+            _h_memory.op = "append"
+            _h_memory.slot = slot
+            _h_memory.status = st_mem
             _h_memory.on_done = None
             _e_memory.Raise()
-        ma_btn.Click += _on_mappend
 
-        # MDelete row
-        p.Children.Add(self._label("MDelete - remove a saved slot:", small=True))
-        md_row = DockPanel()
-        md_row.Margin = Thickness(0, 4, 0, 2)
-        md_row.LastChildFill = True
-        md_btn = Button()
-        md_btn.Content    = "MDelete"
-        md_btn.Padding    = Thickness(6, 4, 6, 4)
-        md_btn.MinWidth   = 64
-        md_btn.Foreground = SolidColorBrush(Media.Color.FromRgb(180, 60, 60))
-        DockPanel.SetDock(md_btn, Dock.Right)
-        md_row.Children.Add(md_btn)
-        md_cb = _make_mem_combo()
-        md_row.Children.Add(md_cb)
-        p.Children.Add(md_row)
+        btn_append.Click += _on_mappend
 
-        def _on_mdelete(s, a, tb=st_mem, cb=md_cb):
+        btn_delete = Button()
+        btn_delete.Content = "MDelete"
+        btn_delete.Padding = Thickness(6, 4, 6, 4)
+        btn_delete.MinWidth = 64
+        btn_delete.Foreground = SolidColorBrush(Color.FromRgb(180, 60, 60))
+
+        def _on_mdelete(s, a):
+            cb   = self._mem_combo
             slot = cb.SelectedItem
             if not slot:
-                _set_status(tb, "No slot selected.", error=True)
+                _set_status(st_mem, "No slot selected.", error=True)
                 return
-            _h_memory.op      = "delete"
-            _h_memory.slot    = slot
-            _h_memory.status  = tb
-            _h_memory.on_done = lambda: _refresh_mem_combos()
+            _h_memory.op = "delete"
+            _h_memory.slot = slot
+            _h_memory.status = st_mem
+            def _done(handler=_h_memory):
+                _set_status(st_mem, "Deleted from slot '{}'".format(slot))
+                _refresh_mem_combo(handler.doc)
+                if cb.Items.Count > 0:
+                    if cb.SelectedIndex < 0 or cb.SelectedIndex >= cb.Items.Count:
+                        cb.SelectedIndex = cb.Items.Count - 1
+            _h_memory.on_done = _done
             _e_memory.Raise()
-        md_btn.Click += _on_mdelete
 
-        _refresh_mem_combos()
+        btn_delete.Click += _on_mdelete
+
+        btn_stack.Children.Add(btn_read)
+        btn_stack.Children.Add(btn_append)
+        btn_stack.Children.Add(btn_delete)
+        mem_row.Children.Add(btn_stack)
+        p.Children.Add(mem_row)
 
         p.Children.Add(st_mem)
         _h_pick2d.status = _h_pick3d.status = _h_pick_grouped.status = st_mem
+
+        # ------------------------------------------------------------------
+        # DEFERRED POPULATION
+        # The panel is built before any document is open, so ActiveUIDocument
+        # is None at this point and the combo would be empty.  Subscribe to
+        # Idling once; on the first tick where a document is available we
+        # populate the combo and immediately unsubscribe.
+        # This is the same pattern used by hide_panels() at the top of the file.
+        # ------------------------------------------------------------------
+        def _deferred_mem_refresh(sender, args):
+            try:
+                uidoc = HOST_APP.uiapp.ActiveUIDocument
+                if uidoc and uidoc.Document:
+                    _refresh_mem_combo(uidoc.Document)
+                    HOST_APP.uiapp.Idling -= EventHandler[IdlingEventArgs](_deferred_mem_refresh)
+            except Exception:
+                HOST_APP.uiapp.Idling -= EventHandler[IdlingEventArgs](_deferred_mem_refresh)
+
+        HOST_APP.uiapp.Idling += EventHandler[IdlingEventArgs](_deferred_mem_refresh)
+
         return tab
 
     def _on_pick2d(self, s, a):       _e_pick2d.Raise()
@@ -1802,6 +1787,7 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
         return tab
 
     def _on_sel_untagged(self, s, a):    _e_sel_untagged.Raise()
+
     def _highlight_row(self):
         """Highlight row: [colour swatch picker] [Highlight Selected ★]"""
         from System.Windows.Controls import ContextMenu, MenuItem
@@ -1810,7 +1796,6 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
         row.Margin        = Thickness(0, 4, 0, 2)
         row.LastChildFill = True
 
-        # ── star (favourites) ──────────────────────────────────────────────
         star = Button()
         star.Width   = 26
         star.Padding = Thickness(0)
@@ -1835,7 +1820,6 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
         DockPanel.SetDock(star, Dock.Right)
         row.Children.Add(star)
 
-        # ── colour swatch picker button ────────────────────────────────────
         self._highlight_swatch = Button()
         self._highlight_swatch.Width   = 26
         self._highlight_swatch.Padding = Thickness(0)
@@ -1844,7 +1828,6 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
         self._highlight_swatch.VerticalAlignment = System.Windows.VerticalAlignment.Stretch
         self._update_swatch()
 
-        # Preset colours in a context menu
         cm = ContextMenu()
         presets = [
             (u"Green  (default)", 0,   200, 0  ),
@@ -1855,7 +1838,7 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
             (u"Magenta",          200, 0,   200 ),
             (u"Orange",           255, 140, 0   ),
             (u"White",            255, 255, 255 ),
-            (u"Custom…",     None,None,None),
+            (u"Custom\u2026",     None, None, None),
         ]
         for label, r, g, b in presets:
             mi = MenuItem()
@@ -1872,7 +1855,6 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
             cm.Items.Add(mi)
 
         self._highlight_swatch.ContextMenu = cm
-        # Left-click also opens the menu
         def _swatch_click(s, a):
             self._highlight_swatch.ContextMenu.IsOpen = True
         self._highlight_swatch.Click += _swatch_click
@@ -1880,7 +1862,6 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
         DockPanel.SetDock(self._highlight_swatch, Dock.Left)
         row.Children.Add(self._highlight_swatch)
 
-        # ── main button ────────────────────────────────────────────────────
         btn = Button()
         btn.Content = "Highlight Selected"
         btn.Padding = Thickness(6, 4, 6, 4)
@@ -1894,7 +1875,6 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
         r, g, b = CDY_HIGHLIGHT_COLOR
         self._highlight_swatch.Background = SolidColorBrush(
             Media.Color.FromRgb(r, g, b))
-        # Use black or white text depending on luminance
         lum = 0.299 * r + 0.587 * g + 0.114 * b
         self._highlight_swatch.Foreground = SolidColorBrush(
             Media.Color.FromRgb(0, 0, 0) if lum > 140
@@ -1910,7 +1890,7 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
 
         r, g, b = CDY_HIGHLIGHT_COLOR
         dlg = WinForms.ColorDialog()
-        dlg.FullOpen = True   # show the full picker with custom colours expanded
+        dlg.FullOpen = True
         try:
             dlg.Color = Drawing.Color.FromArgb(r, g, b)
         except:
@@ -1948,11 +1928,10 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
 
         p.Children.Add(self._sep())
         self._section(p, "Project Locations")
-        # ACC button: left-click = EU, right-click context menu = GBR
         acc_row = self._acc_button_row()
         p.Children.Add(acc_row)
         p.Children.Add(self._label(
-            u"Left-click → EU region.  Right-click → GBR region.", small=True))
+            u"Left-click \u2192 EU region.  Right-click \u2192 GBR region.", small=True))
         p.Children.Add(self._fav_row("Open Central Model Location", self._on_central, "open_central_location"))
         p.Children.Add(self._label("Opens the central model folder in Explorer.", small=True))
         p.Children.Add(self._fav_row("Open Local File Location",    self._on_local,   "open_local_location"))
@@ -1975,6 +1954,7 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
     def _on_greyscale(self, s, a):   _e_greyscale.Raise()
     def _on_revert_grey(self, s, a): _e_revert_grey.Raise()
     def _on_hide_layer(self, s, a):  _e_hide_layer.Raise()
+
     def _acc_button_row(self):
         """ACC button with left-click (EU) and right-click context menu (GBR)."""
         from System.Windows.Controls import ContextMenu, MenuItem
@@ -1983,7 +1963,6 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
         row.Margin        = Thickness(0, 4, 0, 2)
         row.LastChildFill = True
 
-        # ── star button (favourites) ───────────────────────────────────────
         star = Button()
         star.Width   = 26
         star.Padding = Thickness(0)
@@ -2008,18 +1987,16 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
         DockPanel.SetDock(star, Dock.Right)
         row.Children.Add(star)
 
-        # ── main button (left-click = EU) ──────────────────────────────────
         btn = Button()
         btn.Content = "Open Forma"
         btn.Padding = Thickness(6, 4, 6, 4)
         btn.HorizontalAlignment = System_HAlign.Stretch
-        btn.ToolTip = u"Left-click → EU  |  Right-click → GBR"
+        btn.ToolTip = u"Left-click \u2192 EU  |  Right-click \u2192 GBR"
         btn.Click += self._on_bim360_eu
 
-        # ── right-click context menu (GBR) ─────────────────────────────────
         cm = ContextMenu()
-        mi_eu  = MenuItem(); mi_eu.Header  = u"Open ACC — EU region (default)"
-        mi_gbr = MenuItem(); mi_gbr.Header = u"Open ACC — GBR region"
+        mi_eu  = MenuItem(); mi_eu.Header  = u"Open ACC \u2014 EU region (default)"
+        mi_gbr = MenuItem(); mi_gbr.Header = u"Open ACC \u2014 GBR region"
         mi_eu.Click  += self._on_bim360_eu
         mi_gbr.Click += self._on_bim360_gbr
         cm.Items.Add(mi_eu)
@@ -2044,7 +2021,6 @@ class CDYToolsPanel(UserControl, IDockablePaneProvider):
 
 # =============================================================================
 # SECTION 9 - REGISTER CDY TOOLS PANEL
-# Calls HOST_APP.uiapp.RegisterDockablePane directly — no XAML file needed.
 # =============================================================================
 
 try:
