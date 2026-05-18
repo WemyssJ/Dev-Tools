@@ -146,18 +146,23 @@ class SheetBatchEditor(Form):
         self.find_label = Label()
         self.find_label.Text = "Find:"
         self.find_label.Location = Point(10, y)
+        self.find_label.BackColor = panel.BackColor
+        self.find_label.AutoSize = True
 
         self.find_box = TextBox()
         self.find_box.Location = Point(55, y - 3)
-        self.find_box.Width = 180
+        self.find_box.Width = 160
 
         self.replace_label = Label()
         self.replace_label.Text = "Replace:"
         self.replace_label.Location = Point(250, y)
+        self.replace_label.BackColor = panel.BackColor
+        self.replace_label.AutoSize = True
 
         self.replace_box = TextBox()
         self.replace_box.Location = Point(320, y - 3)
-        self.replace_box.Width = 180
+        self.replace_box.Width = 160
+
 
         self.scope_box = ComboBox()
         self.scope_box.Location = Point(520, y - 3)

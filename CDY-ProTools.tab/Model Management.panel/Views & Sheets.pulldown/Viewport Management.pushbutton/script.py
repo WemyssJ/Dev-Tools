@@ -209,9 +209,18 @@ class BatchEditor(Form):
             self.scope_box.Items.Add(s)
         self.scope_box.SelectedIndex = 0
 
-        find_lbl    = Label(); find_lbl.Text    = "Find:";    find_lbl.Location    = Point(10,  y)
-        replace_lbl = Label(); replace_lbl.Text = "Replace:"; replace_lbl.Location = Point(230, y)
+        find_lbl = Label()
+        find_lbl.Text = "Find:"
+        find_lbl.Location = Point(10, y)
+        find_lbl.BackColor = panel.BackColor
+        find_lbl.AutoSize = True
 
+        replace_lbl = Label()
+        replace_lbl.Text = "Replace:"
+        replace_lbl.Location = Point(230, y)
+        replace_lbl.BackColor = panel.BackColor
+        replace_lbl.AutoSize = True
+        
         rep_btn          = Button()
         rep_btn.Text     = "Replace"
         rep_btn.Location = Point(640, y-5)
