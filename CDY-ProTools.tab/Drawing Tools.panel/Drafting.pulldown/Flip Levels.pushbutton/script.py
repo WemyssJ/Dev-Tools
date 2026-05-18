@@ -148,12 +148,6 @@ def main():
     # Feedback
     if changed_total == 0:
         TaskDialog.Show(__title__, "Nothing flipped")
-    else:
-        TaskDialog.Show(
-            __title__,
-            "{} level(s) modified".format(changed_total)
-        )
-
 
 # ---------------------------------------------------------------------------
 # Entry
