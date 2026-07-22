@@ -70,6 +70,7 @@
       - v1.2.18: Lots of WIP Tools + Telemetry
       - v1.2.19: Compatibility with pyRevit 6 & Revit 2027
       - v1.2.20: Several new QoL updates released
+      - v1.3.00: Dockable Panel Added
 
 
 
