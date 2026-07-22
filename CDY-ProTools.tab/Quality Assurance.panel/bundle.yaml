@@ -1,8 +1,9 @@
 layout:
-  - Red Pen
+  - Internal Comments
   - -----
-  - Pin GL&L
-  - Select Untagged
+  - Pin
+  - -----
+  - Model Check
   
 background:
   panel: 'fbfffb'

@@ -1,12 +1,13 @@
 layout:
-  - Orient
+  - 3D Tools
+  - -----
   - Foundation Tools
   - -----
-  - Text
+  - Drafting
   - -----
-  - 2D Drafting
-  - 3D Modeling
+  - QSelect
   - -----
+  - AutoCAD
   - Measurement
 
 

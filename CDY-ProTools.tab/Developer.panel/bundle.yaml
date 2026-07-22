@@ -8,9 +8,9 @@ layout:
   - Icons8
   - Mute
 
+
+
 background:
+  slideout: 'ffffff'
   panel: 'f5f5f5'
   title: 'ededed'
-  slideout: 
-
-

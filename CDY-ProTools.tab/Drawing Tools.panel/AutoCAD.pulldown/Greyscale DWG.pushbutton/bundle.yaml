@@ -1,0 +1,11 @@
+highlight: new
+
+title:
+  en_us: Grey Scale DWG
+tooltip:
+  en_us: Turns selected DWG to greyscale
+engine:
+  clean: true
+context: zero-doc
+author: >-
+  Joe Wemyss

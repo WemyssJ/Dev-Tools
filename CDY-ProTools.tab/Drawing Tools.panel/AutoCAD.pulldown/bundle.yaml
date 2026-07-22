@@ -1,0 +1,12 @@
+highlight: new
+
+title: 
+  en_us: AutoCAD
+layout:
+  - Open DWG
+  - Reload DWG
+  - -----
+  - Greyscale DWG
+  - Revert Greyscale DWG
+  - -----
+  - DWG Report

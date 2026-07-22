@@ -1,0 +1,11 @@
+highlight: new
+
+title:
+  en_us: Reload Selected DWG
+tooltip:
+  en_us: Refreshes DWG from server
+engine:
+  clean: true
+context: zero-doc
+author: >-
+  Joe Wemyss

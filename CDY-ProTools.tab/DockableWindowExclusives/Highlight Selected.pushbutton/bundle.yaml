@@ -1,0 +1,9 @@
+title:
+  en_us: Highlight Selected
+tooltip:
+  en_us: Paints selected elements
+engine:
+  clean: true
+context: zero-doc
+author: >-
+  Joe Wemyss

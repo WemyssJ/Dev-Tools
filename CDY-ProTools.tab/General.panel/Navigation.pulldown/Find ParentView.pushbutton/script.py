@@ -1,4 +1,11 @@
-from pyrevit import revit, DB, forms
+# -*- coding: utf-8 -*-
+"""
+Find Parent / Primary View — opens the primary view when the active view is a dependent.
+Place at: Developer.panel\PulloutPanel.pulldown\Find ParentView.pushbutton\script.py
+"""
+
+from pyrevit import HOST_APP, forms
+import Autodesk.Revit.DB as DB
 
 ##############################################################################################
 # TELEMETRY IMPORTS #
@@ -19,33 +26,20 @@ TOOL_NAME = tool_name.replace(".pushbutton", "")
 telemetry_auto.log_tool_usage(TOOL_NAME)
 ##############################################################################################
 
-doc = revit.doc
-uidoc = revit.uidoc
-curView = revit.active_view
+uidoc = __uidoc__ or (HOST_APP.uiapp.ActiveUIDocument if HOST_APP else None)
+if not uidoc:
+    raise RuntimeError("No active document.")
 
-ownerView = None  # Initialize at top
-primaryView = None  # Properly defined before use
+doc  = uidoc.Document
+view = doc.ActiveView
 
-# Try parent view (e.g. for callouts)
-try:
-    parentViewId = curView.get_Parameter(DB.BuiltInParameter.SECTION_PARENT_VIEW_NAME).AsElementId()
-    if parentViewId and parentViewId.IntegerValue != -1:
-        ownerView = doc.GetElement(parentViewId)
-        uidoc.RequestViewChange(ownerView)
-except:
-    pass
-
-# Try primary view (e.g. for dependent views)
-if ownerView is None:
-    try:
-        primaryViewId = curView.GetPrimaryViewId()
-        if primaryViewId and primaryViewId.IntegerValue != -1:
-            ownerView = doc.GetElement(primaryViewId)
-            uidoc.RequestViewChange(ownerView)
-    except:
-        pass
-
-
-# Alert if no owner view was found
-if ownerView is None:
-    forms.alert('View has no parent/primary view.', title='Script complete', warn_icon=False)
+parent_id = view.GetPrimaryViewId()
+if parent_id and parent_id != DB.ElementId.InvalidElementId:
+    parent = doc.GetElement(parent_id)
+    if parent:
+        uidoc.ActiveView = parent
+    else:
+        forms.alert("Parent view element not found.", title="Find Parent View")
+else:
+    forms.alert("Active view has no parent — it is already a primary view.",
+                title="Find Parent View")

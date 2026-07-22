@@ -439,12 +439,23 @@ def build_rows_out(template, doc_obj, split_p_c=False, hide_unused_revisions=Tru
         rowsOut.append(sep.join([doc_no, doc_name] + rev_values))
 
     return rowsOut
+
 # -------------------------
 # WPF window with checkboxes
 # -------------------------
 class RevisionPreviewWindow(forms.WPFWindow):
     def __init__(self, xaml_file_name, protocols, preview_count=1000):
-        forms.WPFWindow.__init__(self, xaml_file_name)
+        import os
+
+        # Resolve XAML path relative to THIS script's directory (__file__)
+        # using __file__ instead of script.get_bundle_file() avoids corruption
+        # of pyRevit's EXEC_PARAMS.command_path by previously run tools.
+        if not os.path.isabs(xaml_file_name):
+            xaml_file_name = os.path.join(os.path.dirname(__file__), xaml_file_name)
+
+        # IMPORTANT: bypass default loader behaviour
+        forms.WPFWindow.__init__(self, xaml_file_name, handle_esc=True)
+
         self.protocols = protocols
         self.preview_count = preview_count
         self.selected_template = None
@@ -580,7 +591,7 @@ class RevisionPreviewWindow(forms.WPFWindow):
         idx = protocol.template.find(marker)
         trimmed = protocol.template[:idx + len(marker)] if idx >= 0 else protocol.template
         self.naming_format_text.Text = trimmed
-        
+
 # -------------------------
 # Run window
 # -------------------------
@@ -588,8 +599,8 @@ protocols = []
 protocols.extend(extract_naming_formats_from_print_sheets())
 protocols.extend(get_user_naming_formats_from_pyrevit_config())
 
-xaml_file = script.get_bundle_file('PreviewWindow.xaml')
-window = RevisionPreviewWindow(xaml_file, protocols)
+# Pass filename (safe handling inside class)
+window = RevisionPreviewWindow("PreviewWindow.xaml", protocols)
 window.ShowDialog()
 
 if not window.selected_template:
@@ -606,8 +617,7 @@ rowsOut = build_rows_out(
 
 # Apply hide no revisions filter to exported clipboard
 if window.hide_no_revisions_checkbox.IsChecked:
-    header = rowsOut[0].split("\t")
-    filtered_rows = [rowsOut[0]]  # keep header
+    filtered_rows = [rowsOut[0]]
     for row in rowsOut[1:]:
         if any(cell.strip() for cell in row.split("\t")[2:]):
             filtered_rows.append(row)
@@ -615,5 +625,3 @@ if window.hide_no_revisions_checkbox.IsChecked:
 
 Clipboard.SetText("\n".join(rowsOut))
 forms.alert("Preview copied to clipboard.")
-
-

@@ -19,4 +19,5 @@ TOOL_NAME = tool_name.replace(".pushbutton", "")
 telemetry_auto.log_tool_usage(TOOL_NAME)
 ##############################################################################################
 
-subprocess.Popen(r'explorer /select,"S:\Revit\3 Family Template Files\Craddys\ss"')
+subprocess.Popen(r'explorer /select,"S:\Revit\3 Family Template Files\Craddys"')
+

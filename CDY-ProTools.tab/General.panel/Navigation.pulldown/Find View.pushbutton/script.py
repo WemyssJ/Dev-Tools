@@ -1,4 +1,13 @@
-from pyrevit import revit, DB, forms
+# -*- coding: utf-8 -*-
+"""
+Find View — if a viewport is already selected, jump to it immediately.
+Otherwise prompt the user to pick one on the sheet.
+Place at: Developer.panel\PulloutPanel.pulldown\Find View.pushbutton\script.py
+"""
+ 
+from pyrevit import HOST_APP, forms
+import Autodesk.Revit.DB as DB
+from Autodesk.Revit.UI.Selection import ObjectType, ISelectionFilter
 
 ##############################################################################################
 # TELEMETRY IMPORTS #
@@ -18,39 +27,57 @@ tool_name = os.path.basename(os.path.dirname(__file__))
 TOOL_NAME = tool_name.replace(".pushbutton", "")
 telemetry_auto.log_tool_usage(TOOL_NAME)
 ##############################################################################################
-
-doc = revit.doc
-uidoc = revit.uidoc
-
-selection = uidoc.Selection.GetElementIds()
-
-if not selection:
-    forms.alert('Please select a viewport on a sheet.', title='No selection', warn_icon=True)
+ 
+uidoc = __uidoc__ or (HOST_APP.uiapp.ActiveUIDocument if HOST_APP else None)
+if not uidoc:
+    raise RuntimeError("No active document.")
+ 
+doc = uidoc.Document
+ 
+ 
+class ViewportFilter(ISelectionFilter):
+    def AllowElement(self, elem):
+        return isinstance(elem, DB.Viewport)
+    def AllowReference(self, ref, point):
+        return False
+ 
+ 
+# ── 1. Check for a pre-existing selection of exactly one Viewport ────────────
+vp = None
+ 
+current_ids = list(uidoc.Selection.GetElementIds())
+if current_ids:
+    viewports = [doc.GetElement(i) for i in current_ids
+                 if isinstance(doc.GetElement(i), DB.Viewport)]
+    if len(viewports) == 1:
+        vp = viewports[0]
+    elif len(viewports) > 1:
+        # Multiple viewports selected — let the user choose which one to open
+        choices = {"{} — {}".format(
+                        doc.GetElement(v.ViewId).Name if doc.GetElement(v.ViewId) else "Unknown",
+                        v.Id): v
+                   for v in viewports}
+        picked = forms.SelectFromList.show(
+            sorted(choices.keys()),
+            title="Find View",
+            prompt="Multiple viewports selected — choose one to open:",
+            multiselect=False)
+        if not picked:
+            raise SystemExit
+        vp = choices[picked]
+ 
+# ── 2. Nothing useful selected — ask the user to pick ───────────────────────
+if vp is None:
+    try:
+        ref = uidoc.Selection.PickObject(ObjectType.Element, ViewportFilter(),
+                                         "Select a viewport on the sheet")
+    except:
+        raise SystemExit
+    vp = doc.GetElement(ref.ElementId)
+ 
+# ── 3. Open the view ─────────────────────────────────────────────────────────
+view = doc.GetElement(vp.ViewId) if vp else None
+if view:
+    uidoc.ActiveView = view
 else:
-    selected_element = doc.GetElement(list(selection)[0])
-
-    if isinstance(selected_element, DB.Viewport):
-        placed_view = doc.GetElement(selected_element.ViewId)
-
-        # Try parent view (e.g. for callouts)
-        try:
-            parent_view_id = placed_view.get_Parameter(DB.BuiltInParameter.SECTION_PARENT_VIEW_NAME).AsElementId()
-            if parent_view_id and parent_view_id.IntegerValue != -1:
-                parent_view = doc.GetElement(parent_view_id)
-                uidoc.RequestViewChange(parent_view)
-            else:
-                raise Exception("No parent view.")
-        except:
-            # Try primary view (e.g. for dependent views)
-            try:
-                primary_view_id = placed_view.GetPrimaryViewId()
-                if primary_view_id and primary_view_id.IntegerValue != -1:
-                    primary_view = doc.GetElement(primary_view_id)
-                    uidoc.RequestViewChange(primary_view)
-                else:
-                    raise Exception("No primary view.")
-            except:
-                # Fallback: just open the placed view itself
-                uidoc.RequestViewChange(placed_view)
-    else:
-        forms.alert('Selected element is not a viewport.', title='Invalid selection', warn_icon=True)
+    forms.alert("Could not find the view for the selected viewport.", title="Find View")

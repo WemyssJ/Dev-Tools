@@ -8,6 +8,8 @@ from pyrevit.loader import sessionmgr
 from pyrevit.loader import sessioninfo
 
 
+
+
 res = True
 if EXEC_PARAMS.executed_from_ui:
     res = forms.alert('Reloading increases the memory footprint and is '

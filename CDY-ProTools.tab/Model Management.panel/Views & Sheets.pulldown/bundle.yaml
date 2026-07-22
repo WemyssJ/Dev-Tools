@@ -1,10 +1,11 @@
+highlight: new
+
 layout:
   - Align Viewports
   - Move Views 
-  - Detail&ViewName
   - -----
   - Batch Sheet Maker
   - -----
-  - FindReplace - Views
-  - FindReplace_Sheets
+  - Viewport Management
+  - Sheet Management
 

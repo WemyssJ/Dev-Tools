@@ -1,10 +1,7 @@
 layout:
-  - ACC or BIM360 Location
+  - Forma
   - CentralModelLocation
   - ModelLocation
-  - -----
-  - Find DWG
-  - DWG HotLoader
   - -----
   - Find Sheet
   - Find View

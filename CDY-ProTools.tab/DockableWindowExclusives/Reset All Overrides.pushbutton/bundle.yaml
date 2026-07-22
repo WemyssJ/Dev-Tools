@@ -1,0 +1,9 @@
+title:
+  en_us: Reset All Overrides
+tooltip:
+  en_us: Reset all in place overrides in view
+engine:
+  clean: true
+context: zero-doc
+author: >-
+  Joe Wemyss

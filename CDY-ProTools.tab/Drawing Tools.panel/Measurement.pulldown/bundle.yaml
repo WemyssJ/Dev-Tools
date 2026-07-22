@@ -1,3 +1,8 @@
+highlight: new
+
 layout:
-  - Length
+  - Rebar Spacing
+  - Count Rebar (TEST)
+  - -----
+  - Line Length
   - Volume
