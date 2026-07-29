@@ -71,6 +71,7 @@
       - v1.2.19: Compatibility with pyRevit 6 & Revit 2027
       - v1.2.20: Several new QoL updates released
       - v1.3.00: Dockable Panel Added
+      - v1.3.01: pyRevitAssemblyBuilder error fixed (VPmana)
 
 
 
