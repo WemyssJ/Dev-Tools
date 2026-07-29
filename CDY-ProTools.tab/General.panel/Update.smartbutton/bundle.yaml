@@ -7,7 +7,7 @@ tooltip:
       - https://github.com/WemyssJ/BIM-Tools/blob/Master/lib/core/Version%20History.txt
   
       Current Version:
-      - v1.3.0: Dockable Panel Added
+      - v1.3.01: pyRevitAssemblyBuilder error fixed (VPmana)
 
 context: zero-doc
 
