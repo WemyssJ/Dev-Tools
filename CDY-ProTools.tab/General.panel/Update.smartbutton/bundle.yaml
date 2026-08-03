@@ -7,7 +7,7 @@ tooltip:
       - https://github.com/WemyssJ/BIM-Tools/blob/Master/lib/core/Version%20History.txt
   
       Current Version:
-      - v1.3.01: pyRevitAssemblyBuilder error fixed (VPmana)
+      - v1.3.02: Duplicate 2D Drafting Removed
 
 context: zero-doc
 
