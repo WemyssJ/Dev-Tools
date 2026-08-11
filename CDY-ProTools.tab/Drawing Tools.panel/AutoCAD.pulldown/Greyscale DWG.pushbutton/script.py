@@ -7,12 +7,12 @@ Place at: Developer.panel\Testing Zone.pulldown\Greyscale DWG.pushbutton\script.
 
 from pyrevit import HOST_APP, forms
 import Autodesk.Revit.DB as DB
+from pyrevit import revit
 
-uidoc = __uidoc__ or (HOST_APP.uiapp.ActiveUIDocument if HOST_APP else None)
-if not uidoc:
-    raise SystemExit
 
-doc  = uidoc.Document
+
+uidoc = revit.uidoc
+doc = revit.doc
 view = doc.ActiveView
 
 sel_ids = uidoc.Selection.GetElementIds()
