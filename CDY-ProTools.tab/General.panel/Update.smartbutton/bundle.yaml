@@ -7,7 +7,7 @@ tooltip:
       - https://github.com/WemyssJ/BIM-Tools/blob/Master/lib/core/Version%20History.txt
   
       Current Version:
-      - v1.3.02: Duplicate 2D Drafting Removed
+      - v1.3.03: Greyscale DWG error fixed
 
 context: zero-doc
 
